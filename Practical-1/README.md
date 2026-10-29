@@ -23,6 +23,19 @@ Initiate the semester-long StudentHub portal by identifying the problem scope, u
 
 ---
 
+### 📦 Submission Deliverables
+| # | Deliverable | Where |
+|---|---|---|
+| 1 | Complete StudentHub project folder | This repository: `studenthub/` (main application), `Practical-1` … `Practical-15`, `database/`, `tools/`, `README.md` |
+| 2 | GitHub repository screenshot | [`screenshots/github-repository.png`](screenshots/) – **placeholder, genuine screenshot not added yet** (also section 12 of the Word report) |
+| 3 | GitHub repository link | [https://github.com/TheEmperor08/StudentHub-ITUE203-25CS023](https://github.com/TheEmperor08/StudentHub-ITUE203-25CS023) |
+| 4 | Sitemap PDF | [`PRAC_1_Sitemap_25CS023.pdf`](PRAC_1_Sitemap_25CS023.pdf) – 1 page, A4 landscape |
+| 5 | Low-fidelity wireframe PDF | [`PRAC_1_Wireframes_25CS023.pdf`](PRAC_1_Wireframes_25CS023.pdf) – 3 pages, A4 landscape: dashboard (desktop), home + login (desktop), mobile |
+
+Lab report: [`PRAC_1_ITUE203_25CS023.docx`](PRAC_1_ITUE203_25CS023.docx)
+
+---
+
 ### 👥 User Roles
 1. **Student:** Access dashboard, view timetable, attendance, marks, events, and manage profile. *(implemented)*
 2. **Faculty:** Manage courses, upload assignments, update attendance, and check results. *(planned – not implemented in the main application)*
@@ -78,9 +91,29 @@ Practical-1/
 ├── wireframe-1-dashboard-desktop.svg / .png
 ├── wireframe-2-home-login-desktop.svg / .png
 ├── wireframe-3-mobile.svg / .png
-└── source/build_diagrams.py   # regenerates all diagrams: python Practical-1/source/build_diagrams.py
+├── PRAC_1_Sitemap_25CS023.pdf       # sitemap deliverable (1 page)
+├── PRAC_1_Wireframes_25CS023.pdf    # wireframe deliverable (3 pages)
+├── PRAC_1_ITUE203_25CS023.docx      # lab report
+├── screenshots/                     # genuine GitHub repository screenshot goes here
+└── source/
+    ├── build_diagrams.py            # regenerates the SVG + PNG diagrams
+    └── export_pdfs.py               # exports the PNG diagrams to the two PDFs
 ```
-SVG files are the editable vector originals; the PNG files are for inserting into the Word report.
+SVG files are the editable vector originals; the PNG files are used in the Word report and the PDFs. Regenerate with `python Practical-1/source/build_diagrams.py`, then `python Practical-1/source/export_pdfs.py`.
+
+---
+
+### 💻 Source Code Evidence
+Practical 1 is a planning practical (design artefacts only). The table below points to the real StudentHub code that implements the planned page structure and navigation flow; the lab report quotes these lines unchanged.
+
+| File | Lines | Shows |
+|---|---|---|
+| [`studenthub/index.php`](../studenthub/index.php) | 18–27 | Home page document structure and metadata: doctype, `lang`, charset, viewport, title, stylesheet, theme script |
+| [`studenthub/index.php`](../studenthub/index.php) | 36–65 | Home page `<header>` and main `<nav>`: guest links vs. signed-in links, admin-only Admin Console link, hamburger button |
+| [`studenthub/sidebar.php`](../studenthub/sidebar.php) | 8–32 | `$nav_groups` navigation map (Overview, Academics, Campus, Account – matches the sitemap) and the skip link |
+| [`studenthub/sidebar.php`](../studenthub/sidebar.php) | 67–78 | Loop that renders the menu, marks the current page and adds the admin-only link |
+
+The skip link is part of `sidebar.php`, so it appears on the signed-in pages; the public home page (`index.php`) does not have one. `Practical-15/` contains an identical copy of these files.
 
 ---
 
