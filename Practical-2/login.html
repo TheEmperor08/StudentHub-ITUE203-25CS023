@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StudentHub</title>
+    
+    
+    
+    
+    
+    
+</head>
+<body >
+
+    <nav  >
+        <div >
+            <a  href="index.html">StudentHub</a>
+            <button  type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span ></span>
+            </button>
+            <div  id="navbarNav">
+                <ul >
+                    <li ><a  href="index.html">Home</a></li>
+                    <li ><a  href="login.html">Login</a></li>
+                    <li ><a  href="register.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main >
+        <div >
+            <div >
+                <!-- Alert messages from URL params -->
+                <div id="auth-alert"></div>
+
+                <div >
+                    <div >
+                        <h2 >Student & Faculty Login</h2>
+                        <small>Sign in to access your academic portal</small>
+                    </div>
+                    <div >
+                        <form id="login-form">
+                            <div >
+                                <label for="role" >Role:</label>
+                                <select id="role" name="role"  required>
+                                    <option value="student">Student</option>
+                                    <option value="faculty">Faculty</option>
+                                </select>
+                            </div>
+                            <div >
+                                <label for="username" >Enrollment Number / Email:</label>
+                                <input type="text" id="username" name="username"  placeholder="Enter Enrollment No or Email" required>
+                            </div>
+                            <div >
+                                <label for="password" >Password:</label>
+                                <input type="password" id="password" name="password"  placeholder="Enter Password" required>
+                            </div>
+                            <div >
+                                <button type="submit" >Login &rarr;</button>
+                                <button type="reset" >Clear</button>
+                            </div>
+                        </form>
+                        
+                        <div >
+                            <details>
+                                <summary  >Forgot your password?</summary>
+                                <p >Please send an email to <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> from your registered email address or contact campus admin at +91-2697-265011.</p>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+
+                <div >
+                    <h3 >New Student?</h3>
+                    <p >If you don't have a portal account yet, please register.</p>
+                    <a href="register.html" >&rarr; Go to Register Page</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer >
+        <div >
+            <p >&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
+            <address >
+                A7 Building, CSPIT, CHARUSAT University Campus, Changa, Gujarat |
+                Support: <a href="mailto:support@charusat.edu.in" >support@charusat.edu.in</a> | 
+                Phone: <a href="tel:+91-2697-265011" >+91-2697-265011</a>
+            </address>
+        </div>
+    </footer>
+
+    
+    
+</body>
+</html>

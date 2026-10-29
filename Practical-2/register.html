@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration - StudentHub</title>
+    <!-- Premium Google Fonts -->
+    
+    
+    
+    
+    
+</head>
+<body>
+
+    <div >
+        <h1>Student Registration</h1>
+        <form id="registerForm" novalidate>
+            
+            <div >
+                <div >
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" placeholder="John Doe">
+                    <div  id="nameError"></div>
+                </div>
+                <div >
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" placeholder="john@charusat.edu.in">
+                    <div  id="emailError"></div>
+                </div>
+            </div>
+
+            <div >
+                <div >
+                    <label for="mobile">Mobile Number *</label>
+                    <input type="tel" id="mobile" name="mobile" placeholder="9876543210" maxlength="10">
+                    <div  id="mobileError"></div>
+                </div>
+                <div >
+                    <label>Gender *</label>
+                    <div >
+                        <label><input type="radio" name="gender" value="Male"> Male</label>
+                        <label><input type="radio" name="gender" value="Female"> Female</label>
+                        <label><input type="radio" name="gender" value="Other"> Other</label>
+                    </div>
+                    <div  id="genderError"></div>
+                </div>
+            </div>
+
+            <div >
+                <div >
+                    <label for="course">Course *</label>
+                    <select id="course" name="course">
+                        <option value="">-- Select Course --</option>
+                        <option value="BTech CSE">B.Tech - CSE</option>
+                        <option value="BTech CE">B.Tech - CE</option>
+                        <option value="BTech IT">B.Tech - IT</option>
+                        <option value="BCA">BCA</option>
+                    </select>
+                    <div  id="courseError"></div>
+                </div>
+                <div >
+                    <label for="year">Admission Year *</label>
+                    <select id="year" name="year">
+                        <option value="">-- Select Year --</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                    </select>
+                    <div  id="yearError"></div>
+                </div>
+            </div>
+
+            <div >
+                <div >
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" name="password" placeholder="Create a strong password">
+                    <div ><div  id="strengthBar"></div></div>
+                    <div  id="strengthText"></div>
+                    <div  id="passwordError"></div>
+                </div>
+                <div >
+                    <label for="cPassword">Confirm Password *</label>
+                    <input type="password" id="cPassword" name="cPassword" placeholder="Re-enter password">
+                    <div  id="cPasswordError"></div>
+                </div>
+            </div>
+
+            <div >
+                <input type="checkbox" id="terms" name="terms">
+                <label for="terms">I agree to the Terms & Conditions and Privacy Policy.</label>
+            </div>
+            <div  id="termsError"></div>
+
+            <button type="submit" >Register Account</button>
+        </form>
+        <a href="login.html" >&larr; Back to Login</a>
+    </div>
+
+    
+    </body>
+</html>

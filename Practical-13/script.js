@@ -1,0 +1,388 @@
+// Practical 13: StudentHub AJAX/Fetch CRUD & Dynamic RBAC Navigation
+const API_URL = 'api.php';
+
+const iconMap = {
+    'Student Dashboard': '📊',
+    'My Profile': '👤',
+    'Campus Events': '🎪',
+    'Faculty Portal': '🏛️',
+    'Student Attendance': '📋',
+    'Admin Console': '⚙️',
+    'Student Records (CRUD)': '👥',
+    'User Management': '🔐',
+    'System Settings': '🛠️'
+};
+
+let sessionUsername = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+    initSession();
+});
+
+// -------------------------------------------------------------
+// 0. Load the real role from the server-side session (cannot be chosen in the browser)
+// -------------------------------------------------------------
+async function initSession() {
+    const roleSelector = document.getElementById('roleSelector');
+    try {
+        const res = await fetch(`${API_URL}?action=whoami`);
+        const result = await res.json();
+        if (!res.ok || result.status !== 'success') {
+            showAlert(escapeHtml(result.message || 'Please log in first.') + ' <a href="../Practical-10/login.php">Go to login</a>', 'error', 0);
+            return;
+        }
+        sessionUsername = result.username;
+        if (roleSelector) {
+            roleSelector.value = result.role;
+            roleSelector.disabled = true;
+        }
+        handleRoleChange();
+    } catch (err) {
+        showAlert('Could not reach the API: ' + escapeHtml(err.message), 'error', 0);
+    }
+}
+
+// -------------------------------------------------------------
+// 1. Role Change Handler (Visibility & Permissions Enforced)
+// -------------------------------------------------------------
+function handleRoleChange() {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+    const roleBadge = document.getElementById('roleBadge');
+    const userNamePill = document.getElementById('userNamePill');
+    const formCard = document.getElementById('formCard');
+    const statusAlert = document.getElementById('statusAlert');
+
+    // Hide any old status alert banner when role changes
+    if (statusAlert) {
+        statusAlert.style.display = 'none';
+    }
+
+    // Update Top Bar Badges and User Profile
+    if (roleBadge && userNamePill) {
+        if (role === 'admin') {
+            roleBadge.className = 'badge badge-admin';
+            roleBadge.innerText = '👑 ADMIN PORTAL';
+            userNamePill.innerText = `👤 ${sessionUsername} (Admin)`;
+        } else if (role === 'editor') {
+            roleBadge.className = 'badge badge-editor';
+            roleBadge.innerText = '👨‍🏫 FACULTY PORTAL';
+            userNamePill.innerText = `👤 ${sessionUsername} (Faculty)`;
+        } else {
+            roleBadge.className = 'badge badge-student';
+            roleBadge.innerText = '👨‍🎓 STUDENT PORTAL';
+            userNamePill.innerText = `👤 ${sessionUsername} (Student)`;
+        }
+    }
+
+    // Role-Based UI Display: Only Admins can see the "Add New Student" form
+    if (formCard) {
+        if (role === 'admin') {
+            formCard.style.display = 'block';
+        } else {
+            // Students and Faculty cannot register students - form is hidden
+            formCard.style.display = 'none';
+        }
+    }
+
+    loadMenu();
+    loadData();
+}
+
+// -------------------------------------------------------------
+// 2. Dynamic RBAC Navigation Menu (Fetch GET)
+// -------------------------------------------------------------
+async function loadMenu() {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+    const menuUl = document.getElementById('dynamicMenu');
+    const moduleCount = document.getElementById('moduleCount');
+
+    try {
+        const res = await fetch(`${API_URL}?action=get_menu&role=${encodeURIComponent(role)}`);
+        const result = await res.json();
+
+        menuUl.innerHTML = '';
+
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            if (moduleCount) {
+                moduleCount.innerText = `${result.data.length} Modules Active`;
+            }
+
+            result.data.forEach(item => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = item.link;
+
+                const icon = iconMap[item.title] || '🔗';
+                a.innerHTML = `<span style="font-size:14px;">${icon}</span> <span>${item.title}</span>`;
+
+                if (item.title === 'Student Records (CRUD)') {
+                    a.classList.add('active-link');
+                }
+
+                li.appendChild(a);
+                menuUl.appendChild(li);
+            });
+            console.log(`[RBAC] Loaded ${result.data.length} modules for: ${role}`);
+        } else {
+            showAlert('Failed to load navigation menu.', 'error');
+        }
+    } catch (err) {
+        console.error('Menu Fetch Error:', err);
+        showAlert('Network error while loading RBAC menu.', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// 3. Read Student Records (Fetch GET with Role Awareness)
+// -------------------------------------------------------------
+async function loadData() {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+    const tbody = document.getElementById('itemsTableBody');
+
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#718096; font-style:italic;">⏳ Loading student records from database...</td></tr>`;
+
+    try {
+        const res = await fetch(`${API_URL}?action=read&type=students&role=${encodeURIComponent(role)}`);
+        const result = await res.json();
+
+        tbody.innerHTML = '';
+
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            if (result.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#718096;">No student records found.</td></tr>`;
+                return;
+            }
+
+            result.data.forEach(row => {
+                const tr = document.createElement('tr');
+                const statusClass = (row.status || 'Active').toLowerCase() === 'active' ? 'badge-status-active' : 'badge-status-inactive';
+
+                // Render Actions column based on Role
+                let actionHtml = '';
+                if (role === 'user') {
+                    // Students see View Only badge (no edit/delete)
+                    actionHtml = `<span class="badge-restricted">View Only</span>`;
+                } else if (role === 'editor') {
+                    // Faculty can Edit details
+                    actionHtml = `
+                        <a href="javascript:void(0)" onclick="editStudent(${row.id}, '${escapeJs(row.name)}', '${escapeJs(row.email)}', '${escapeJs(row.course)}', '${escapeJs(row.gender)}')">Edit</a>
+                    `;
+                } else {
+                    // Admin has full Edit & Delete permissions
+                    actionHtml = `
+                        <a href="javascript:void(0)" onclick="editStudent(${row.id}, '${escapeJs(row.name)}', '${escapeJs(row.email)}', '${escapeJs(row.course)}', '${escapeJs(row.gender)}')">Edit</a>
+                        |
+                        <a href="javascript:void(0)" class="btn-delete" onclick="deleteStudent(${row.id})">Delete</a>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td><strong>${escapeHtml(row.name)}</strong></td>
+                    <td>${escapeHtml(row.email)}</td>
+                    <td>${escapeHtml(row.course)}</td>
+                    <td>${escapeHtml(row.gender)}</td>
+                    <td><span class="${statusClass}">${escapeHtml(row.status || 'Active')}</span></td>
+                    <td class="action-links">${actionHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            console.log(`[CRUD] Asynchronously rendered ${result.data.length} student records for role: ${role}.`);
+        } else {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to load records: ${result.message || ''}</td></tr>`;
+            showAlert(result.message || 'Error loading records', 'error');
+        }
+    } catch (err) {
+        console.error('Fetch read error:', err);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Error connecting to API. Check console.</td></tr>`;
+        showAlert('Network error while fetching student list.', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// 4. Create or Update Student (Fetch POST without page reload)
+// -------------------------------------------------------------
+async function handleFormSubmit(event) {
+    event.preventDefault(); // Prevent standard browser page reload
+
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+
+    if (role !== 'admin') {
+        showAlert('⚠️ Access Denied: Only Administrators can create records.', 'error');
+        return;
+    }
+
+    const id = document.getElementById('recordId').value;
+    const name = document.getElementById('recordName').value.trim();
+    const email = document.getElementById('recordEmail').value.trim();
+    const course = document.getElementById('recordCourse').value;
+    const gender = document.getElementById('recordGender').value;
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (!name || !email || !course || !gender) {
+        showAlert('Please fill in all student details.', 'error');
+        return;
+    }
+
+    const action = id ? 'update' : 'create';
+    const payload = { id, name, email, course, gender, role };
+
+    submitBtn.disabled = true;
+    showAlert(id ? '⏳ Updating student details via Fetch API...' : '⏳ Adding new student via Fetch API...', 'loading');
+
+    try {
+        const res = await fetch(`${API_URL}?action=${action}&type=students&role=${encodeURIComponent(role)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        submitBtn.disabled = false;
+
+        if (result.status === 'success') {
+            showAlert(`✅ ${result.message}`, 'success');
+            resetForm();
+            loadData();
+        } else {
+            showAlert(`⚠️ ${result.message || 'Operation failed'}`, 'error');
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        console.error('Save error:', err);
+        showAlert('Network error while saving student record.', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// 5. Populate Form for Editing Student
+// -------------------------------------------------------------
+function editStudent(id, name, email, course, gender) {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+
+    if (role === 'user') {
+        showAlert('⚠️ Access Denied: Students do not have editing permissions.', 'error');
+        return;
+    }
+
+    const formCard = document.getElementById('formCard');
+    if (formCard) formCard.style.display = 'block';
+
+    document.getElementById('recordId').value = id;
+    document.getElementById('recordName').value = name;
+    document.getElementById('recordEmail').value = email;
+    document.getElementById('recordCourse').value = course;
+    document.getElementById('recordGender').value = gender;
+
+    document.getElementById('formTitle').innerText = 'Edit Student Details';
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.innerText = 'Save Changes';
+    submitBtn.className = 'btn btn-success';
+    document.getElementById('cancelBtn').style.display = 'inline-block';
+
+    document.getElementById('recordName').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// -------------------------------------------------------------
+// 6. Delete Student Record (Fetch POST with Role Checking)
+// -------------------------------------------------------------
+async function deleteStudent(id) {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+
+    if (role !== 'admin') {
+        showAlert('⚠️ Access Denied: Only Administrators can delete student records.', 'error');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this student record?')) {
+        return;
+    }
+
+    showAlert(`⏳ Deleting student #${id} via Fetch API...`, 'loading');
+
+    try {
+        const res = await fetch(`${API_URL}?action=delete&type=students&role=${encodeURIComponent(role)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, role })
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            showAlert(`✅ ${result.message}`, 'success');
+            loadData();
+        } else {
+            showAlert(`⚠️ ${result.message || 'Deletion failed'}`, 'error');
+        }
+    } catch (err) {
+        console.error('Delete error:', err);
+        showAlert('Network error while deleting student record.', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// 7. Reset Form State
+// -------------------------------------------------------------
+function resetForm() {
+    const roleSelector = document.getElementById('roleSelector');
+    const role = roleSelector ? roleSelector.value : 'admin';
+
+    document.getElementById('recordId').value = '';
+    document.getElementById('crudForm').reset();
+    document.getElementById('formTitle').innerText = 'Add New Student';
+    const submitBtn = document.getElementById('submitBtn');
+
+    submitBtn.disabled = false;
+    submitBtn.innerText = '+ Add Student';
+    submitBtn.className = 'btn btn-success';
+    document.getElementById('cancelBtn').style.display = 'none';
+
+    // If role is not admin, hide form card after cancel
+    const formCard = document.getElementById('formCard');
+    if (formCard && role !== 'admin') {
+        formCard.style.display = 'none';
+    }
+}
+
+// -------------------------------------------------------------
+// 8. Live Notification Alerts (Only shown on form action/error)
+// -------------------------------------------------------------
+let alertTimer = null;
+function showAlert(message, type = 'info', autoCloseMs = 5000) {
+    const alertBox = document.getElementById('statusAlert');
+    if (!alertBox) return;
+
+    if (alertTimer) {
+        clearTimeout(alertTimer);
+    }
+
+    alertBox.className = `alert-${type}`;
+    alertBox.innerHTML = message;
+    alertBox.style.display = 'flex';
+
+    if (autoCloseMs && type !== 'loading') {
+        alertTimer = setTimeout(() => {
+            alertBox.style.display = 'none';
+        }, autoCloseMs);
+    }
+}
+
+// Security / Utility helpers
+function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escapeJs(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}

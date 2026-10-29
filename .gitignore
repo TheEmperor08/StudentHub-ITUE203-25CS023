@@ -1,0 +1,52 @@
+# Word documents: only this student's own lab reports (PRAC_<n>_ITUE203_25CS023.docx) are published
+*.docx
+~$*.docx
+!Practical-*/PRAC_*_ITUE203_25CS023.docx
+
+# OS metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Java & compiled binaries
+*.class
+*.java
+*.jar
+*.war
+*.zip
+*.tar.gz
+
+# Logs & scratch
+logs/
+*.log
+*.tmp
+*.swp
+*~
+
+# Uploaded test media (keep folders via .gitkeep)
+Practical-12/uploads/*
+!Practical-12/uploads/.gitkeep
+Practical-12/uploads/1791537429_6ac8b1155ae37.jpeg
+Practical-12/uploads/1792389534_6ad5b19e75e32.jpg
+Practical-15/uploads/*
+!Practical-15/uploads/.gitkeep
+studenthub/uploads/*
+!studenthub/uploads/.gitkeep
+
+# Local backups (never commit)
+studenthub-backup/
+studenthub-backup.sql
+
+# Practical 7 form submissions (may contain personal data)
+Practical-7/private/*.csv
+
+# Local-only demo account passwords (never commit)
+LOCAL_DEMO_CREDENTIALS.txt
+
+# Real database dumps (password hashes + personal records) - keep local, never publish
+/studenthub.sql
+Practical-15/studenthub.sql

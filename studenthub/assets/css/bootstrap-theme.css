@@ -1,0 +1,62 @@
+/* StudentHub palette for Bootstrap 5.3 pages (login, 403, admin console).
+   Mirrors the tokens in global.css; dark mode follows data-bs-theme set by theme.js. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root, [data-bs-theme="light"] {
+    --bs-body-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    --bs-primary: #4f46e5;
+    --bs-primary-rgb: 79, 70, 229;
+    --bs-link-color: #4338ca;
+    --bs-link-color-rgb: 67, 56, 202;
+    --bs-link-hover-color: #3730a3;
+    --bs-link-hover-color-rgb: 55, 48, 163;
+    --bs-focus-ring-color: rgba(99, 102, 241, 0.35);
+    --sh-page-bg: #f3f4f9;
+    --sh-surface: #ffffff;
+}
+
+[data-bs-theme="dark"] {
+    --bs-primary: #6366f1;
+    --bs-primary-rgb: 99, 102, 241;
+    --bs-link-color: #a5b4fc;
+    --bs-link-color-rgb: 165, 180, 252;
+    --bs-link-hover-color: #c7d2fe;
+    --bs-link-hover-color-rgb: 199, 210, 254;
+    --bs-body-bg: #080d1d;
+    --bs-border-color: #232d4a;
+    --sh-page-bg: #080d1d;
+    --sh-surface: #10172c;
+}
+
+body { background-color: var(--sh-page-bg); }
+
+.btn-primary {
+    --bs-btn-bg: #4f46e5;
+    --bs-btn-border-color: #4f46e5;
+    --bs-btn-hover-bg: #4338ca;
+    --bs-btn-hover-border-color: #4338ca;
+    --bs-btn-active-bg: #3730a3;
+    --bs-btn-active-border-color: #3730a3;
+    --bs-btn-disabled-bg: #4f46e5;
+    --bs-btn-disabled-border-color: #4f46e5;
+    --bs-btn-focus-shadow-rgb: 99, 102, 241;
+    font-weight: 600;
+}
+.btn-outline-primary {
+    --bs-btn-color: #4f46e5;
+    --bs-btn-border-color: #4f46e5;
+    --bs-btn-hover-bg: #4f46e5;
+    --bs-btn-hover-border-color: #4f46e5;
+    --bs-btn-active-bg: #4338ca;
+    --bs-btn-active-border-color: #4338ca;
+}
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: #a5b4fc; --bs-btn-border-color: #818cf8; }
+[data-bs-theme="dark"] .text-primary { color: #a5b4fc !important; }
+
+.table > thead > tr > th { background-color: var(--bs-tertiary-bg); }
+
+:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

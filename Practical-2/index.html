@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudentHub - CSPIT Charusat Portal</title>
+    
+    
+    
+    
+</head>
+<body>
+
+    <!-- Notification Banner -->
+    <div  id="notification-banner">
+        <span>🎉 Welcome to the new dynamic StudentHub portal! Check out the new dark mode.</span>
+        <button  id="close-banner">&times;</button>
+    </div>
+
+    <header>
+        <h1>StudentHub - CSPIT</h1>
+        <p>Chandubhai S. Patel Institute of Technology - CHARUSAT Campus</p>
+                <nav>
+            <div >
+                <button  id="hamburger-menu" >☰ Menu</button>
+            </div>
+            <ul id="nav-links">
+                <li><a href="index.html"><strong>Home</strong></a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
+                <li><a href="test_connection.php">Database Demo</a></li>
+                <li><button  >🌙 Theme</button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div >
+    <main>
+        <section>
+            <h2>Welcome to Student Portal</h2>
+            <p>Your personalized portal for Computer Science & Engineering (CSE) at CSPIT, A7 Building, CHARUSAT. Access your timetable, 3rd semester subjects, attendance records, and exam results.</p>
+            <button  id="open-modal-btn">View Portal Guidelines</button>
+        </section>
+
+        <!-- Dynamic JS Image/Content Slider -->
+        <div >
+            <button  id="slider-prev">&lt;</button>
+            <div >
+                <img src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="University Campus">
+                <div >
+                    <h3>🎓 Welcome to Semester 3 CSE!</h3>
+                    <p>Experience the best learning environment at CSPIT.</p>
+                </div>
+            </div>
+            <div >
+                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Hackathon Team">
+                <div >
+                    <h3>🚀 Upcoming Odoo Hackathon</h3>
+                    <p>Join the coding battle at LDCE this weekend!</p>
+                </div>
+            </div>
+            <div >
+                <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Coding">
+                <div >
+                    <h3>📅 New Assignments Uploaded</h3>
+                    <p>Check your dashboard for the latest coding tasks.</p>
+                </div>
+            </div>
+            <button  id="slider-next">&gt;</button>
+        </div>
+
+        <section>
+            <h2>Portal Navigation</h2>
+            
+            <div >
+                <article>
+                    <h3>Semester 3 Subjects & Timetable</h3>
+                    <p>Check your enrolled CSE subjects including FDSA, WDF, OOP, FCN, and Discrete Maths.</p>
+                    <p><a href="courses.html">View Courses &rarr;</a></p>
+                </article>
+
+                <article>
+                    <h3>Attendance & CGPA</h3>
+                <p>Monitor your current 94% average attendance and check past semester marksheets (CGPA 8.05).</p>
+                <p><a href="attendance.html">Check Attendance</a> | <a href="results.html">View Results &rarr;</a></p>
+            </article>
+
+            <article>
+                <h3>Assignments & Competitions</h3>
+                <p>Semester 3 assignments coming soon. Stay updated with campus hackathons and activities.</p>
+                <p><a href="assignments.html">View Assignments</a> | <a href="achievements.html">Achievements &rarr;</a></p>
+            </article>
+            </div>
+        </section>
+
+        <section>
+            <h2>Quick FAQ (Dynamic JS)</h2>
+            <div >
+                <button >Where is the CSE Department located?</button>
+                <div >The Department of Computer Science & Engineering is located in A7 Building, CSPIT, CHARUSAT Campus.</div>
+            </div>
+            <div >
+                <button >How do I check my 3rd semester schedule?</button>
+                <div >Log into your <a href="dashboard.html">Dashboard</a> to check lecture rooms (Room 506) and practical batch schedules.</div>
+            </div>
+            <div >
+                <button >Who do I contact for portal queries?</button>
+                <div >You can reach out via our <a href="contact.html">Contact Us page</a> or email support@charusat.edu.in.</div>
+            </div>
+        </section>
+    </main>
+
+    <aside>
+        <div  >
+            <h2>Latest Campus Alert</h2>
+            <ul>
+                <li><time datetime="2026-08-22">August 22, 2026</time>: <mark>Odoo Hackathon at LDCE!</mark> Get your team ready and register before the deadline.</li>
+                <li><time datetime="2026-08-15">August 15, 2026</time>: Independence Day Celebration at CHARUSAT Campus.</li>
+            </ul>
+            <p><a href="notifications.html">See all announcements &rarr;</a></p>
+        </div>
+    </aside>
+    </div>
+
+    <footer>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
+        <address>
+            A7 Building, CSPIT, CHARUSAT University Campus, Changa, Gujarat.<br>
+            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
+        </address>
+    </footer>
+
+    <!-- Modal Overlay -->
+    <div  id="custom-modal">
+        <div >
+            <button  id="close-modal-btn">&times;</button>
+            <h2>Portal Guidelines</h2>
+            <p>Welcome to StudentHub! Please note that all assignments must be submitted on time. Attendance below 80% will result in a penalty. For any technical issues, contact the admin.</p>
+            <button   onclick="document.getElementById('custom-modal').classList.remove('show-modal')">I Understand</button>
+        </div>
+    </div>
+
+    <!-- Link the Dynamic UI JS -->
+    
+    </body>
+</html>

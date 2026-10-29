@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Data Directory - StudentHub</title>
+    
+    
+    
+    
+    
+</head>
+<body>
+
+<div >
+    <header>
+        <h1>Campus Data Directory</h1>
+        <p>Dynamic JSON Rendering using Fetch API (Filter, Sort, Pagination)</p>
+    </header>
+
+        <nav></nav>
+
+    <main>
+        <section>
+            <div >
+                <button  data-type="students">Students Data</button>
+                <button  data-type="events">Events Data</button>
+                <button  data-type="faqs">FAQs Data</button>
+            </div>
+
+            <div >
+                <input type="text" id="searchInput" placeholder="🔍 Search records...">
+                
+                <select id="filterSelect">
+                    <option value="all">All Categories/Branches</option>
+                    <!-- Dynamically populated -->
+                </select>
+
+                <select id="sortSelect">
+                    <option value="default">Sort By: Default</option>
+                    <option value="name_asc">Name/Title (A-Z)</option>
+                    <option value="name_desc">Name/Title (Z-A)</option>
+                </select>
+            </div>
+
+            <div id="status-container"></div>
+            
+            <div id="data-table-container">
+                <!-- Table rendered dynamically -->
+            </div>
+
+            <div  id="pagination-container">
+                <!-- Pagination rendered dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 StudentHub. All rights reserved.</p>
+    </footer>
+</div>
+
+
+    
+</body>
+</html>

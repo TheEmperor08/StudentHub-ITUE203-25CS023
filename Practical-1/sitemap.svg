@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120" font-family="'Segoe UI', Arial, sans-serif">
+<rect width="1800" height="1120" fill="#ffffff"/>
+<rect x="0" y="0" width="1800" height="92" rx="0" fill="#0b1437" stroke="none" stroke-width="1.5"/>
+<text x="40" y="34" font-size="26" font-weight="700" fill="#ffffff" text-anchor="start" dominant-baseline="central">StudentHub — Sitemap &amp; Navigation Flow</text>
+<text x="40" y="66" font-size="14" fill="#c7d2fe" text-anchor="start" dominant-baseline="central">Practical 1 · ITUE203 Web Development Frameworks · Shreyas (25CS023) · CSPIT, CHARUSAT · 2026-27</text>
+<text x="1760" y="50" font-size="13" fill="#c7d2fe" text-anchor="end" dominant-baseline="central">Reflects the implemented application in studenthub/</text>
+<rect x="40" y="112" width="28" height="20" rx="5" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+<text x="78" y="122" font-size="13" fill="#334155" text-anchor="start" dominant-baseline="central">Public page</text>
+<rect x="169.2" y="112" width="28" height="20" rx="5" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="207.2" y="122" font-size="13" fill="#334155" text-anchor="start" dominant-baseline="central">Student area (login required)</text>
+<rect x="428.0" y="112" width="28" height="20" rx="5" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="466.0" y="122" font-size="13" fill="#334155" text-anchor="start" dominant-baseline="central">Admin only (role = admin)</text>
+<rect x="658.0" y="112" width="28" height="20" rx="5" fill="#fdeceb" stroke="#b42318" stroke-width="1.8"/>
+<text x="696.0" y="122" font-size="13" fill="#334155" text-anchor="start" dominant-baseline="central">Access control / error</text>
+<polyline points="866.4,122 910.4,122" fill="none" stroke="#475569" stroke-width="1.6" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<polygon points="910.4,122.0 901.4,127.0 901.4,117.0" fill="#475569"/>
+<text x="920.4" y="122" font-size="13" fill="#334155" text-anchor="start" dominant-baseline="central">Automatic redirect / role check</text>
+<text x="1760" y="122" font-size="13" font-weight="700" fill="#0f172a" text-anchor="end" dominant-baseline="central">15 screens + logout action (requirement: minimum 10 pages)</text>
+<rect x="770.0" y="160" width="260" height="64" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+<text x="900" y="178" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Home Portal</text>
+<text x="900" y="196" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">index.php</text>
+<text x="900" y="213" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">banner · slider · FAQ · guidelines modal</text>
+<polyline points="900,224 900,246 560,246 560,270" fill="none" stroke="#334155" stroke-width="1.6" stroke-linejoin="round"/>
+<polygon points="560.0,270.0 555.0,261.0 565.0,261.0" fill="#334155"/>
+<polyline points="900,224 900,246 900,246 900,270" fill="none" stroke="#334155" stroke-width="1.6" stroke-linejoin="round"/>
+<polygon points="900.0,270.0 895.0,261.0 905.0,261.0" fill="#334155"/>
+<polyline points="900,224 900,246 1240,246 1240,270" fill="none" stroke="#334155" stroke-width="1.6" stroke-linejoin="round"/>
+<polygon points="1240.0,270.0 1235.0,261.0 1245.0,261.0" fill="#334155"/>
+<rect x="440.0" y="270" width="240" height="64" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+<text x="560" y="288" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Login</text>
+<text x="560" y="306" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">login.php</text>
+<text x="560" y="323" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">username or email + password</text>
+<rect x="780.0" y="270" width="240" height="64" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+<text x="900" y="288" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Register</text>
+<text x="900" y="306" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">register.php</text>
+<text x="900" y="323" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">creates account + student record</text>
+<rect x="1120.0" y="270" width="240" height="64" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+<text x="1240" y="288" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Contact Us</text>
+<text x="1240" y="306" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">contact.php</text>
+<text x="1240" y="323" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">inquiry form (also in sidebar)</text>
+<rect x="430.0" y="392" width="260" height="52" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="560" y="410" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Student Dashboard</text>
+<text x="560" y="428" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">dashboard.php</text>
+<rect x="1350.0" y="392" width="280" height="52" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="410" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Admin Console</text>
+<text x="1490" y="428" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php</text>
+<rect x="1035.0" y="392" width="230" height="52" rx="10" fill="#fdeceb" stroke="#b42318" stroke-width="1.8"/>
+<text x="1150" y="410" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Access Denied</text>
+<text x="1150" y="428" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">403.php</text>
+<polyline points="560,334 560,392" fill="none" stroke="#4f46e5" stroke-width="1.8" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<polygon points="560.0,392.0 555.0,383.0 565.0,383.0" fill="#4f46e5"/>
+<text x="572" y="362" font-size="12" fill="#4f46e5" text-anchor="start" dominant-baseline="central">role = student</text>
+<polyline points="560,352 1490,352 1490,392" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<polygon points="1490.0,392.0 1485.0,383.0 1495.0,383.0" fill="#7c3aed"/>
+<text x="1500" y="372" font-size="12" fill="#7c3aed" text-anchor="start" dominant-baseline="central">role = admin</text>
+<polyline points="900,334 900,418 690,418" fill="none" stroke="#4f46e5" stroke-width="1.6" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<polygon points="690.0,418.0 699.0,413.1 699.0,422.9" fill="#4f46e5"/>
+<text x="795" y="436" font-size="12" fill="#4f46e5" text-anchor="middle" dominant-baseline="central">auto-login after sign-up</text>
+<polyline points="1350,418 1265,418" fill="none" stroke="#b42318" stroke-width="1.6" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<polygon points="1265.0,418.0 1274.0,413.1 1274.0,422.9" fill="#b42318"/>
+<text x="1307" y="434" font-size="12" fill="#b42318" text-anchor="middle" dominant-baseline="central">role ≠ admin</text>
+<rect x="40" y="480" width="1140" height="610" rx="16" fill="#f8f9ff" stroke="#c7c9f5" stroke-width="1.5"/>
+<text x="64" y="506" font-size="15" font-weight="700" fill="#3730a3" text-anchor="start" dominant-baseline="central">Student area — sidebar navigation (every page redirects to Login without a session)</text>
+<polyline points="560,444 560,480" fill="none" stroke="#4f46e5" stroke-width="1.8" stroke-linejoin="round"/>
+<polygon points="560.0,480.0 555.0,471.0 565.0,471.0" fill="#4f46e5"/>
+<text x="190" y="546" font-size="13" font-weight="700" fill="#4f46e5" text-anchor="middle" dominant-baseline="central">OVERVIEW</text>
+<rect x="65.0" y="566" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="190" y="584" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Dashboard</text>
+<text x="190" y="602" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">dashboard.php</text>
+<text x="190" y="619" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">stat cards · timetable · events</text>
+<rect x="65.0" y="644" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="190" y="662" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">My Profile</text>
+<text x="190" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">profile.php</text>
+<text x="190" y="697" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">details · change password</text>
+<text x="470" y="546" font-size="13" font-weight="700" fill="#4f46e5" text-anchor="middle" dominant-baseline="central">ACADEMICS</text>
+<rect x="345.0" y="566" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="470" y="584" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Courses</text>
+<text x="470" y="602" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">courses.php</text>
+<text x="470" y="619" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">6 subjects · 21 credits</text>
+<rect x="345.0" y="644" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="470" y="662" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Attendance</text>
+<text x="470" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">attendance.php</text>
+<text x="470" y="697" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">subject table · leave form</text>
+<rect x="345.0" y="722" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="470" y="740" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Assignments</text>
+<text x="470" y="758" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">assignments.php</text>
+<text x="470" y="775" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">status · submission notice</text>
+<rect x="345.0" y="800" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="470" y="818" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Results</text>
+<text x="470" y="836" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">results.php</text>
+<text x="470" y="853" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">CGPA / SGPA (sample data)</text>
+<rect x="345.0" y="878" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="470" y="896" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Achievements</text>
+<text x="470" y="914" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">achievements.php</text>
+<text x="470" y="931" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">badges · record form</text>
+<text x="750" y="546" font-size="13" font-weight="700" fill="#4f46e5" text-anchor="middle" dominant-baseline="central">CAMPUS</text>
+<rect x="625.0" y="566" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="750" y="584" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Notices</text>
+<text x="750" y="602" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">notifications.php</text>
+<text x="750" y="619" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">events from database</text>
+<rect x="625.0" y="644" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="750" y="662" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Directory</text>
+<text x="750" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">directory.php</text>
+<text x="750" y="697" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">student list · live search</text>
+<rect x="625.0" y="722" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="750" y="740" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Help &amp; Contact</text>
+<text x="750" y="758" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">contact.php</text>
+<text x="750" y="775" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">department info · inquiry</text>
+<text x="1030" y="546" font-size="13" font-weight="700" fill="#4f46e5" text-anchor="middle" dominant-baseline="central">ACCOUNT</text>
+<rect x="905.0" y="566" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="1030" y="584" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Home Portal</text>
+<text x="1030" y="602" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">index.php</text>
+<text x="1030" y="619" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">public landing page</text>
+<rect x="905.0" y="644" width="250" height="64" rx="10" fill="#eef0ff" stroke="#4f46e5" stroke-width="1.8"/>
+<text x="1030" y="662" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Logout</text>
+<text x="1030" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">logout.php</text>
+<text x="1030" y="697" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">ends session → Login</text>
+<rect x="905.0" y="722" width="250" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1030" y="740" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Admin Console</text>
+<text x="1030" y="758" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php</text>
+<text x="1030" y="775" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">link shown to admins only</text>
+<text x="64" y="1066" font-size="12" fill="#64748b" text-anchor="start" dominant-baseline="central">Planned Faculty role (from the Practical 1 plan) is not implemented in the main application.</text>
+<rect x="1220" y="480" width="540" height="610" rx="16" fill="#faf7ff" stroke="#d8ccfb" stroke-width="1.5"/>
+<text x="1244" y="506" font-size="15" font-weight="700" fill="#5b21b6" text-anchor="start" dominant-baseline="central">Admin area — role = admin</text>
+<polyline points="1490,444 1490,480" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linejoin="round"/>
+<polygon points="1490.0,480.0 1485.0,471.0 1495.0,471.0" fill="#7c3aed"/>
+<text x="1490" y="546" font-size="13" font-weight="700" fill="#7c3aed" text-anchor="middle" dominant-baseline="central">ADMIN CONSOLE TABS</text>
+<rect x="1250.0" y="566" width="480" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="584" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Overview</text>
+<text x="1490" y="602" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php?tab=overview</text>
+<text x="1490" y="619" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">live counters · role-based quick links</text>
+<rect x="1250.0" y="644" width="480" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="662" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Students</text>
+<text x="1490" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php?tab=students</text>
+<text x="1490" y="697" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">add · search · filter · delete · CSV export</text>
+<rect x="1250.0" y="722" width="480" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="740" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Events</text>
+<text x="1490" y="758" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php?tab=events</text>
+<text x="1490" y="775" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">publish event · poster upload · delete</text>
+<rect x="1250.0" y="800" width="480" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="818" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Users</text>
+<text x="1490" y="836" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php?tab=users</text>
+<text x="1490" y="853" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">accounts · roles · last login</text>
+<rect x="1250.0" y="878" width="480" height="64" rx="10" fill="#f3edff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="1490" y="896" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle" dominant-baseline="central">Audit Logs</text>
+<text x="1490" y="914" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">admin_dashboard.php?tab=audits</text>
+<text x="1490" y="931" font-size="11" fill="#64748b" text-anchor="middle" dominant-baseline="central">security trail (logins, 403s, changes)</text>
+<rect x="1250" y="966" width="480" height="64" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4" stroke-dasharray="6 4"/>
+<text x="1490" y="986" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle" dominant-baseline="central">Shortcut URLs redirect to the matching tab</text>
+<text x="1490" y="1010" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#475569" text-anchor="middle" dominant-baseline="central">students.php · events.php · users.php · audit_logs.php</text>
+</svg>
