@@ -1,139 +1,53 @@
 <?php
-// Start output buffering to prevent header errors
-ob_start();
-require_once 'auth.php';
-include 'db.php';
+// StudentHub – Practical 11: edit a student (UPDATE). GET edit.php?id=N shows the form filled from MySQL;
+// POST validates and updates the record with a prepared statement. The status is changed only by delete.php.
+declare(strict_types=1);
+require_once __DIR__ . '/includes/functions.php';
 
-// True when another student (not $id) already uses this email
-function email_taken($conn, $email, $id) {
-    $stmt = mysqli_prepare($conn, "SELECT COUNT(*) FROM students WHERE email = ? AND id <> ?");
-    mysqli_stmt_bind_param($stmt, "si", $email, $id);
-    mysqli_stmt_execute($stmt);
-    return mysqli_fetch_row(mysqli_stmt_get_result($stmt))[0] > 0;
+start_app();
+$db = get_db();
+$id = positive_id($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['student_id'] ?? '') : ($_GET['id'] ?? ''));
+$student = $id > 0 ? find_student($db, $id) : null;
+if ($student === null) {
+    flash('error', 'That student record was not found.');
+    redirect('index.php');
 }
+$values = $student;
+$errors = [];
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) {
-    die("Invalid record ID.");
-}
-
-// Fetch existing record
-$select_stmt = mysqli_prepare($conn, "SELECT * FROM students WHERE id = ?");
-mysqli_stmt_bind_param($select_stmt, "i", $id);
-mysqli_stmt_execute($select_stmt);
-$student = mysqli_fetch_assoc(mysqli_stmt_get_result($select_stmt));
-if (!$student) {
-    die("Student record not found.");
-}
-
-// Handle Form Update (UPDATE)
-if (isset($_POST['update_student'])) {
-    $name   = trim($_POST['name'] ?? '');
-    $email  = trim($_POST['email'] ?? '');
-    $course = trim($_POST['course'] ?? '');
-    $gender = trim($_POST['gender'] ?? '');
-    $status = ($_POST['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
-
-    if ($name === '' || $email === '' || $course === '' || $gender === '') {
-        $error = "All fields are required.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Please enter a valid email address.";
-    } elseif (email_taken($conn, $email, $id)) {
-        $error = "Another student already uses that email.";
-    } else {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!use_form_token($_POST['form_token'] ?? null)) {
+        reject_invalid_token();
+    }
+    [$values, $errors] = validate_student($_POST);
+    if (!$errors && email_taken($db, $values['email'], $id)) {
+        $errors['email'] = 'This email is already registered to another student.';
+    }
+    if (!$errors) {
         try {
-            $update_stmt = mysqli_prepare($conn, "UPDATE students SET name = ?, email = ?, course = ?, gender = ?, status = ? WHERE id = ?");
-            mysqli_stmt_bind_param($update_stmt, "sssssi", $name, $email, $course, $gender, $status, $id);
-            mysqli_stmt_execute($update_stmt);
-            header("Location: index.php?msg=" . urlencode("Student details updated successfully!"));
-            exit();
-        } catch (mysqli_sql_exception $e) {
-            $error = ($e->getCode() === 1062) ? "Another student already uses that email." : "Could not update the student.";
+            $stmt = $db->prepare('UPDATE students SET full_name = ?, email = ?, course = ?, semester = ? WHERE student_id = ?');
+            $stmt->bind_param('sssii', $values['full_name'], $values['email'], $values['course'], $values['semester'], $id);
+            $stmt->execute();
+            $message = $stmt->affected_rows > 0
+                ? 'Student “' . $values['full_name'] . '” was updated successfully.'
+                : 'No changes were made to “' . $values['full_name'] . '”.';
+            flash('success', $message, $id);
+            redirect('index.php');
+        } catch (mysqli_sql_exception $exception) {
+            if ($exception->getCode() !== 1062) {
+                throw $exception;
+            }
+            $errors['email'] = 'This email is already registered to another student.';
         }
     }
+    http_response_code(422);
 }
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Student - Practical 11</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .edit-container {
-            max-width: 550px;
-            margin: 40px auto;
-        }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 14px;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-        }
-    </style>
-</head>
-<body>
-<div class="container edit-container">
-    <h2>Edit Student Details</h2>
-    <p style="color:#718096; font-size:14px; margin-top:-5px; margin-bottom:20px;">
-        Updating record for Student ID <strong>#<?php echo $id; ?></strong>
-    </p>
 
-    <?php if (isset($error)): ?>
-        <div class="alert-error">
-            <?php echo htmlspecialchars($error); ?>
-        </div>
-    <?php endif; ?>
-
-    <form method="POST" action="edit.php?id=<?php echo $id; ?>">
-        <div class="form-group">
-            <label for="name">Full Name:</label>
-            <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($student['name']); ?>" required>
-        </div>
-
-        <div class="form-group">
-            <label for="email">Email Address:</label>
-            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($student['email']); ?>" required>
-        </div>
-
-        <div class="form-group">
-            <label for="course">Course:</label>
-            <select id="course" name="course" required>
-                <option value="Computer Science" <?php if ($student['course'] == 'Computer Science') echo 'selected'; ?>>Computer Science</option>
-                <option value="Web Development" <?php if ($student['course'] == 'Web Development') echo 'selected'; ?>>Web Development</option>
-                <option value="Data Science" <?php if ($student['course'] == 'Data Science') echo 'selected'; ?>>Data Science</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="gender">Gender:</label>
-            <select id="gender" name="gender" required>
-                <option value="Male" <?php if ($student['gender'] == 'Male') echo 'selected'; ?>>Male</option>
-                <option value="Female" <?php if ($student['gender'] == 'Female') echo 'selected'; ?>>Female</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="status">Status:</label>
-            <select id="status" name="status">
-                <option value="Active" <?php if (($student['status'] ?? 'Active') == 'Active') echo 'selected'; ?>>Active</option>
-                <option value="Inactive" <?php if (($student['status'] ?? '') == 'Inactive') echo 'selected'; ?>>Inactive (Soft Deleted)</option>
-            </select>
-        </div>
-
-        <div style="margin-top:25px; display:flex; gap:10px;">
-            <button type="submit" name="update_student" class="btn btn-success">Update Student Details</button>
-            <a href="index.php" class="btn btn-secondary">Cancel</a>
-        </div>
-    </form>
-</div>
-</body>
-</html>
+page_start('Edit student');
+if ($errors) {
+    echo '<div class="alert alert-error" role="alert">The changes were not saved. Please correct the highlighted fields.</div>', "\n";
+}
+echo '<p class="muted">Editing student <strong>ID ', $id, '</strong> · status ', status_badge($student['status']),
+     ' · added ', e(date('d M Y, H:i', strtotime($student['created_at']))), '</p>', "\n";
+student_form('edit.php', 'Save changes', $values, $errors, ['student_id' => $id]);
+page_end();

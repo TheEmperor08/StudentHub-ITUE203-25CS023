@@ -1,267 +1,130 @@
 <?php
-// Start output buffering to prevent header errors
-ob_start();
-require_once 'auth.php';
-include 'db.php';
+// StudentHub – Practical 11: student list (READ) with search, course filter, status filter, pagination,
+// success/error messages and the CSV export link. Only GET requests; every change is a POST on another page.
+declare(strict_types=1);
+require_once __DIR__ . '/includes/functions.php';
 
-// Runs a prepared SELECT for the current search/filter and returns the result set
-function fetch_students($conn, $search, $course_filter) {
-    $sql = "SELECT * FROM students WHERE 1=1";
-    $types = "";
-    $params = [];
-    if ($search !== '') {
-        $sql .= " AND (name LIKE ? OR email LIKE ?)";
-        $like = "%" . $search . "%";
-        $types .= "ss";
-        $params[] = $like;
-        $params[] = $like;
-    }
-    if ($course_filter !== '') {
-        $sql .= " AND course = ?";
-        $types .= "s";
-        $params[] = $course_filter;
-    }
-    $sql .= " ORDER BY id DESC";
+start_app();
+$db = get_db();
+$filters = list_filters($_GET);
+$total = count_students($db, $filters);
+$pages = max(1, (int) ceil($total / PER_PAGE));
+$page = min(max(1, positive_id($_GET['page'] ?? '1')), $pages);   // out-of-range page numbers are clamped
+$students = fetch_students($db, $filters, PER_PAGE, ($page - 1) * PER_PAGE);
+$flash = take_flash();
+$highlight = (int) ($flash['student_id'] ?? 0);
+$filtered = $filters['q'] !== '' || $filters['course'] !== '' || $filters['status'] !== '';
 
-    $stmt = mysqli_prepare($conn, $sql);
-    if ($types !== "") {
-        mysqli_stmt_bind_param($stmt, $types, ...$params);
-    }
-    mysqli_stmt_execute($stmt);
-    return mysqli_stmt_get_result($stmt);
-}
-
-// Runs a prepared status/delete statement for one student id
-function run_by_id($conn, $sql, $id) {
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "i", $id);
-    return mysqli_stmt_execute($stmt);
-}
-
-// Handle CSV Export
-if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-    $search = trim($_GET['search'] ?? '');
-    $course_filter = trim($_GET['course_filter'] ?? '');
-    $export_res = fetch_students($conn, $search, $course_filter);
-
-    if (ob_get_length()) {
-        ob_end_clean();
-    }
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=students.csv');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID', 'Name', 'Email', 'Course', 'Gender', 'Status', 'Created At'], ',', '"', "\\");
-
-    if ($export_res && mysqli_num_rows($export_res) > 0) {
-        while ($row = mysqli_fetch_assoc($export_res)) {
-            fputcsv($output, [
-                $row['id'],
-                $row['name'],
-                $row['email'],
-                $row['course'],
-                $row['gender'],
-                $row['status'] ?? 'Active',
-                $row['created_at']
-            ], ',', '"', "\\");
-        }
-    }
-    fclose($output);
-    exit();
-}
-
-// Handle Student Creation (CREATE)
-if (isset($_POST['add_student'])) {
-    $name   = trim($_POST['name'] ?? '');
-    $email  = trim($_POST['email'] ?? '');
-    $course = trim($_POST['course'] ?? '');
-    $gender = trim($_POST['gender'] ?? '');
-
-    if ($name === '' || $email === '' || $course === '' || $gender === '') {
-        header("Location: index.php?error=" . urlencode("All fields are required."));
-        exit();
-    }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header("Location: index.php?error=" . urlencode("Please enter a valid email address."));
-        exit();
-    }
-
-    $dup_stmt = mysqli_prepare($conn, "SELECT COUNT(*) FROM students WHERE email = ?");
-    mysqli_stmt_bind_param($dup_stmt, "s", $email);
-    mysqli_stmt_execute($dup_stmt);
-    if (mysqli_fetch_row(mysqli_stmt_get_result($dup_stmt))[0] > 0) {
-        header("Location: index.php?error=" . urlencode("A student with that email already exists."));
-        exit();
-    }
-
-    try {
-        $stmt = mysqli_prepare($conn, "INSERT INTO students (name, email, course, gender, status) VALUES (?, ?, ?, ?, 'Active')");
-        mysqli_stmt_bind_param($stmt, "ssss", $name, $email, $course, $gender);
-        mysqli_stmt_execute($stmt);
-        header("Location: index.php?msg=" . urlencode("Student added successfully!"));
-    } catch (mysqli_sql_exception $e) {
-        $reason = ($e->getCode() === 1062) ? "A student with that email already exists." : "Could not add the student.";
-        header("Location: index.php?error=" . urlencode($reason));
-    }
-    exit();
-}
-
-// Handle Soft Delete (Change status to Inactive)
-if (isset($_GET['soft_delete'])) {
-    $id = (int)$_GET['soft_delete'];
-    if ($id > 0 && run_by_id($conn, "UPDATE students SET status = 'Inactive' WHERE id = ?", $id)) {
-        header("Location: index.php?msg=" . urlencode("Student status changed to Inactive (Soft Deleted)!"));
-        exit();
-    }
-}
-
-// Handle Status Activation (Restore student)
-if (isset($_GET['activate'])) {
-    $id = (int)$_GET['activate'];
-    if ($id > 0 && run_by_id($conn, "UPDATE students SET status = 'Active' WHERE id = ?", $id)) {
-        header("Location: index.php?msg=" . urlencode("Student status changed to Active!"));
-        exit();
-    }
-}
-
-// Handle Hard Student Deletion (DELETE)
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    if ($id <= 0) {
-        die("Invalid ID for deletion.");
-    }
-    if (run_by_id($conn, "DELETE FROM students WHERE id = ?", $id)) {
-        header("Location: index.php?msg=" . urlencode("Student record deleted successfully!"));
-        exit();
-    }
-}
-
-// Build Search and Filter Query (READ)
-$search = trim($_GET['search'] ?? '');
-$course_filter = trim($_GET['course_filter'] ?? '');
-$result = fetch_students($conn, $search, $course_filter);
+page_start('Student Management', 'index.php');
+render_flash($flash);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Management System - Practical 11</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="container">
-    <div class="top-bar">
-        <div>
-            <h1 style="margin:0; font-size:24px; color:#1a202c;">Student Management System</h1>
-            <p style="margin:4px 0 0 0; color:#718096; font-size:13px;">CRUD with Search, Course Filter, Soft Delete & CSV Export</p>
+<section class="card" aria-labelledby="search-title">
+    <h2 id="search-title">Search and filter</h2>
+    <form class="filter-form" method="get" action="index.php" role="search">
+        <div class="form-field grow">
+            <label for="q">Search name, email or course</label>
+            <input type="search" id="q" name="q" maxlength="100" value="<?= e($filters['q']) ?>" placeholder="e.g. Patel, diya.shah@example.com, Data">
         </div>
-        <div>
-            <span style="color:#718096; font-size:13px; margin-right:10px;">Signed in as <?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?> · <a href="../Practical-10/logout.php">Logout</a></span>
-            <a href="index.php?export=csv<?php echo !empty($search)?'&search='.urlencode($search):''; ?><?php echo !empty($course_filter)?'&course_filter='.urlencode($course_filter):''; ?>" class="btn btn-success">📥 Export CSV</a>
+        <div class="form-field">
+            <label for="course">Course</label>
+            <select id="course" name="course"><?= course_options($filters['course'], 'All courses') ?></select>
         </div>
-    </div>
-
-    <!-- Success and Error Messages -->
-    <?php if (isset($_GET['msg'])): ?>
-        <div class="alert-success">
-            <?php echo htmlspecialchars($_GET['msg']); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['error'])): ?>
-        <div class="alert-error">
-            <?php echo htmlspecialchars($_GET['error']); ?>
-        </div>
-    <?php endif; ?>
-
-    <!-- Add New Student Section -->
-    <div class="card">
-        <h2>Add New Student</h2>
-        <form method="POST" action="index.php">
-            <div class="form-inline">
-                <input type="text" name="name" placeholder="Full Name" required>
-                <input type="email" name="email" placeholder="Email Address" required>
-                <select name="course" required>
-                    <option value="">Select Course</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Data Science">Data Science</option>
-                </select>
-                <select name="gender" required>
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-                <button type="submit" name="add_student" class="btn btn-success">+ Add Student</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Student List Section -->
-    <div class="card" style="padding: 20px 20px 10px 20px;">
-        <h2>Search & Filter Records</h2>
-        <form method="GET" action="index.php" class="form-inline">
-            <input type="text" name="search" placeholder="Search by name or email..." value="<?php echo htmlspecialchars($search); ?>">
-            <select name="course_filter">
-                <option value="">All Courses</option>
-                <option value="Computer Science" <?php if ($course_filter == 'Computer Science') echo 'selected'; ?>>Computer Science</option>
-                <option value="Web Development" <?php if ($course_filter == 'Web Development') echo 'selected'; ?>>Web Development</option>
-                <option value="Data Science" <?php if ($course_filter == 'Data Science') echo 'selected'; ?>>Data Science</option>
+        <div class="form-field">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">All statuses</option>
+<?php foreach (STATUSES as $value => $label): ?>
+                <option value="<?= e($value) ?>"<?= $filters['status'] === $value ? ' selected' : '' ?>><?= e($label) ?></option>
+<?php endforeach; ?>
             </select>
-            <button type="submit">Search / Filter</button>
-            <a href="index.php" class="btn btn-secondary">Reset</a>
-        </form>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a class="btn btn-secondary" href="index.php">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section aria-labelledby="list-title">
+    <div class="list-header">
+        <div>
+            <h2 id="list-title">Student records</h2>
+            <p class="muted" id="result-summary">
+<?php if ($total === 0): ?>
+                No students found<?= $filtered ? ' for the selected search and filter' : '' ?>.
+<?php else: ?>
+                Showing <?= ($page - 1) * PER_PAGE + 1 ?>–<?= ($page - 1) * PER_PAGE + count($students) ?> of <?= $total ?> student<?= $total === 1 ? '' : 's' ?><?php
+                if ($filters['q'] !== ''): ?> matching “<strong><?= e($filters['q']) ?></strong>”<?php endif;
+                if ($filters['course'] !== ''): ?> in <strong><?= e($filters['course']) ?></strong><?php endif;
+                if ($filters['status'] !== ''): ?> with status <strong><?= e(STATUSES[$filters['status']]) ?></strong><?php endif; ?>.
+<?php endif; ?>
+            </p>
+        </div>
+        <div class="list-actions">
+            <a class="btn btn-primary" href="add.php">+ Add student</a>
+            <a class="btn btn-export" href="<?= e(list_url('export.php', $filters)) ?>" download>Export CSV</a>
+        </div>
     </div>
 
-    <!-- Records Table -->
-    <h2>Student Records</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Course</th>
-                <th>Gender</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (mysqli_num_rows($result) > 0): ?>
-                <?php while ($row = mysqli_fetch_assoc($result)): ?>
-                    <?php $status = $row['status'] ?? 'Active'; ?>
-                    <tr>
-                        <td><strong>#<?php echo $row['id']; ?></strong></td>
-                        <td><?php echo htmlspecialchars($row['name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['email']); ?></td>
-                        <td><?php echo htmlspecialchars($row['course']); ?></td>
-                        <td><?php echo htmlspecialchars($row['gender']); ?></td>
-                        <td>
-                            <span class="badge <?php echo $status === 'Active' ? 'badge-active' : 'badge-inactive'; ?>">
-                                <?php echo htmlspecialchars($status); ?>
-                            </span>
-                        </td>
-                        <td><?php echo htmlspecialchars($row['created_at']); ?></td>
-                        <td class="action-links">
-                            <a href="edit.php?id=<?php echo $row['id']; ?>">Edit</a> | 
-                            <?php if ($status === 'Active'): ?>
-                                <a href="index.php?soft_delete=<?php echo $row['id']; ?>" class="link-soft-delete" title="Mark student as Inactive">Soft Delete</a> | 
-                            <?php else: ?>
-                                <a href="index.php?activate=<?php echo $row['id']; ?>" class="link-activate" title="Activate student">Activate</a> | 
-                            <?php endif; ?>
-                            <a href="index.php?delete=<?php echo $row['id']; ?>" class="link-delete" onclick="return confirm('Are you sure you want to delete this record?');">Delete</a>
-                        </td>
-                    </tr>
-                <?php endwhile; ?>
-            <?php else: ?>
+    <div class="table-wrap">
+        <table class="student-table">
+            <thead>
                 <tr>
-                    <td colspan="8" style="text-align: center; color: #718096; padding: 20px;">No student records found.</td>
+                    <th scope="col">ID</th>
+                    <th scope="col">Full name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Course</th>
+                    <th scope="col">Sem.</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Last updated</th>
+                    <th scope="col">Actions</th>
                 </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
-</div>
-</body>
-</html>
+            </thead>
+            <tbody>
+<?php if (!$students): ?>
+                <tr><td colspan="8" class="empty">No student records match. <a href="index.php">Show all students</a></td></tr>
+<?php endif; ?>
+<?php foreach ($students as $student): ?>
+<?php $id = (int) $student['student_id']; ?>
+                <tr class="<?= $student['status'] === 'inactive' ? 'row-inactive' : '' ?><?= $id === $highlight ? ' row-highlight' : '' ?>">
+                    <td data-label="ID"><?= $id ?></td>
+                    <td data-label="Full name"><?= e($student['full_name']) ?></td>
+                    <td data-label="Email"><?= e($student['email']) ?></td>
+                    <td data-label="Course"><?= e($student['course']) ?></td>
+                    <td data-label="Semester"><?= (int) $student['semester'] ?></td>
+                    <td data-label="Status"><?= status_badge($student['status']) ?></td>
+                    <td data-label="Last updated"><time datetime="<?= e(str_replace(' ', 'T', $student['updated_at'])) ?>"><?= e(date('d M Y, H:i', strtotime($student['updated_at']))) ?></time></td>
+                    <td data-label="Actions" class="actions">
+                        <a class="btn btn-small btn-secondary" href="edit.php?id=<?= $id ?>">Edit</a>
+<?php if ($student['status'] === 'active'): ?>
+                        <a class="btn btn-small btn-danger" href="delete.php?id=<?= $id ?>">Deactivate</a>
+<?php else: ?>
+                        <span class="muted small">Soft deleted</span>
+<?php endif; ?>
+                    </td>
+                </tr>
+<?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+<?php if ($pages > 1): ?>
+    <nav class="pagination" aria-label="Pages">
+<?php if ($page > 1): ?>
+        <a href="<?= e(list_url('index.php', $filters, $page - 1)) ?>" rel="prev">‹ Previous</a>
+<?php endif; ?>
+<?php for ($p = 1; $p <= $pages; $p++): ?>
+<?php if ($p === $page): ?>
+        <span aria-current="page"><?= $p ?></span>
+<?php else: ?>
+        <a href="<?= e(list_url('index.php', $filters, $p)) ?>"><?= $p ?></a>
+<?php endif; ?>
+<?php endfor; ?>
+<?php if ($page < $pages): ?>
+        <a href="<?= e(list_url('index.php', $filters, $page + 1)) ?>" rel="next">Next ›</a>
+<?php endif; ?>
+    </nav>
+<?php endif; ?>
+    <p class="muted small">“Deactivate” is a soft delete: the record stays in MySQL with status <strong>Inactive</strong>. The CSV export contains every record that matches the current search and filters (all pages, active and inactive unless a status is selected).</p>
+</section>
+<?php page_end(); ?>

@@ -1,0 +1,142 @@
+StudentHub Practical 11 tests  (PHP: C:\xampp\php\php.exe, MySQL: C:\xampp\mysql\bin\mysql.exe)
+
+== Static checks
+PASS  php -l: no syntax errors in all 9 PHP files
+PASS  no ->query() / mysqli_query() / multi_query in the application (prepared statements only)
+PASS  every SQL statement goes through prepare()
+PASS  no permanent DELETE statement anywhere (soft delete only)
+
+== Database (imported studenthub_prac11.sql into studenthub_prac11_test)
+PASS  24 seed records imported
+PASS  22 active and 2 inactive
+PASS  inactive seed records have deleted_at, active ones do not
+PASS  engine is InnoDB
+PASS  indexes: PRIMARY, uq_students_email, course, status, full_name
+PASS  UNIQUE email refuses a duplicate (case-insensitive)
+PASS  CHECK constraint refuses semester 9
+PASS  CHECK constraint refuses inactive without deleted_at
+
+== Connection and student list
+PASS  index.php connects to MySQL and returns 200
+PASS  student table with all column headings
+PASS  page 1 shows 10 records and 'Showing 1–10 of 24 students'
+PASS  Active and Inactive status badges displayed
+PASS  security headers (CSP, X-Frame-Options, nosniff) sent
+PASS  session cookie is HttpOnly and SameSite=Strict
+
+== Pagination
+PASS  page 2 shows records 11–20
+PASS  page 3 shows records 21–24
+PASS  the three pages together list all 24 students exactly once
+PASS  page=99 is clamped to the last page, page=abc to page 1
+PASS  page links keep the filter (status=active: 22 records, 3 pages)
+PASS  no page links when one page is enough
+
+== Add student
+PASS  valid POST add.php -> 303 redirect to index.php
+PASS  success message 'Student “Neha Raval” was added successfully'
+PASS  record inserted once, email stored in lower case, status active
+PASS  new student is shown first and highlighted in the list
+PASS  the message is shown only once (gone after refresh)
+
+== Validation
+PASS  all fields empty -> 422 and an error under each of the 4 fields
+PASS  error summary 'The student was not added'
+PASS  invalid email -> 'Enter a valid email address'
+PASS  entered values are kept after an error
+PASS  duplicate email (other case) -> 'already registered to another student'
+PASS  email of an inactive student is still reserved
+PASS  tampered values: 1-letter name, unknown course, semester 9 are refused
+PASS  spaces only count as empty
+PASS  no invalid record was inserted
+
+== Update student
+PASS  edit.php?id=2 shows the form filled from MySQL
+PASS  valid update -> 303, message 'was updated successfully'
+PASS  course and semester changed in MySQL
+PASS  updated student is shown first and highlighted
+PASS  update to another student's email -> error, not saved
+PASS  update with an empty name -> 'Full name is required.'
+PASS  edit of an unknown ID -> list with 'record was not found'
+
+== Soft delete
+PASS  GET delete.php?id=15 shows a confirmation page, not a change
+PASS  confirmation page has a POST form with token, a confirm button and Cancel
+PASS  confirmed POST -> 303 and message 'was deactivated'
+PASS  status changed to 'inactive' and deleted_at set
+PASS  record still exists in MySQL (row count unchanged)
+PASS  list shows the row as Inactive, highlighted, without a Deactivate button
+PASS  deactivating an inactive student again -> redirect, 'is already inactive'
+PASS  POST for an unknown ID -> 'record was not found', nothing changed
+PASS  status filter 'Inactive' lists the 3 inactive records
+
+== Search and course filter
+PASS  search by name 'Patel' -> Aarav Patel
+PASS  search by email 'kiara.iyer@example' -> Kiara Iyer
+PASS  search by course text 'data science' (case-insensitive) -> 5 records
+PASS  search without matches -> 'No students found'
+PASS  '%' is searched literally (LIKE wildcards escaped)
+PASS  course filter 'Information Technology' -> 5 records, all of that course
+PASS  selected course stays selected in the filter
+PASS  course with '&' filters correctly and is escaped as &amp;
+PASS  search + course + status combined
+PASS  unknown course/status values are ignored (all records listed)
+
+== CSV export
+PASS  export.php -> 200 text/csv attachment students_YYYYMMDD_HHMMSS.csv
+PASS  UTF-8 byte-order mark and CRLF line endings (Excel)
+PASS  header row
+PASS  one row per student, 9 columns each (active and inactive)
+PASS  soft-deleted student exported with Status 'Inactive' and a Deactivated At time
+PASS  'Electronics & Communication' exported as plain text
+PASS  export respects course + status filter
+PASS  export respects the search text
+PASS  formula injection: cells starting with = + - @ are prefixed with an apostrophe
+
+== CSRF and duplicate submissions
+PASS  add without token -> refused with an error message, nothing inserted
+PASS  add with a made-up token -> refused
+PASS  token from another session -> refused
+PASS  the same form sent twice -> first saved, second refused (1 record)
+PASS  soft delete and update without token -> refused, record unchanged
+PASS  a valid unused confirmation token still works
+PASS  a used confirmation token cannot be replayed for another student
+
+== SQL injection
+PASS  search "' OR '1'='1" is treated as text -> no results
+PASS  UNION injection in search -> no results, no error
+PASS  injection in course filter is ignored (not in the allowed list)
+PASS  edit.php?id=1 OR 1=1 -> refused as unknown record
+PASS  soft delete with student_id '17 OR 1=1' changes nothing
+PASS  quotes are stored literally (O'Brien-Smith / o'brien@example.com)
+PASS  'Robert'); DROP TABLE students;--' refused by validation; table intact
+
+== XSS output escaping
+PASS  search text is escaped in the input and the summary
+PASS  stored HTML in a name is escaped in the list
+PASS  stored HTML is escaped in the edit form value
+PASS  stored HTML is escaped on the confirmation page
+PASS  rejected input is escaped when the form is shown again
+
+== Protected files
+PASS  db.php -> 403
+PASS  includes/functions.php -> 403
+PASS  config.example.php -> 403
+PASS  router.php -> 403
+PASS  studenthub_prac11.sql -> 403
+PASS  README.md -> 403
+PASS  tests/test_app.py -> 403
+PASS  .gitignore -> 403
+PASS  start-server.bat -> 403
+
+== Server log
+PASS  no PHP warnings, notices or errors logged
+
+== MySQL unreachable
+PASS  index.php -> 503 'The student database is not available right now'
+PASS  no technical details in the page
+PASS  the real error is written to the PHP log
+PASS  test database removed again
+(studenthub_prac11 was not used by the tests; it holds 24 records)
+
+Result: 106 passed, 0 failed, 106 checks
