@@ -36,6 +36,7 @@ Practical-15/uploads/*
 !Practical-15/uploads/.gitkeep
 studenthub/uploads/*
 !studenthub/uploads/.gitkeep
+!studenthub/uploads/.htaccess
 
 # Local backups (never commit)
 studenthub-backup/

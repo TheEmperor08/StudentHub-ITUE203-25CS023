@@ -55,6 +55,7 @@ PASS  ... and the database structure is unchanged
 PASS  a semester outside 1-8 -> migration stops, structure unchanged
 PASS  importing studenthub_demo.sql into a pre-migration database is refused (points to the migration)
 PASS  running the migration without selecting a database fails safely
+INFO  behaviour and portal tests run after the later migrations: 002_unique_enrollment_no.sql, 003_event_management.sql
 
 == Registrations: transactional capacity rule (disposable test records)
 PASS  register student 1 for the capacity-2 event -> registration id
@@ -100,7 +101,8 @@ PASS  admin login -> Admin Console
 PASS  Admin Console tabs load (overview, students, events, users, audits)
 PASS  admin 'add student' still works (row stored with semester 4, user_id NULL)
 PASS  admin 'add event' still works (capacity and time stay NULL)
-PASS  admin 'delete event' still works and removes the event's registration (registered first, then deleted)
+PASS  admin 'delete event' refuses an event with registrations (Practical 12: the registration history is kept)
+PASS  admin 'delete event' still deletes an event without registrations
 PASS  admin 'deactivate student' (Practical 11 soft delete) keeps the record and marks it Inactive
 PASS  student login -> dashboard
 PASS  all student pages load with status 200 and no PHP errors
@@ -109,11 +111,11 @@ PASS  self-registration creates the account and its student record, linked throu
 PASS  no PHP warnings or errors in the server log
 
 == Fresh install from database/studenthub_demo.sql
-INFO  upgraded copy compared after the later migrations: 002_unique_enrollment_no.sql
+INFO  upgraded copy compared after the later migrations: 002_unique_enrollment_no.sql, 003_event_management.sql
 PASS  studenthub_demo.sql imports into an empty database
 PASS  fresh-install structure is identical to an upgraded database
 PASS  migration 001 on a fresh install changes nothing
 PASS  studenthub_demo.sql can be imported again without changes
 PASS  all disposable databases removed
 
-Result: 87 passed, 0 failed, 87 checks
+Result: 88 passed, 0 failed, 88 checks

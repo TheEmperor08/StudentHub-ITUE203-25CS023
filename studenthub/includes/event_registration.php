@@ -6,9 +6,10 @@
 //   1. SELECT ... FOR UPDATE locks the event row, so concurrent registrations for the same event wait for each other;
 //   2. the seats taken (registrations that are not 'cancelled') are counted only after the lock is held;
 //   3. the registration is inserted - or a cancelled one reactivated - and the transaction commits.
-// events.capacity NULL means "no limit set" (existing events have no capacity). Inactive students cannot register.
+// events.capacity NULL means "no limit set" (existing events have no capacity). Inactive students cannot register, and
+// neither can anyone for a closed event (events.status, migration 003) or an event whose date has passed.
 //
-// Not used by any page yet: the registration interface is built with the event module in a later practical.
+// Used by the Campus Events page (notifications.php) and the events API (api/events.php).
 // Requires mysqli in exception mode (the PHP 8.1+ default).
 
 class EventRegistrationException extends RuntimeException
@@ -18,6 +19,9 @@ class EventRegistrationException extends RuntimeException
     public const STUDENT_INACTIVE  = 'student_inactive';
     public const DUPLICATE         = 'duplicate';
     public const EVENT_FULL        = 'event_full';
+    public const EVENT_CLOSED      = 'event_closed';
+    public const EVENT_PAST        = 'event_past';
+    public const NOT_REGISTERED    = 'not_registered';
 
     private const MESSAGES = [
         self::EVENT_NOT_FOUND   => 'The event does not exist.',
@@ -25,6 +29,9 @@ class EventRegistrationException extends RuntimeException
         self::STUDENT_INACTIVE  => 'Inactive students cannot register for events.',
         self::DUPLICATE         => 'The student is already registered for this event.',
         self::EVENT_FULL        => 'The event is full.',
+        self::EVENT_CLOSED      => 'Registration for this event is closed.',
+        self::EVENT_PAST        => 'This event has already taken place.',
+        self::NOT_REGISTERED    => 'There is no active registration to cancel.',
     ];
 
     public function __construct(public string $reason)
@@ -39,12 +46,18 @@ function register_student_for_event(mysqli $db, int $student_id, int $event_id):
 {
     $db->begin_transaction();
     try {
-        $stmt = $db->prepare('SELECT capacity FROM events WHERE id = ? FOR UPDATE');
+        $stmt = $db->prepare('SELECT capacity, status, event_date < CURDATE() AS is_past FROM events WHERE id = ? FOR UPDATE');
         $stmt->bind_param('i', $event_id);
         $stmt->execute();
         $event = $stmt->get_result()->fetch_assoc();
         if ($event === null) {
             throw new EventRegistrationException(EventRegistrationException::EVENT_NOT_FOUND);
+        }
+        if ($event['status'] !== 'open') {
+            throw new EventRegistrationException(EventRegistrationException::EVENT_CLOSED);
+        }
+        if ((int) $event['is_past'] === 1) {
+            throw new EventRegistrationException(EventRegistrationException::EVENT_PAST);
         }
 
         $stmt = $db->prepare('SELECT status FROM students WHERE id = ? LOCK IN SHARE MODE');
@@ -99,6 +112,40 @@ function register_student_for_event(mysqli $db, int $student_id, int $event_id):
         }
         throw $e;
     }
+}
+
+// Cancels the student's registration (status 'registered' -> 'cancelled'; the row is kept as history and the seat is
+// freed). An 'attended' registration cannot be cancelled. Throws EventRegistrationException::NOT_REGISTERED otherwise.
+function cancel_event_registration(mysqli $db, int $student_id, int $event_id): int
+{
+    $stmt = $db->prepare("UPDATE registrations SET status = 'cancelled' WHERE student_id = ? AND event_id = ? AND status = 'registered'");
+    $stmt->bind_param('ii', $student_id, $event_id);
+    $stmt->execute();
+    if ($stmt->affected_rows !== 1) {
+        throw new EventRegistrationException(EventRegistrationException::NOT_REGISTERED);
+    }
+    $stmt = $db->prepare('SELECT registration_id FROM registrations WHERE student_id = ? AND event_id = ?');
+    $stmt->bind_param('ii', $student_id, $event_id);
+    $stmt->execute();
+    return (int) $stmt->get_result()->fetch_row()[0];
+}
+
+// The student record linked to a login account (students.user_id), or null
+function linked_student(mysqli $db, int $user_id): ?array
+{
+    $stmt = $db->prepare('SELECT id, enrollment_no, name, status FROM students WHERE user_id = ?');
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+// The student's registration status per event: [event_id => 'registered'|'attended'|'cancelled']
+function student_registration_map(mysqli $db, int $student_id): array
+{
+    $stmt = $db->prepare('SELECT event_id, status FROM registrations WHERE student_id = ?');
+    $stmt->bind_param('i', $student_id);
+    $stmt->execute();
+    return array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'status', 'event_id');
 }
 
 // Seats taken (registrations that are not cancelled) for one event

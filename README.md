@@ -19,7 +19,9 @@ StudentHub is a PHP/MySQL student portal built up across 15 practicals: semantic
 * **Student pages:** dashboard, profile (with a working, verified password change), courses, attendance, assignments, results, achievements, notifications, directory and contact.
 * **Profile data from the database:** name and roll number come from the logged-in user's `students` record (`studenthub/student_profile.php`).
 * **Student management** (Practical 11 integrated; Admin Console → *Student Records*, `admin_dashboard.php?tab=students`, logic in `studenthub/includes/student_management.php`): paginated list of the `students` records with Active/Inactive status and account-link column; add and edit forms with server-side validation (enrollment number format and uniqueness, e-mail, course from the list, semester 1–8, gender); an empty enrollment number gets the next number of the existing `YYPPnnn` scheme; combined search (name, e-mail, enrollment number) and course/semester/status filters; **soft delete** – *Deactivate* (after a confirmation page) sets the status to `Inactive` and keeps the record, its account link and its event registrations; a student account linked to an inactive record cannot sign in, and an open session ends at its next request (generic message, admins and editors unaffected); *Reactivate* restores it; CSV export of the filtered records (UTF-8 with BOM, formula injection neutralised, no account data). Admins only (`students.manage`); every change is a POST with a CSRF token and is audit-logged. No login account is created for an added record.
-* **Admin Console:** live counters, student records (above), event publishing with validated poster upload, user list, audit log viewer.
+* **Event management** (Practical 12 integrated; Admin Console → *Campus Events*, logic in `studenthub/includes/event_management.php`): list with search and category / open-closed / upcoming-past filters; add and edit with server-side validation (title, category from `event_categories`, date, time, location, capacity 1–65535 or no limit, open/closed, description); **secure poster upload** – JPEG, PNG or WebP only, at most 2 MB, MIME type of the content must match the extension, real image structure, no embedded PHP, random 32-hex file name, stored in `studenthub/uploads/` (denied over HTTP on Apache, PHP disabled) and delivered only by `poster.php` to signed-in users; the capacity can never be set below the seats taken; events with registrations cannot be deleted (close them instead); registrations view per event; older poster references whose file is missing show a placeholder.
+* **Event registration** (Practicals 8 + 12; *Campus Events* page `notifications.php`): students with a linked student record register and cancel; `register_student_for_event()` runs in one transaction and refuses duplicates, full, closed and past events and inactive students (6 simultaneous requests for 3 seats → exactly 3 succeed).
+* **Admin Console:** live counters, student records and campus events (above), user list, audit log viewer.
 * **Design:** one indigo design system (`assets/css/global.css` + `assets/css/bootstrap-theme.css`), grouped sidebar with icons, mobile drawer with hamburger button, light/dark theme, skip link, visible keyboard focus, reduced-motion support.
 
 > ⚠️ **Sample data:** CGPA, SGPA, attendance and timetable figures in the student pages are **placeholders labelled "Sample / demo data"**, not real academic results.
@@ -36,6 +38,7 @@ StudentHub/
 ├── tools/create_demo_user.php    # CLI: create local accounts (password prompted)
 ├── tests/                    # Authentication + student-management tests (disposable databases) + optional Edge browser tests
 ├── evidence/practical-11-integration/  # Genuine Edge screenshots of the integrated student management (fictional records)
+├── evidence/practical-12-integration/  # Genuine Edge screenshots of the integrated event management
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
@@ -92,7 +95,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 9 | Secure registration (hashing, duplicates) | Integrated into `studenthub/` and tested (`tests/test_auth.py`) |
 | 10 | Login, sessions, RBAC | Integrated into `studenthub/` and tested, including the inactivity timeout (remember-me is not part of the portal) |
 | 11 | Student CRUD, search, soft delete, CSV | Integrated into `studenthub/` (Admin Console → Student Records) and tested (`tests/test_students.py`, Edge screenshots in `evidence/practical-11-integration/`) |
-| 12 | Event uploads with validation, RBAC | Tested |
+| 12 | Event uploads with validation, RBAC | Integrated into `studenthub/` (Admin Console → Campus Events, Campus Events page) and tested (`tests/test_events.py`, Edge screenshots in `evidence/practical-12-integration/`) |
 | 13 | Fetch/AJAX CRUD API with RBAC | Tested (role now taken from the server session) |
 | 14 | Admin dashboard, audit logging, 403 | Tested |
 | 15 | Integrated portal (copy of `studenthub/`) | Tested via the main application suite |

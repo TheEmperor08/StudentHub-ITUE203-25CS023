@@ -1,6 +1,6 @@
 -- StudentHub demo database (safe to publish)
--- Schema of the working studenthub_db (including migrations 001 - Practical 8 foundation - and 002 - unique enrollment
--- numbers) plus fictional demo rows.
+-- Schema of the working studenthub_db (including migrations 001 - Practical 8 foundation -, 002 - unique enrollment
+-- numbers - and 003 - Practical 12 event management) plus fictional demo rows.
 -- Contains NO user accounts, password hashes, audit logs or real student records. All student rows except the owner
 -- are fictional (example.com).
 -- Safe to re-run: tables use IF NOT EXISTS and rows use INSERT IGNORE (nothing is dropped).
@@ -10,17 +10,25 @@
 -- EXISTING database created before migration 001: do not use this file; apply the migrations instead:
 --                    mysql -u root studenthub_db < database/migrations/001_practical8_foundation.sql
 --                    mysql -u root studenthub_db < database/migrations/002_unique_enrollment_no.sql
+--                    mysql -u root studenthub_db < database/migrations/003_event_management.sql
+--                    (a database made by an earlier version of this file: apply only the migrations it is missing)
 -- Accounts:          php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
 -- Details:           database/README.md
 
 SET NAMES utf8mb4;
 
 -- An older StudentHub database would be skipped by CREATE TABLE IF NOT EXISTS and keep its old structure: refuse it.
+-- (The second check is nested because MariaDB resolves schema_migrations only when that statement runs.)
 DELIMITER //
 BEGIN NOT ATOMIC
     IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students')
        AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students' AND COLUMN_NAME = 'user_id') THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created before migration 001. Apply database/migrations/001_practical8_foundation.sql instead.';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schema_migrations') THEN
+        IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '003') THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created by an earlier version of this file. Apply the missing migrations in database/migrations/ instead.';
+        END IF;
     END IF;
 END //
 DELIMITER ;
@@ -60,10 +68,25 @@ CREATE TABLE IF NOT EXISTS `students` (
   CONSTRAINT `fk_students_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `chk_students_semester` CHECK (`semester` is null or `semester` between 1 and 8)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
--- a database created from an earlier version of this file already has the table: add the index (fails on duplicates)
-ALTER TABLE `students` ADD UNIQUE KEY IF NOT EXISTS `uq_students_enrollment_no` (`enrollment_no`);
+
+-- event_categories: lookup table for events.category (migration 003)
+CREATE TABLE IF NOT EXISTS `event_categories` (
+  `name` varchar(50) NOT NULL,
+  `description` varchar(200) DEFAULT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `event_categories` (`name`, `description`) VALUES
+('Conference', NULL),
+('Cultural',   'Music, dance, drama and festivals'),
+('Hackathon',  'Team coding competitions'),
+('Seminar',    'Talks and guest lectures'),
+('Sports',     'Matches and tournaments'),
+('Technical',  'Technical talks and project expos'),
+('Workshop',   'Hands-on training sessions');
 
 -- events.event_time / events.capacity: NULL = not set (capacity NULL = no limit)
+-- events.status: open/closed (closed = no new registrations); events.poster: a stored poster name, UNIQUE (migration 003)
 CREATE TABLE IF NOT EXISTS `events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(150) NOT NULL,
@@ -71,12 +94,18 @@ CREATE TABLE IF NOT EXISTS `events` (
   `event_time` time DEFAULT NULL,
   `location` varchar(150) NOT NULL,
   `capacity` smallint(5) unsigned DEFAULT NULL,
+  `status` enum('open','closed') NOT NULL DEFAULT 'open',
   `description` text DEFAULT NULL,
   `category` varchar(50) NOT NULL,
   `poster` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_events_poster` (`poster`),
   KEY `idx_events_date` (`event_date`,`event_time`),
+  KEY `idx_events_status` (`status`),
+  KEY `idx_events_category` (`category`),
+  CONSTRAINT `fk_events_category` FOREIGN KEY (`category`) REFERENCES `event_categories` (`name`) ON UPDATE CASCADE,
   CONSTRAINT `chk_events_capacity` CHECK (`capacity` is null or `capacity` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -154,7 +183,8 @@ INSERT IGNORE INTO `menu_items` (`id`, `title`, `link`, `min_role`, `icon`) VALU
 (9, 'Asynchronous SPA Manager',  '../Practical-13/index.html',      'admin', 'bi-lightning-charge'),
 (10,'Security Audit Logs',       'admin_dashboard.php?tab=audits',  'admin', 'bi-journal-text');
 
--- This structure already includes migrations 001 and 002
+-- This structure already includes migrations 001, 002 and 003
 INSERT IGNORE INTO `schema_migrations` (`version`, `description`) VALUES
 ('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK'),
-('002', 'Practical 11 student management: UNIQUE students.enrollment_no');
+('002', 'Practical 11 student management: UNIQUE students.enrollment_no'),
+('003', 'Practical 12 event management: event_categories + FK, events.status, events.updated_at, UNIQUE events.poster');

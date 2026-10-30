@@ -1,0 +1,126 @@
+StudentHub event management tests - Practical 12 (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Static checks
+PASS  php -l: no syntax errors in all 34 PHP files of studenthub/ and tools/
+PASS  event_management.php: no ->query() with values (prepared statements only)
+PASS  the original upload file name is never used for storage (random 32-hex names)
+PASS  studenthub/uploads/.htaccess denies HTTP access and disables PHP (Apache)
+
+== Database (migration 003)
+PASS  schema_migrations records 003
+PASS  events.status, events.updated_at, event_categories and fk_events_category exist
+
+== Event listing (admin)
+PASS  admin -> Campus Events tab (200) lists the 5 events
+PASS  columns: poster, event, category, date & time, location, seats, status, actions
+PASS  an older poster reference whose file does not exist shows a placeholder and 'poster file not available' (no broken image, value kept)
+PASS  poster.php for that event -> 404 (the old path is never opened)
+PASS  every POST form in the tab carries a CSRF token
+
+== Add event (server-side validation)
+PASS  GET view=add_event shows the form (multipart, CSRF token, poster field accepting JPEG/PNG/WebP only)
+PASS  valid event without a poster -> 303 to the list; all fields stored, status open
+PASS  success message (from the session) and CREATE_EVENT audit entry
+PASS  valid PNG poster -> stored under a random name (32 hex + .png), same bytes, original name not used
+PASS  valid JPG poster -> stored under a random name (32 hex + .jpg), same bytes, original name not used
+PASS  valid WEBP poster -> stored under a random name (32 hex + .webp), same bytes, original name not used
+PASS  poster.php delivers it as image/png with nosniff and a sandbox CSP
+PASS  posters are not served to visitors who are not signed in (redirect to the login page)
+PASS  an upper-case extension (.PNG) is accepted and stored as .png
+
+== Invalid event details (nothing stored)
+PASS  empty title -> 422 'Please enter the event title.'
+PASS  two-character title -> 422 '3–150 characters'
+PASS  unknown category -> 422 'category from the list'
+PASS  impossible date 2027-02-30 -> 422 'valid date'
+PASS  date in another format -> 422 'valid date'
+PASS  time 25:00 -> 422 'valid time'
+PASS  empty location -> 422 'Please enter the location.'
+PASS  capacity 0 -> 422 '1 to 65535'
+PASS  capacity -5 -> 422 '1 to 65535'
+PASS  capacity 70000 -> 422 '1 to 65535'
+PASS  capacity 'ten' -> 422 '1 to 65535'
+PASS  unknown status -> 422 'Open or Closed'
+PASS  description over 2000 characters -> 422 'at most 2000'
+PASS  SQL in the category -> 422 'category from the list'
+PASS  rejected input is shown again HTML-escaped
+PASS  no event and no file were stored by the rejected forms
+
+== Poster upload validation (every check on the server)
+PASS  a GIF image -> rejected ('Only JPEG, PNG and WebP')
+PASS  an SVG with JavaScript -> rejected ('Only JPEG, PNG and WebP')
+PASS  a PHP script -> rejected ('Only JPEG, PNG and WebP')
+PASS  a PHP script renamed to .jpg -> rejected ('not a JPEG, PNG or WebP image|could not be read as an image')
+PASS  a double extension shell.php.jpg -> rejected ('not a JPEG, PNG or WebP image')
+PASS  PNG content named .jpg -> rejected ('does not match its content')
+PASS  a truncated PNG -> rejected ('not a valid image or is damaged')
+PASS  a JPEG with embedded PHP code -> rejected ('contains embedded code')
+PASS  a 2.3 MB PNG -> rejected ('maximum size is 2 MB')
+PASS  an empty file -> rejected ('empty')
+PASS  a file with a forged image/png content type -> rejected ('Only JPEG, PNG and WebP')
+PASS  big file really is over 2 MB (2401053 bytes)
+PASS  no event and no file were stored for the rejected posters
+PASS  rejected uploads are written to the audit log (UPLOAD_REJECTED)
+
+== Edit event
+PASS  GET view=edit_event shows the form filled from the database with the current poster
+PASS  update without a new file -> fields changed, poster kept, time and capacity cleared, updated_at set
+PASS  replacing the poster stores the new file and deletes the old one
+PASS  an invalid replacement poster is refused and the current poster stays
+PASS  UPDATE_EVENT written to the audit log
+
+== Student event registration (transaction, duplicates, capacity, closed/past events)
+PASS  Campus Events page lists the upcoming event with seats and a Register button (CSRF token)
+PASS  student registers -> 303, one 'registered' row, success message, EVENT_REGISTER audit entry
+PASS  registering again -> 'already registered', still one row
+PASS  capacity 2: the second student fits, the third gets 'The event is full.'
+PASS  the full event shows 'Event full' instead of a Register button for the third student
+PASS  a closed event -> 'Registration for this event is closed.'
+PASS  a past event -> 'This event has already taken place.'
+PASS  cancelling -> row kept as 'cancelled', the seat is freed, EVENT_REGISTRATION_CANCEL audit entry
+PASS  cancelling again -> 'There is no active registration to cancel.'
+PASS  the freed seat can be taken by the third student
+PASS  registration without the CSRF token -> 403, nothing stored
+PASS  GET requests with registration parameters change nothing
+PASS  a student account without a linked student record cannot register (clear message)
+PASS  an administrator cannot register as a student
+
+== Simultaneous registrations (6 students, 3 seats)
+PASS  exactly 3 of 6 simultaneous registrations succeed, 3 get 'The event is full.' (no overbooking)
+
+== Capacity edits, registrations view and deletion
+PASS  the capacity cannot be set below the seats already taken (2)
+PASS  the registrations view lists the students with their registration status
+PASS  delete view for an event with registrations explains that it cannot be deleted (no delete button)
+PASS  a forged delete POST for that event is refused; the event and its registrations are kept
+PASS  delete view for an event without registrations asks for confirmation; nothing deleted yet
+PASS  GET with action=delete_event and a POST without the token change nothing (403 for the POST)
+PASS  confirmed delete -> event removed, its poster file deleted, DELETE_EVENT audit entry
+
+== Search and filters
+PASS  search 'workshop' -> exactly the 1 matching event(s)
+PASS  category Workshop -> exactly the 5 matching event(s)
+PASS  status closed -> exactly the 2 matching event(s)
+PASS  past events -> exactly the 5 matching event(s)
+PASS  search + category + status -> exactly the 5 matching event(s)
+PASS  upcoming events, soonest first
+PASS  search "' OR '1'='1" is treated as text
+PASS  search '%' is treated as text
+PASS  search "Workshop'; DROP TABLE events; --" is treated as text
+PASS  an injected category value is ignored (unknown value), events table intact
+
+== Access control
+PASS  student: Events tab and forms -> 403; add / update / delete via POST -> 403, nothing changed
+PASS  editor: Events tab and forms -> 403; add / update / delete via POST -> 403, nothing changed
+PASS  not signed in: POST -> login page, nothing stored
+
+== Storage and server log
+PASS  the poster folder contains only random names of stored posters still used by events
+PASS  no PHP warnings, notices or fatal errors in the server log
+
+== Clean-up
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched (students, users, registrations, events) and studenthub/uploads is unchanged
+
+Result: 94 passed, 0 failed, 94 checks

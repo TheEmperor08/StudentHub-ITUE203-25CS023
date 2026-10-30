@@ -12,6 +12,8 @@ into this database step by step; the practical folders keep their own historical
 | `migrations/002_unique_enrollment_no.down.sql` | Rollback of migration 002 (drops the index only) |
 | `tests/test_001_practical8_foundation.py` | Tests of migration 001 (disposable databases only) + read-only live check |
 | `tests/test_002_unique_enrollment_no.py` | Tests of migration 002 (disposable databases only) + read-only live check |
+| `migrations/003_event_management.sql` / `.down.sql` | Practical 12: `event_categories` + FK, `events.status`, `events.updated_at`, UNIQUE `events.poster` (and rollback) |
+| `tests/test_003_event_management.py` | Tests of migration 003 (disposable databases only) + read-only live check |
 | `tests/fixtures/studenthub_v1_fixture.sql` | The pre-migration structure with fictional rows, used by the tests |
 
 ## Tables and relationships (after migrations 001 and 002)
@@ -129,6 +131,22 @@ therefore wait for each other. It throws `EventRegistrationException` with the r
 `student_not_found`, `student_inactive`, `duplicate` or `event_full`. `capacity` NULL means no limit. A plain
 `INSERT INTO registrations` bypasses the capacity rule, so the portal must always use this function. No page uses it
 yet – the registration interface follows with the event module.
+
+## Migration 003 – event management (Practical 12)
+
+1. **Preconditions** (nothing is changed if one fails): migration 002 is recorded; `events.category` is `VARCHAR(50)` and `events.poster`
+   `VARCHAR(255)`; no two events share a poster value; no event has an empty category.
+2. `event_categories (name PK, description)` with Practical 12's six categories plus **every category already used** (the live
+   database keeps *Conference*), and `fk_events_category` (`ON UPDATE CASCADE`, `ON DELETE RESTRICT`).
+3. `events.status ENUM('open','closed') NOT NULL DEFAULT 'open'` (existing events: open), `events.updated_at` (set automatically on
+   change; existing events NULL), `UNIQUE uq_events_poster`, indexes on status and category.
+4. Verification, then the row `003` in `schema_migrations`. Idempotent; `003_event_management.down.sql` removes exactly these changes.
+
+No event value is changed. The four live events whose `poster` points to an older path (`uploads/odoo_hackathon.jpg` etc.) keep that
+value: the files do not exist, so the portal shows a placeholder and never opens or deletes anything outside the poster folder
+(`poster_path()` accepts only `<32 hex>.<jpg|png|webp>` inside it); uploading a new poster replaces the reference. Events with
+registrations cannot be deleted by the portal, so `fk_registrations_event ... ON DELETE CASCADE` never removes registration history
+through the interface. Applied to the live database on 31 Oct 2026 after a verified backup.
 
 ## Rollback
 

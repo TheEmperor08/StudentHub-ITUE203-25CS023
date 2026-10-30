@@ -17,6 +17,9 @@ MIGRATION_002 = T.ROOT / "database" / "migrations" / "002_unique_enrollment_no.s
 ROLLBACK_002 = T.ROOT / "database" / "migrations" / "002_unique_enrollment_no.down.sql"
 TEST_DB, PRE_DB, FRESH_DB, LIVE_DB = "studenthub_mig002_test", "studenthub_mig002_pre", "studenthub_mig002_fresh", "studenthub_db"
 INDEX = ("students", "uq_students_enrollment_no")
+# migrations after 002 (studenthub_demo.sql already contains them) and their rollbacks, newest first
+LATER = sorted(p for p in (T.ROOT / "database" / "migrations").glob("0*.sql") if not p.name.endswith(".down.sql") and p.name[:3] > "002")
+LATER_DOWN = [p.with_name(p.name[:-4] + ".down.sql") for p in reversed(LATER)]
 check, info, mysql, scalar, run_file, structure, diff_structure = T.check, T.info, T.mysql, T.scalar, T.run_file, T.structure, T.diff_structure
 
 
@@ -41,8 +44,9 @@ def prepare(db, dump):
         rc, err = run_file(T.MIGRATION, db)
         assert rc == 0, err
     if "002" in versions(db):                         # a dump taken after 002: start from the state before it
-        rc, err = run_file(ROLLBACK_002, db)
-        assert rc == 0, err
+        for down in LATER_DOWN + [ROLLBACK_002]:
+            rc, err = run_file(down, db)
+            assert rc == 0, f"{down.name}: {err}"
 
 
 def upgrade_tests(dump):
@@ -114,17 +118,24 @@ def fresh_install_tests(upgraded):
     print("\n== Fresh install from database/studenthub_demo.sql")
     T.create_disposable(FRESH_DB)
     rc, err = run_file(T.DEMO, FRESH_DB)
-    check("studenthub_demo.sql imports into an empty database and records 001 and 002", rc == 0 and versions(FRESH_DB) == ["001", "002"], err)
+    check("studenthub_demo.sql imports into an empty database and records 001, 002 and the later migrations",
+          rc == 0 and versions(FRESH_DB) == ["001", "002"] + [p.name[:3] for p in LATER], err)
     fresh = structure(FRESH_DB)
+    for later in LATER:                              # the demo file contains the later migrations too
+        rc, err = run_file(later, TEST_DB)
+        assert rc == 0, f"{later.name}: {err}"
+    upgraded = structure(TEST_DB)
     d = diff_structure(upgraded, fresh)
-    check("fresh-install structure is identical to a database upgraded with 001 + 002", not d, "; ".join(d[:4]))
+    check("fresh-install structure is identical to a database upgraded with 001 + 002 (+ the later migrations)", not d, "; ".join(d[:4]))
     rc, err = run_file(MIGRATION_002, FRESH_DB)
     check("migration 002 on a fresh install changes nothing", rc == 0 and structure(FRESH_DB) == fresh, err)
-    # a database created from the earlier demo file (001 only): importing the current file adds the index
-    mysql("ALTER TABLE students DROP INDEX uq_students_enrollment_no; DELETE FROM schema_migrations WHERE version='002'", FRESH_DB)
+    # a database created from an earlier demo file (001 only): importing the current file is refused (apply the migrations)
+    for down in LATER_DOWN + [ROLLBACK_002]:
+        run_file(down, FRESH_DB)
+    before = structure(FRESH_DB)
     rc, err = run_file(T.DEMO, FRESH_DB)
-    check("importing the demo file into a database made by its earlier version adds the index and records 002",
-          rc == 0 and structure(FRESH_DB) == fresh and versions(FRESH_DB) == ["001", "002"], err)
+    check("importing the demo file into a database made by its earlier version is refused (points to the migrations), nothing changed",
+          rc != 0 and "earlier version" in err and structure(FRESH_DB) == before, err)
     T.drop_disposable(FRESH_DB)
 
 
@@ -132,13 +143,26 @@ def verify_live(baseline):
     print(f"\n== READ-ONLY verification of the live database {LIVE_DB} against the dump taken before migration 002")
     prepare(TEST_DB, baseline)
     data_before = data_fingerprint(TEST_DB)
+    global TEST_BASE
+    TEST_BASE = PRE_DB                               # an untouched copy of the baseline for the events comparison
+    T.create_disposable(PRE_DB)
+    T.load_source(PRE_DB, baseline)
     rc, err = run_file(MIGRATION_002, TEST_DB)
     assert rc == 0, err
+    for later in LATER:                              # later migrations that the live database has as well
+        if later.name[:3] in versions(LIVE_DB):
+            rc, err = run_file(later, TEST_DB)
+            assert rc == 0, f"{later.name}: {err}"
     reference = structure(TEST_DB)
     d = diff_structure(reference, structure(LIVE_DB))
     check("live structure is identical to the baseline upgraded with 002 in a disposable copy", not d, "; ".join(d[:4]))
     check("live database records migration 002", "002" in versions(LIVE_DB), str(versions(LIVE_DB)))
     live = data_fingerprint(LIVE_DB)
+    # events: compare the columns that existed before the later migrations (003 adds status and updated_at)
+    original_events = "SELECT id, title, event_date, IFNULL(event_time,''), location, IFNULL(capacity,''), IFNULL(description,''), category, IFNULL(poster,'') FROM events ORDER BY id"
+    for fp, db in ((live, LIVE_DB), (data_before, None)):
+        rows = mysql(original_events, db or TEST_BASE)
+        fp["events"] = (len(rows), hashlib.sha256("\n".join("\t".join(r) for r in rows).encode()).hexdigest())
     same = [t for t in ("users", "students", "events", "registrations", "menu_items") if live.get(t) == data_before.get(t)]
     check("live users (with password hashes), students, events, registrations and menu items are unchanged", len(same) == 5,
           str({t: (data_before.get(t), live.get(t)) for t in ("users", "students", "events", "registrations", "menu_items") if t not in same}))

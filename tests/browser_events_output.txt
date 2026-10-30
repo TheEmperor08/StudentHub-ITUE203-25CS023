@@ -1,0 +1,20 @@
+PASS  admin: Campus Events tab lists the events; the missing older poster shows a placeholder
+PASS  a PNG renamed to .jpg is refused on the server ('does not match its content'); nothing stored
+PASS  valid JPEG poster -> event published, poster stored under a random name and shown from poster.php
+PASS  PNG and WebP posters accepted too
+PASS  Edit opens the form with the current poster
+PASS  Save changes -> event updated (capacity 35, new location)
+PASS  student: Campus Events page lists the upcoming events with posters, seats and Register buttons
+PASS  Riya registers -> success message and 'You are registered' with a Cancel button
+PASS  capacity 1 reached: Kunal sees 'Event full' and no Register button for it
+PASS  Kunal registers for the workshop and cancels -> 'was cancelled', row kept as cancelled
+PASS  admin: registrations of the event list Riya Shah (26IT041, Registered)
+PASS  delete is refused for an event with registrations (history kept)
+PASS  an event without registrations is deleted after confirmation (poster file removed)
+PASS  a student opening the Events tab of the Admin Console -> HTTP 403
+PASS  no JavaScript errors (only the intended 403/422 responses)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-12-integration/ (14 PNG files)
+browser checks: 16 passed, 0 failed

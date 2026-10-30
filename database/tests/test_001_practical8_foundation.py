@@ -524,9 +524,15 @@ def portal_tests(workdir):
         reg = PhpDriver(workdir, TEST_DB).register(web_student, new_event)
         had_registration = reg.get("ok") and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "1"
         b.get("admin_dashboard.php", {"csrf_token": token, "action": "delete_event", "id": new_event})
-        check("admin 'delete event' still works and removes the event's registration (registered first, then deleted)",
-              had_registration and scalar(f"SELECT COUNT(*) FROM events WHERE id={new_event}", TEST_DB) == "0"
-              and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "0", str(reg))
+        check("admin 'delete event' refuses an event with registrations (Practical 12: the registration history is kept)",
+              had_registration and scalar(f"SELECT COUNT(*) FROM events WHERE id={new_event}", TEST_DB) == "1"
+              and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "1", str(reg))
+        b.get("admin_dashboard.php", {"csrf_token": token, "action": "add_event", "title": "Web Added Event 2", "category": "Workshop",
+                                      "event_date": "2027-02-02", "location": "Lab 2", "description": ""})
+        other_event = scalar("SELECT id FROM events WHERE title='Web Added Event 2'", TEST_DB)
+        b.get("admin_dashboard.php", {"csrf_token": token, "action": "delete_event", "id": other_event})
+        check("admin 'delete event' still deletes an event without registrations",
+              other_event is not None and scalar(f"SELECT COUNT(*) FROM events WHERE id={other_event}", TEST_DB) == "0")
         b.get("admin_dashboard.php", {"csrf_token": token, "action": "deactivate_student", "id": web_student})
         check("admin 'deactivate student' (Practical 11 soft delete) keeps the record and marks it Inactive",
               scalar(f"SELECT status FROM students WHERE id={web_student}", TEST_DB) == "Inactive")
@@ -632,6 +638,11 @@ def main():
             info("source: " + (a.source_dump and "dump " + pathlib.Path(a.source_dump).name or "fixture " + FIXTURE.name))
             before, migrated, _ = upgrade_tests(a.source_dump, workdir)
             precondition_tests()
+            # the registration helper and the portal use the current schema (e.g. events.status from migration 003)
+            for later in LATER_MIGRATIONS:
+                rc, err = run_file(later, TEST_DB)
+                assert rc == 0, f"{later.name}: {err}"
+            info("behaviour and portal tests run after the later migrations: " + ", ".join(p.name for p in LATER_MIGRATIONS))
             behaviour_tests(workdir)
             portal_tests(workdir)
             fresh_install_tests(migrated)

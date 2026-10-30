@@ -9,7 +9,7 @@ http_response_code(410);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feature Unavailable – StudentHub</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=8">
+    <link rel="stylesheet" href="assets/css/global.css?v=9">
 </head>
 <body>
     <main style="max-width: 640px; margin: 60px auto;">

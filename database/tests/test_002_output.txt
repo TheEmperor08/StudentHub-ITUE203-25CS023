@@ -28,10 +28,10 @@ PASS  ... no index added, no data changed, 002 not recorded
 PASS  a database without migration 001 -> stopped ('apply migration 001 first'), nothing changed
 
 == Fresh install from database/studenthub_demo.sql
-PASS  studenthub_demo.sql imports into an empty database and records 001 and 002
-PASS  fresh-install structure is identical to a database upgraded with 001 + 002
+PASS  studenthub_demo.sql imports into an empty database and records 001, 002 and the later migrations
+PASS  fresh-install structure is identical to a database upgraded with 001 + 002 (+ the later migrations)
 PASS  migration 002 on a fresh install changes nothing
-PASS  importing the demo file into a database made by its earlier version adds the index and records 002
+PASS  importing the demo file into a database made by its earlier version is refused (points to the migrations), nothing changed
 PASS  all disposable databases removed
 
 Result: 22 passed, 0 failed, 22 checks

@@ -1,0 +1,42 @@
+StudentHub migration 003 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: fixture studenthub_v1_fixture.sql + migrations 001, 002
+
+== Migration 003 on the source
+INFO  events: 3, categories in use: Conference, Hackathon, Workshop
+PASS  migration 003 runs without errors
+PASS  structural changes: event_categories, events.status/updated_at, poster/status/category indexes and the category FK only
+PASS  events.status ENUM('open','closed') NOT NULL DEFAULT 'open' after capacity; updated_at nullable after created_at
+PASS  fk_events_category -> event_categories.name ON UPDATE CASCADE, ON DELETE RESTRICT
+PASS  every original event value is unchanged (titles, dates, times, locations, capacities, categories, posters)
+PASS  existing events are 'open' and have no update time yet
+PASS  event_categories = Practical 12's six categories + every category already used
+PASS  all other tables unchanged (students, users with password hashes, registrations, audit log, menu)
+PASS  schema_migrations records 003
+PASS  running it again changes nothing (idempotent)
+
+== Behaviour
+PASS  an event with an unknown category is refused (fk_events_category)
+PASS  an unknown status is refused or not stored as such
+PASS  two events cannot share one poster (uq_events_poster); several events without a poster are fine
+PASS  a category that is in use cannot be deleted (ON DELETE RESTRICT)
+PASS  renaming a category updates its events (ON UPDATE CASCADE)
+PASS  updated_at is set automatically when an event changes
+
+== Rollback (003_event_management.down.sql)
+PASS  rollback runs without errors
+PASS  structure after the rollback is identical to the structure before 003
+PASS  rollback keeps every original event value and removes the 003 record
+PASS  rollback can run twice
+PASS  migration 003 can be applied again after the rollback
+
+== Preconditions (nothing changes when one fails)
+PASS  two events with the same poster value -> stopped with a message, nothing changed
+PASS  a database without migrations 001/002 -> stopped ('apply migrations 001 and 002 first'), nothing changed
+
+== Fresh install from database/studenthub_demo.sql
+PASS  studenthub_demo.sql imports into an empty database and records 001, 002, 003 (+ later)
+PASS  fresh-install structure is identical to a database upgraded with the migrations
+PASS  migration 003 on a fresh install changes nothing
+PASS  all disposable databases removed
+
+Result: 27 passed, 0 failed, 27 checks
