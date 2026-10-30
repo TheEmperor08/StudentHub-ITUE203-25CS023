@@ -2,6 +2,7 @@
 *.docx
 ~$*.docx
 !Practical-*/PRAC_*_ITUE203_25CS023.docx
+!submission-reports/PRAC_*_ITUE203_25CS023*.docx
 
 # OS metadata
 .DS_Store
@@ -52,3 +53,6 @@ LOCAL_DEMO_CREDENTIALS.txt
 # Real database dumps (password hashes + personal records) - keep local, never publish
 /studenthub.sql
 Practical-15/studenthub.sql
+
+# Python bytecode of the test and report scripts
+__pycache__/

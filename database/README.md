@@ -214,6 +214,7 @@ Results (31 Oct 2026, PHP 8.2.12, MariaDB 10.4.32): fixture **87 / 87**, real pr
 database after migration (`--verify-live`) **24 / 24**. Output of the fixture run: `tests/test_001_output.txt`.
 Re-run after migration 002 and the Practical 11 changes: fixture **87 / 87** (the fresh-install comparison now applies
 the later migrations to the upgraded copy first), live `--verify-live` **24 / 24**.
+Latest run (complete run of Practical 15, after the regression checks added with Practicals 12 and 14): fixture **88 / 88**.
 
 ```bat
 python database\tests\test_002_unique_enrollment_no.py                          :: fixture + migration 001

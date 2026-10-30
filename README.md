@@ -43,6 +43,8 @@ StudentHub/
 ├── tools/create_demo_user.php    # CLI: create local accounts (password prompted)
 ├── tools/sync_practical15.py     # makes / verifies Practical-15/ as the snapshot of studenthub/
 ├── DEPLOYMENT.md             # Apache / production deployment notes
+├── submission-reports/       # Corrected / new practical reports (DOCX + PDF) for manual upload – see INDEX.md
+├── tools/reports/            # Generator of those reports (python-docx; code excerpts and screenshots from the repository)
 ├── tests/                    # Authentication + student-management tests (disposable databases) + optional Edge browser tests
 ├── evidence/practical-11-integration/  # Genuine Edge screenshots of the integrated student management (fictional records)
 ├── evidence/practical-12-integration/  # Genuine Edge screenshots of the integrated event management
@@ -120,9 +122,18 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 
 ---
 
+## 📝 Corrected Reports
+`submission-reports/` contains corrected reports for Practicals 5–13 and new reports for Practicals 14 and 15 (DOCX and PDF),
+describing each practical as part of the integrated portal with genuine screenshots from `evidence/` and the saved test
+results. `submission-reports/INDEX.md` lists which original report each file replaces. The original reports in the
+`Practical-N/` folders are unchanged; nothing was uploaded to Microsoft Teams – the files are for manual replacement after
+checking. Rebuild with `python tools/reports/build_reports.py --pdf` (needs python-docx, Pillow and Microsoft Word).
+
+---
+
 ## 🛡️ Security Notes
 * Passwords are hashed with bcrypt; no plaintext passwords or hashes are committed.
-* The main application and Practicals 8, 9, 10, 11, 13 and 14 use prepared statements (MySQLi or PDO) for queries with user input. Practical 12's event insert/update still uses `mysqli_real_escape_string()` (escaped, but not prepared) – listed as a remaining improvement.
+* The main application (all queries with user input) and Practicals 8–14 use prepared statements (MySQLi or PDO).
 * Output is escaped with `htmlspecialchars()`.
 * Student records are never deleted by the portal (soft delete only), and the CSV export prefixes cells that start with `=`, `+`, `-`, `@`, tab or carriage return with an apostrophe so spreadsheets do not run them as formulas.
 * The main portal checks a CSRF token on every POST, logs out only by POST, sends `Cache-Control: no-store`, `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` on signed-in pages, and redirects only to its own pages.

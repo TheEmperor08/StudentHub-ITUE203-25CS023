@@ -422,6 +422,9 @@ $recent_activity   = audit_list($conn, ["action" => "", "status" => "", "user" =
             border: 1px solid var(--bs-primary-border-subtle);
             box-shadow: 0 6px 20px rgba(79, 70, 229, 0.08);
         }
+        .badge code {
+            color: inherit;                 /* action names in audit badges keep the badge's text colour (readable on red) */
+        }
         .event-poster-preview {
             max-width: 220px;
             max-height: 160px;

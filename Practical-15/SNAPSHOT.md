@@ -2,14 +2,14 @@
 
 `Practical-15/` is an exact copy of the canonical application `studenthub/` (all files tracked by Git), made with
 `python tools/sync_practical15.py` and verified with `python tools/sync_practical15.py --check` and `tests/test_snapshot.py`.
-Base commit when the copy was made: `31ba32dd7529ceed9907dbdf0c65bfb83c391123` (the copied files may include changes committed together with this manifest).
+Base commit when the copy was made: `17e4726a55bb7ecbd974caeffc9745ba207eb944` (the copied files may include changes committed together with this manifest).
 
 56 files, SHA-256:
 
 ```
 28208aeddc1295281279ba8f7f2a7d73f41608a453c98626d4ee6dca78c5ef11  403.php
 f9c2db6c5981ba766b968765cf527ef40a6d0e30a0d9534577f75f4aaef28073  achievements.php
-ff354e9d8fc3b19ce08c854d6e82cb447a3a5d8932d1c87c3f98a57ad4c36e5c  admin_dashboard.php
+50f5222b25e50ad2abe2ee8ef7750bb3320869f29dce92dd0c9de722c19073f1  admin_dashboard.php
 42bff0e65ad6b1030f7da660941b6e484ec01197d52756e356aee002c2b2c05e  api/events.php
 5f8a507ad25e97ebe9e066bb61fff3430ac7ffb2b03178d744fc4ecff8f5e3b2  assets/css/auth.css
 e5ae52c09c0aae395a9e25379951b57f9f809f5c0d1cf295f9ad4e983fa1076e  assets/css/bootstrap-theme.css
