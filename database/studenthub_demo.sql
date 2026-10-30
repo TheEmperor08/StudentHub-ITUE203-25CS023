@@ -1,13 +1,27 @@
 -- StudentHub demo database (safe to publish)
--- Schema exported from the working studenthub_db. Contains NO user accounts, password hashes,
--- audit logs or real student records. All student rows except the owner are fictional (example.com).
+-- Schema of the working studenthub_db (including migration 001 - Practical 8 foundation) plus fictional demo rows.
+-- Contains NO user accounts, password hashes, audit logs or real student records. All student rows except the owner
+-- are fictional (example.com).
 -- Safe to re-run: tables use IF NOT EXISTS and rows use INSERT IGNORE (nothing is dropped).
 --
--- Import:  mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
---          mysql -u root studenthub_db < database/studenthub_demo.sql
--- Accounts: php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
+-- NEW database:      mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+--                    mysql -u root studenthub_db < database/studenthub_demo.sql
+-- EXISTING database created before migration 001: do not use this file; apply the migration instead:
+--                    mysql -u root studenthub_db < database/migrations/001_practical8_foundation.sql
+-- Accounts:          php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
+-- Details:           database/README.md
 
 SET NAMES utf8mb4;
+
+-- An older StudentHub database would be skipped by CREATE TABLE IF NOT EXISTS and keep its old structure: refuse it.
+DELIMITER //
+BEGIN NOT ATOMIC
+    IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students' AND COLUMN_NAME = 'user_id') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created before migration 001. Apply database/migrations/001_practical8_foundation.sql instead.';
+    END IF;
+END //
+DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -23,8 +37,11 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- students.user_id: optional link to the login account (one account per student record)
 CREATE TABLE IF NOT EXISTS `students` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
   `enrollment_no` varchar(20) DEFAULT NULL,
   `name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
@@ -34,19 +51,43 @@ CREATE TABLE IF NOT EXISTS `students` (
   `status` varchar(20) DEFAULT 'Active',
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `uq_students_user_id` (`user_id`),
+  CONSTRAINT `fk_students_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `chk_students_semester` CHECK (`semester` is null or `semester` between 1 and 8)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- events.event_time / events.capacity: NULL = not set (capacity NULL = no limit)
 CREATE TABLE IF NOT EXISTS `events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(150) NOT NULL,
   `event_date` date NOT NULL,
+  `event_time` time DEFAULT NULL,
   `location` varchar(150) NOT NULL,
+  `capacity` smallint(5) unsigned DEFAULT NULL,
   `description` text DEFAULT NULL,
   `category` varchar(50) NOT NULL,
   `poster` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_events_date` (`event_date`,`event_time`),
+  CONSTRAINT `chk_events_capacity` CHECK (`capacity` is null or `capacity` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- registrations: Practical 8's many-to-many table (one row per student per event)
+CREATE TABLE IF NOT EXISTS `registrations` (
+  `registration_id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `registered_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `status` enum('registered','attended','cancelled') NOT NULL DEFAULT 'registered',
+  PRIMARY KEY (`registration_id`),
+  UNIQUE KEY `uq_registrations_student_event` (`student_id`,`event_id`),
+  KEY `idx_registrations_event` (`event_id`),
+  CONSTRAINT `fk_registrations_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_registrations_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `menu_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) NOT NULL,
@@ -55,6 +96,8 @@ CREATE TABLE IF NOT EXISTS `menu_items` (
   `icon` varchar(50) DEFAULT 'bi-link',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- audit_logs.user_id: NULL for anonymous entries; set to NULL when the account is deleted (the username is kept)
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -65,7 +108,16 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   `user_agent` varchar(255) DEFAULT NULL,
   `status` varchar(20) DEFAULT 'SUCCESS',
   `created_at` timestamp NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `fk_audit_logs_user` (`user_id`),
+  CONSTRAINT `fk_audit_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `schema_migrations` (
+  `version` varchar(20) NOT NULL,
+  `description` varchar(200) NOT NULL,
+  `applied_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO `students` (`id`, `enrollment_no`, `name`, `email`, `course`, `gender`, `semester`, `status`) VALUES
@@ -95,3 +147,7 @@ INSERT IGNORE INTO `menu_items` (`id`, `title`, `link`, `min_role`, `icon`) VALU
 (8, 'Campus Event Manager',      'admin_dashboard.php?tab=events',  'admin', 'bi-calendar-plus'),
 (9, 'Asynchronous SPA Manager',  '../Practical-13/index.html',      'admin', 'bi-lightning-charge'),
 (10,'Security Audit Logs',       'admin_dashboard.php?tab=audits',  'admin', 'bi-journal-text');
+
+-- This structure already includes migration 001
+INSERT IGNORE INTO `schema_migrations` (`version`, `description`) VALUES
+('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK');

@@ -1,0 +1,119 @@
+StudentHub migration 001 tests (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: fixture studenthub_v1_fixture.sql
+
+== Load the pre-migration database into studenthub_mig001_test
+PASS  source has the pre-migration structure (no students.user_id, no registrations table)
+INFO  rows before: {'users': 7, 'students': 7, 'events': 3, 'menu_items': 3, 'audit_logs': 4}
+
+== Apply migration 001
+PASS  migration runs without error
+PASS  after migration: students.user_id int(11) NULL, placed after id
+PASS  after migration: UNIQUE uq_students_user_id (one account per student record)
+PASS  after migration: fk_students_user -> users.id ON DELETE SET NULL, ON UPDATE CASCADE
+PASS  after migration: CHECK chk_students_semester (NULL or 1-8)
+PASS  after migration: students.enrollment_no unchanged (varchar(20) NULL, no new index)
+PASS  after migration: students.semester keeps int(11) NULL DEFAULT 3
+PASS  after migration: events.event_time TIME NULL after event_date
+PASS  after migration: events.capacity SMALLINT UNSIGNED NULL
+PASS  after migration: CHECK chk_events_capacity (NULL or > 0)
+PASS  after migration: events.location unchanged (varchar(150) NOT NULL)
+PASS  after migration: index idx_events_date (event_date, event_time)
+PASS  after migration: registrations columns and signed INT(11) keys
+PASS  after migration: registrations PK, UNIQUE (student_id, event_id), index on event_id
+PASS  after migration: registrations FKs to students.id and events.id, ON DELETE/UPDATE CASCADE
+PASS  after migration: fk_audit_logs_user -> users.id ON DELETE SET NULL (audit_logs.user_id stays nullable)
+PASS  after migration: every foreign-key column has exactly the type of the key it references
+PASS  after migration: all original tables still exist (users, students, events, menu_items, audit_logs)
+PASS  after migration: all tables InnoDB / utf8mb4_unicode_ci
+PASS  after migration: schema_migrations records version 001 once
+PASS  all original rows and values unchanged (sha256 of every original column, incl. password hashes)
+PASS  registrations starts empty (no data invented)
+PASS  existing events get capacity NULL and event_time NULL (nothing invented)
+
+== Linking students to accounts
+PASS  students linked only through unique, verified e-mail matches with a student account (2 expected)
+PASS  no student record linked to an admin or editor account
+PASS  unmatched student records are kept (user_id NULL) and no account was created
+INFO  linked 2, student records without account 5, student accounts without linked record 2
+INFO  roles unchanged and distinct: [['admin', '1'], ['editor', '2'], ['student', '4']]
+
+== Running the migration again
+PASS  second run exits without error
+PASS  second run leaves the structure identical
+PASS  second run leaves all data and links identical
+
+== Rollback (down script) and re-apply
+PASS  rollback runs without error
+PASS  after rollback the structure is exactly the pre-migration structure
+PASS  after rollback all original data is unchanged
+PASS  rollback can run twice
+PASS  migration re-applies cleanly after rollback (same structure, same links)
+
+== Precondition stop (nothing changes when the data is not ready)
+PASS  audit_logs with user_id of a deleted account -> migration stops with a clear message
+PASS  ... and the database structure is unchanged
+PASS  a semester outside 1-8 -> migration stops, structure unchanged
+PASS  importing studenthub_demo.sql into a pre-migration database is refused (points to the migration)
+PASS  running the migration without selecting a database fails safely
+
+== Registrations: transactional capacity rule (disposable test records)
+PASS  register student 1 for the capacity-2 event -> registration id
+PASS  ... stored with status 'registered'
+PASS  registering the same student again -> 'duplicate'
+PASS  the database itself refuses a duplicate (UNIQUE student_id, event_id)
+PASS  second student fits, third student -> 'event_full' (capacity 2)
+PASS  seats taken = capacity (no overbooking)
+PASS  a cancelled registration frees its seat -> third student now fits
+PASS  the cancelled student cannot re-register while the event is full
+PASS  re-registering a cancelled registration reactivates the same row (no duplicate row)
+PASS  capacity NULL (legacy / not set) = no limit
+PASS  an Inactive student cannot register -> 'student_inactive'
+PASS  unknown student / unknown event -> 'student_not_found' / 'event_not_found'
+
+== Parallel registrations (8 processes, capacity 3)
+PASS  exactly 3 of 8 simultaneous registrations succeed, 5 get 'event_full'
+PASS  the event has exactly 3 registrations afterwards
+
+== CHECK constraints
+PASS  capacity 0 is refused (chk_events_capacity)
+PASS  semester 9 is refused (chk_students_semester)
+PASS  semester 0 is refused
+PASS  semester NULL (legacy) and 8 are accepted
+
+== Foreign keys and delete behaviour
+PASS  a registration for a missing student or event is refused (fk_registrations_*)
+PASS  an audit row for a missing account is refused by the database (fk_audit_logs_user)
+PASS  a student cannot be linked to a missing account (fk_students_user)
+PASS  one account cannot be linked to two student records (uq_students_user_id)
+PASS  deleting an event deletes its 3 registrations (ON DELETE CASCADE)
+PASS  deleting a student deletes that student's registrations (ON DELETE CASCADE)
+PASS  audit entry for an existing account keeps its user_id
+PASS  deleting a linked account keeps the student record and sets students.user_id to NULL (ON DELETE SET NULL)
+PASS  ... and keeps its audit entries with the username, user_id set to NULL
+PASS  ... and the student's registrations are kept
+PASS  log_audit() with the id of a deleted account (stale session) stores the entry with user_id NULL instead of failing
+PASS  log_audit() for an anonymous action (user_id NULL) still works
+
+== Existing portal pages against the migrated copy (PHP built-in server, DB_NAME=studenthub_mig001_test)
+PASS  tools/create_demo_user.php still creates accounts after the migration
+PASS  admin login -> Admin Console
+PASS  Admin Console tabs load (overview, students, events, users, audits)
+PASS  admin 'add student' still works (row stored with semester 4, user_id NULL)
+PASS  admin 'add event' still works (capacity and time stay NULL)
+PASS  admin 'delete event' still works and removes the event's registration (registered first, then deleted)
+PASS  admin 'delete student' still works
+PASS  student login -> dashboard
+PASS  all student pages load with status 200 and no PHP errors
+PASS  a student opening the Admin Console still gets the 403 page
+PASS  self-registration still creates the account and the student record (semester 3)
+INFO  new registrations are not linked yet (students.user_id = NULL); register.php will set the link in Practical 9
+PASS  no PHP warnings or errors in the server log
+
+== Fresh install from database/studenthub_demo.sql
+PASS  studenthub_demo.sql imports into an empty database
+PASS  fresh-install structure is identical to an upgraded database
+PASS  migration 001 on a fresh install changes nothing
+PASS  studenthub_demo.sql can be imported again without changes
+PASS  all disposable databases removed
+
+Result: 87 passed, 0 failed, 87 checks

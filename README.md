@@ -45,6 +45,7 @@ StudentHub/
    mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
    mysql -u root studenthub_db < database/studenthub_demo.sql
    ```
+   A `studenthub_db` created **before** the Practical 8 integration is upgraded with `database/migrations/001_practical8_foundation.sql` instead (back up first; see `database/README.md`).
 2. **Create accounts** (no passwords are stored in this repository; you are prompted for one):
    ```bash
    php tools/create_demo_user.php --db=studenthub_db --username=admin01 --email=admin01@example.com --role=admin
