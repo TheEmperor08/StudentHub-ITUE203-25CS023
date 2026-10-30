@@ -187,3 +187,12 @@
     .slide-text h3 { font-size: 1.05rem; }
     .notification-banner { padding: 10px 48px 10px 16px; justify-content: flex-start; text-align: left; }
 }
+
+/* Logout is a CSRF-protected POST form; the button looks like the other header links */
+.hero-nav .logout-form { margin: 0; display: inline-flex; }
+.hero-nav .hero-nav-button {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 0; border-radius: 999px;
+    background: none; box-shadow: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 0.9rem;
+    color: rgba(224, 231, 255, 0.85);
+}
+.hero-nav .hero-nav-button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }

@@ -41,49 +41,59 @@ StudentHub/
 ├── Practical-1 … Practical-15/
 ├── database/studenthub_demo.sql  # Safe demo schema + data (no accounts, no hashes)
 ├── tools/create_demo_user.php    # CLI: create local accounts (password prompted)
+├── tools/sync_practical15.py     # makes / verifies Practical-15/ as the snapshot of studenthub/
+├── DEPLOYMENT.md             # Apache / production deployment notes
 ├── tests/                    # Authentication + student-management tests (disposable databases) + optional Edge browser tests
 ├── evidence/practical-11-integration/  # Genuine Edge screenshots of the integrated student management (fictional records)
 ├── evidence/practical-12-integration/  # Genuine Edge screenshots of the integrated event management
 ├── evidence/practical-13-integration/  # Genuine Edge screenshots of the Event Finder (Fetch API)
 ├── evidence/practical-14-integration/  # Genuine Edge screenshots of the admin dashboard
 ├── evidence/practical-05-07-integration/  # Genuine Edge screenshots of Practicals 5-7 in the portal
+├── evidence/practical-15-integration/     # End-to-end Edge scenario through the final portal (17 workflows)
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
 
 ---
 
-## 💻 Local Setup
-**Requirements:** PHP 8.x with `mysqli` and `pdo_mysql`, MySQL 8 or MariaDB 10.4+.
+## 💻 Local Setup (Windows + XAMPP)
+**Requirements:** XAMPP with PHP 8.1+ (tested: 8.2.12, extensions `mysqli`, `fileinfo`, `mbstring`) and MariaDB 10.4+ / MySQL 8
+(tested: MariaDB 10.4.32). Python 3 is needed only for the tests; Playwright + Microsoft Edge only for the browser tests.
 
-1. **Main application database**
-   ```bash
-   mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-   mysql -u root studenthub_db < database/studenthub_demo.sql
+1. **Start MySQL** in the XAMPP Control Panel.
+2. **Create the database** (new installation – schema with migrations 001–005 and fictional demo rows, no accounts):
+   ```bat
+   C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+   C:\xampp\mysql\bin\mysql.exe -u root studenthub_db < database\studenthub_demo.sql
    ```
-   A `studenthub_db` created **before** the Practical 8 integration is upgraded with `database/migrations/001_practical8_foundation.sql` and then `002_unique_enrollment_no.sql` instead (back up first; see `database/README.md`). A database already at migration 001 needs only migration 002.
-2. **Create accounts** (no passwords are stored in this repository; you are prompted for one):
-   ```bash
-   php tools/create_demo_user.php --db=studenthub_db --username=admin01 --email=admin01@example.com --role=admin
+   **Existing database:** back it up (`mysqldump`) and apply only the migrations it is missing, in order –
+   `database/migrations/001_…` to `005_…` (`SELECT * FROM schema_migrations` shows what is applied; details in `database/README.md`).
+3. **Create the first administrator** (no passwords are stored in the repository; you are prompted for one):
+   ```bat
+   C:\xampp\php\php.exe tools\create_demo_user.php --db=studenthub_db --username=admin01 --email=admin01@example.com --role=admin
    ```
-   Students can also self-register at `studenthub/register.php`.
-3. **Practical databases** (each practical uses its own database; `studenthub_db` is never touched):
-   ```bash
-   mysql -u root < Practical-8/schema.sql             # practical8_db
-   mysql -u root < Practical-10/user_registration.sql # user_registration (Practicals 9, 10, 14; 11 and 13 log in here)
-   mysql -u root < Practical-14/schema.sql
-   mysql -u root < Practical-11/schema.sql            # student_db (Practicals 11, 13)
-   mysql -u root < Practical-13/schema.sql
-   mysql -u root < Practical-12/schema.sql            # event_db
+   Use `--role=editor` or `--role=student` for further accounts. Students normally register themselves at `register.php`,
+   which creates the account and its linked student record together.
+4. **Run** the portal with PHP's built-in server and open `http://localhost:8000/`:
+   ```bat
+   C:\xampp\php\php.exe -S localhost:8000 -t studenthub
    ```
-   Create practical accounts with the same tool, e.g. `--db=user_registration` or `--db=event_db`.
-4. **Run**
-   ```bash
-   php -S localhost:8000
-   ```
-   Open `http://localhost:8000/` (main portal) or `http://localhost:8000/Practical-N/…`.
+   (Or serve the repository root and open `http://localhost:8000/studenthub/`; the root `index.php` redirects there.)
 
-Database credentials default to `root` with an empty password on `localhost`; override with the `DB_HOST`, `DB_USER`, `DB_PASS` and `DB_NAME` environment variables. Dates use the `Asia/Kolkata` time zone (the same as MariaDB on the XAMPP server); override with `STUDENTHUB_TIMEZONE`.
+**Configuration** (environment variables, all optional):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` | `localhost`, `root`, *(empty)*, `studenthub_db` | database connection (there is no fallback database) |
+| `STUDENTHUB_SESSION_TIMEOUT` | `1800` | inactivity timeout in seconds |
+| `STUDENTHUB_TIMEZONE` | `Asia/Kolkata` | time zone for dates (should match the database server) |
+| `STUDENTHUB_UPLOAD_DIR` | `studenthub/uploads` | folder for event posters (must not be reachable over HTTP) |
+
+**Tests:** `python tests\run_all.py` runs every database and HTTP suite and the Practical 15 snapshot check on disposable
+databases; add `--browser <python-with-playwright>` for the Microsoft Edge suites. Deployment on Apache: see `DEPLOYMENT.md`.
+
+**Practical folders:** `Practical-1/` … `Practical-14/` keep the original standalone versions and their own databases as
+historical evidence (their READMEs explain how to run them); `Practical-15/` is the verified snapshot of `studenthub/`.
 
 ---
 
@@ -106,7 +116,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 12 | Event uploads with validation, RBAC | Integrated into `studenthub/` (Admin Console → Campus Events, Campus Events page) and tested (`tests/test_events.py`, Edge screenshots in `evidence/practical-12-integration/`) |
 | 13 | Fetch/AJAX CRUD API with RBAC | Integrated into `studenthub/` (Event Finder + `api/events.php`) and tested (`tests/test_api.py`, Edge screenshots in `evidence/practical-13-integration/`) |
 | 14 | Admin dashboard, audit logging, 403 | Integrated into `studenthub/` (Admin Console overview, role-based navigation, account status, audit filters) and tested (`tests/test_dashboard.py`, Edge screenshots in `evidence/practical-14-integration/`) |
-| 15 | Integrated portal (copy of `studenthub/`) | Tested via the main application suite |
+| 15 | Integrated portal (copy of `studenthub/`) | Final snapshot of `studenthub/` (verified byte-for-byte, `tests/test_snapshot.py`); end-to-end Edge test of 17 workflows (`tests/browser_e2e.py`, `evidence/practical-15-integration/`) |
 
 ---
 

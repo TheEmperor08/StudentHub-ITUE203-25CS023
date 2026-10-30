@@ -430,3 +430,66 @@ ul li { margin-bottom: 6px; }
     .stat-grid { grid-template-columns: minmax(0, 1fr); }
     .mobile-brand span:last-child { font-size: 0.98rem; }
 }
+
+/* Logout is a POST form (CSRF-protected); its button looks like the sidebar links */
+nav#app-nav .logout-form { margin: 0; }
+nav#app-nav ul button.nav-logout {
+    position: relative; display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 9px 12px; border: 0; border-radius: 10px; background: none; box-shadow: none; cursor: pointer;
+    color: rgba(226, 232, 255, 0.78); font: inherit; font-weight: 500; font-size: 0.92rem; text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+nav#app-nav ul button.nav-logout i { font-size: 1.05rem; width: 20px; text-align: center; color: rgba(165, 180, 252, 0.75); }
+nav#app-nav ul button.nav-logout:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.flash-message { margin: 0 0 18px; }
+
+/* Campus events (Practical 12): poster thumbnail and the register / cancel buttons */
+.event-poster { width: 120px; height: 120px; flex-shrink: 0; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-3); }
+.event-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.event-actions form { margin: 0; }
+@media (max-width: 600px) { .event-poster { width: 72px; height: 72px; } }
+
+/* Event Finder (Practical 13): toolbar, loading / message states and the event dialog */
+.live-toolbar { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(140px, 1fr)) auto; gap: 12px; align-items: end; margin: 8px 0 16px; }
+.live-toolbar label { display: block; margin-bottom: 4px; }
+.live-toolbar__action { display: flex; }
+.live-message { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.live-message p { margin: 0; }
+.live-loading { display: flex; align-items: center; gap: 10px; padding: 14px; color: var(--text-muted); }
+.live-loading[hidden], .live-message[hidden] { display: none; }        /* display: flex must not override the hidden attribute */
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.live-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.live-error p { margin: 0; flex: 1; }
+.btn-danger-text { color: var(--danger); }
+input[type="time"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-dark); font: inherit; }
+#event-dialog { width: min(680px, calc(100vw - 32px)); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; background: var(--card-bg); color: var(--text-dark); box-shadow: var(--shadow-lg, 0 20px 50px rgba(15, 23, 42, 0.25)); }
+#event-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+#event-dialog h2 { margin-top: 0; }
+.dialog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.dialog-grid p { margin: 0 0 10px; }
+.dialog-grid label { display: block; margin-bottom: 4px; }
+.dialog-grid .span-2 { grid-column: 1 / -1; }
+.field-error { display: block; min-height: 1em; margin-top: 4px; font-size: 0.82rem; color: var(--danger); }
+.dialog-note { font-size: 0.85rem; color: var(--text-muted); }
+.dialog-actions { display: flex; gap: 10px; }
+@media (max-width: 900px) { .live-toolbar { grid-template-columns: 1fr 1fr; } .dialog-grid { grid-template-columns: 1fr; } }
+
+/* Help & Contact (Practical 7): field messages and the honeypot field (hidden from people, visible to simple bots) */
+fieldset .field-error { display: block; margin-top: 4px; font-size: 0.82rem; color: var(--danger); }
+.hp-field { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Campus Data Explorer (Practical 6) */
+.explorer-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.explorer-tabs .tab-btn { background: var(--surface-2); color: var(--text-dark); box-shadow: none; border: 1px solid var(--border); }
+.explorer-tabs .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.explorer-toolbar { grid-template-columns: minmax(200px, 2fr) repeat(2, minmax(160px, 1fr)); }
+#status-container .loading, #status-container .error-message { padding: 14px; border-radius: 10px; margin-bottom: 12px; }
+#status-container .loading { background: var(--surface-2); color: var(--text-muted); }
+#status-container .error-message { background: var(--danger-soft); color: var(--danger); }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.pagination-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pagination-bar button { padding: 6px 12px; background: var(--surface-2); color: var(--text-dark); box-shadow: none; border: 1px solid var(--border); }
+.pagination-bar button.active { background: var(--primary); color: #fff; }

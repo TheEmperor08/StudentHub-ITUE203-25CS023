@@ -1,0 +1,22 @@
+Suite                                                       passed  failed   time
+Practical 8 – migration 001 and portal                          88       0    13s
+Practical 11 – migration 002                                    22       0     6s
+Practical 12 – migration 003                                    27       0     6s
+Practical 14 – migration 004                                    18       0     5s
+Practical 7 – migration 005                                     14       0     4s
+Practicals 9/10 – registration, login, sessions, RBAC          132       0    22s
+Practical 11 – student management                              170       0    16s
+Practical 12 – events, posters, registration                    94       0    13s
+Practical 13 – JSON API, Event Finder                           72       0    10s
+Practical 14 – admin dashboard                                  36       0     7s
+Practicals 5–7 – validation, Data Explorer, inquiries           40       0     5s
+Practical 15 – snapshot                                          5       0    33s
+Edge – registration, login, RBAC                                14       0     5s
+Edge – student management                                       16       0     7s
+Edge – inactive student login                                   13       0     6s
+Edge – event management                                         16       0    11s
+Edge – Event Finder (Fetch API)                                 16       0    13s
+Edge – admin dashboard                                          15       0     9s
+Edge – Practicals 5–7                                           14       0     8s
+Edge – end-to-end (Practical 15)                                17       0    14s
+TOTAL                                                          839       0

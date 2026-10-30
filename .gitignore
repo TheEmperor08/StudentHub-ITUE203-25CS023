@@ -34,6 +34,7 @@ Practical-12/uploads/1791537429_6ac8b1155ae37.jpeg
 Practical-12/uploads/1792389534_6ad5b19e75e32.jpg
 Practical-15/uploads/*
 !Practical-15/uploads/.gitkeep
+!Practical-15/uploads/.htaccess
 studenthub/uploads/*
 !studenthub/uploads/.gitkeep
 !studenthub/uploads/.htaccess

@@ -1,19 +1,17 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 require_once "student_profile.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view achievements.");
-    exit();
-}
+$current_user = require_permission("portal.view");
 
 $profile = get_student_profile($conn);
 
 $msg   = "";
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $event = trim($_POST["event"] ?? "");
     $date  = trim($_POST["date"] ?? "");
     $parsed_date = DateTime::createFromFormat("!Y-m-d", $date);
@@ -38,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Achievements – <?= htmlspecialchars($profile['name']) ?> (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -108,6 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <h2><i class="bi bi-plus-circle" aria-hidden="true"></i> Submit New Hackathon or Competition Record</h2>
             <p>Details are noted in the activity log; certificate uploads are not available yet.</p>
             <form action="achievements.php" method="POST" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                 <fieldset>
                     <legend>Add Achievement Details</legend>
                     <p>

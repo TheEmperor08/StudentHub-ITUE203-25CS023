@@ -2,7 +2,6 @@
 require_once __DIR__ . "/student_profile.php";
 
 $current_page = basename($_SERVER['PHP_SELF']);
-$is_admin = (($_SESSION['role'] ?? '') === 'admin');
 $nav_profile = (isset($conn) && isset($_SESSION['user_id'])) ? get_student_profile($conn) : null;
 
 // Grouped navigation: [file, icon, label, pages that mark it active]
@@ -20,14 +19,32 @@ $nav_groups = [
     ],
     "Campus" => [
         ["notifications.php", "bi-megaphone",        "Notices",       ["notifications.php"]],
+        ["events_live.php",   "bi-lightning-charge", "Event Finder",  ["events_live.php"]],
+        ["data_explorer.php", "bi-filetype-json",    "Data Explorer", ["data_explorer.php"]],
         ["directory.php",     "bi-people",           "Directory",     ["directory.php"]],
         ["contact.php",       "bi-life-preserver",   "Help & Contact", ["contact.php"]],
     ],
     "Account" => [
         ["index.php",         "bi-house",            "Home Portal",   ["index.php"]],
-        ["logout.php",        "bi-box-arrow-right",  "Logout",        []],
     ],
 ];
+
+// Role-based links from menu_items (Practical 14) that the groups above do not contain yet – e.g. the Admin Console tabs
+// for an administrator. A user only gets the rows up to their own role; the pages still check the permission themselves.
+require_once __DIR__ . "/includes/navigation.php";
+$nav_role = in_array($_SESSION['role'] ?? '', ['admin', 'editor', 'student'], true) ? $_SESSION['role'] : null;
+if ($nav_role !== null && isset($conn)) {
+    $present = array_merge(...array_map(fn ($links) => array_column($links, 0), array_values($nav_groups)));
+    $shortcuts = [];
+    foreach (menu_for_role($conn, $nav_role) as $item) {
+        if (!in_array($item['link'], $present, true)) {
+            $shortcuts[] = [$item['link'], $item['icon'], $item['title'], [$item['link']]];
+        }
+    }
+    if ($shortcuts) {
+        $nav_groups = array_slice($nav_groups, 0, 3, true) + ["Shortcuts" => $shortcuts] + array_slice($nav_groups, 3, null, true);
+    }
+}
 ?>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
@@ -69,10 +86,14 @@ $nav_groups = [
         <ul>
             <?php foreach ($links as [$href, $icon, $label, $active_pages]): ?>
                 <?php $is_active = in_array($current_page, $active_pages, true); ?>
-                <li><a href="<?= $href ?>"<?= $is_active ? ' class="active" aria-current="page"' : '' ?>><i class="bi <?= $icon ?>" aria-hidden="true"></i><span><?= $label ?></span></a></li>
+                <li><a href="<?= e($href) ?>"<?= $is_active ? ' class="active" aria-current="page"' : '' ?>><i class="bi <?= e($icon) ?>" aria-hidden="true"></i><span><?= e($label) ?></span></a></li>
             <?php endforeach; ?>
-            <?php if ($group === "Account" && $is_admin): ?>
-                <li><a href="admin_dashboard.php" class="nav-admin"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>Admin Console</span></a></li>
+            <?php if ($group === "Account"): ?>
+                <?php if (isset($_SESSION["user_id"])): ?>
+                    <li><?= logout_button("nav-logout", "Logout") ?></li>
+                <?php else: ?>
+                    <li><a href="login.php"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Sign in</span></a></li>
+                <?php endif; ?>
             <?php endif; ?>
         </ul>
     <?php endforeach; ?>

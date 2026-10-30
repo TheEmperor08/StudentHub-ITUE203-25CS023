@@ -165,6 +165,7 @@ def main():
             # Harsh's page was loaded before Aditi took the last seat: his Register button is now stale
             harsh.locator("article", has_text="Git & GitHub Workshop").locator("button:has-text('Register')").click()
             harsh.wait_for_selector(".live-message.alert-error")
+            harsh.wait_for_selector("article:has-text('Git & GitHub Workshop') >> text=Event full")    # the list refresh after the error
             check("the stale Register button for the now-full workshop -> API 409 'The event is full.' shown as an error; list refreshed to 'Event full'",
                   "The event is full." in harsh.inner_text("#live-message")
                   and harsh.locator("article", has_text="Git & GitHub Workshop").locator("text=Event full").count() == 1)

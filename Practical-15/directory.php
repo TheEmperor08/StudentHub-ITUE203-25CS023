@@ -1,13 +1,11 @@
 <?php
-session_start();
 require_once "db.php";
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view campus directory.");
-    exit();
-}
+require_once __DIR__ . "/includes/auth.php";
+$current_user = require_permission("portal.view");
 
 $students = [];
-$res = $conn->query("SELECT enrollment_no, name, email, course, semester, gender FROM students ORDER BY id ASC");
+// Deactivated (soft-deleted) records stay in the database but are not listed in the directory
+$res = $conn->query("SELECT enrollment_no, name, email, course, semester, gender FROM students WHERE COALESCE(TRIM(status), '') <> 'Inactive' ORDER BY id ASC");
 if ($res) {
     while ($r = $res->fetch_assoc()) {
         $students[] = $r;
@@ -20,7 +18,7 @@ if ($res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Data Directory – StudentHub</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>

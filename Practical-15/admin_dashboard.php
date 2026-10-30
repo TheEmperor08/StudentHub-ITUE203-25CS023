@@ -1,273 +1,299 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
+require_once __DIR__ . "/includes/student_management.php";
+require_once __DIR__ . "/includes/event_management.php";
+require_once __DIR__ . "/includes/dashboard.php";
+require_once __DIR__ . "/includes/navigation.php";
+require_once __DIR__ . "/includes/inquiries.php";
 require_once "audit_logger.php";
 
-// 1. RBAC Authentication Check
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please sign in with administrator credentials.");
+// 1-2. Signed in, not timed out, account still exists, role holds 'admin.console' – otherwise login page or HTTP 403
+$current_user = require_permission("admin.console");
+
+// Confirmation text for a delete button: JSON-encoded (quotes become \u0027) and then HTML-escaped for the attribute
+function confirm_js(string $text): string
+{
+    return e("return confirm(" . json_encode($text, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ");");
+}
+
+// Form helpers (student and event forms): Bootstrap error class, ARIA attributes and the message under a field
+function form_field_class(array $form, string $field): string
+{
+    return isset($form["errors"][$field]) ? " is-invalid" : "";
+}
+
+function form_field_aria(array $form, string $field, string $help_id = ""): string
+{
+    $ids = trim((isset($form["errors"][$field]) ? "$field-error " : "") . $help_id);
+    return (isset($form["errors"][$field]) ? ' aria-invalid="true"' : "") . ($ids !== "" ? ' aria-describedby="' . $ids . '"' : "");
+}
+
+function form_field_error(array $form, string $field): string
+{
+    return isset($form["errors"][$field]) ? '<div class="invalid-feedback d-block" id="' . $field . '-error">' . e($form["errors"][$field]) . "</div>" : "";
+}
+
+// Student list options (search, course, semester, status, page) – shared by the table and the CSV export
+$student_courses = student_courses($conn);
+$student_filters = student_filters($_GET, $student_courses);
+
+// Event list options (search, category, status, upcoming/past, page)
+$event_categories = event_categories($conn);
+$event_filters    = event_filters($_GET, $event_categories);
+
+// 3. CSV export of the filtered student records (read-only; admins only)
+if (($_GET["export"] ?? "") === "csv") {
+    require_permission("students.manage");
+    $export_rows = student_list($conn, $student_filters);
+    log_audit($conn, $current_user["id"], $current_user["username"], "EXPORT_CSV",
+        "Exported " . count($export_rows) . " student records to CSV (course: " . ($student_filters["course"] ?: "all")
+        . ", semester: " . ($student_filters["semester"] ?: "all") . ", status: " . ($student_filters["status"] ?: "all")
+        . ($student_filters["q"] !== "" ? ", with a search" : "") . ").", "SUCCESS");
+    send_students_csv($export_rows);
     exit();
 }
 
-// 2. RBAC Authorization Check (Admins Only)
-if (($_SESSION["role"] ?? "") !== "admin") {
-    log_audit(
-        $conn,
-        $_SESSION["user_id"],
-        $_SESSION["username"] ?? "Unknown",
-        "ACCESS_DENIED",
-        "Unauthorized role='" . ($_SESSION["role"] ?? "guest") . "' attempted to access admin_dashboard.php",
-        "SECURITY_BLOCK"
-    );
-    include "403.php";
-    exit();
-}
-
-// 3. Handle CSV Export for Students
-if (isset($_GET["export"]) && $_GET["export"] === "csv") {
-    log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "EXPORT_CSV", "Admin exported student records to CSV.", "SUCCESS");
-    header("Content-Type: text/csv; charset=utf-8");
-    header("Content-Disposition: attachment; filename=StudentHub_Students_" . date("Ymd_His") . ".csv");
-    $output = fopen("php://output", "w");
-    fputcsv($output, ["ID", "Enrollment No", "Name", "Email", "Course", "Semester", "Gender", "Status", "Created At"]);
-    $csv_res = $conn->query("SELECT id, enrollment_no, name, email, course, semester, gender, status, created_at FROM students ORDER BY id ASC");
-    if ($csv_res) {
-        while ($row = $csv_res->fetch_assoc()) {
-            fputcsv($output, $row);
-        }
-    }
-    fclose($output);
-    exit();
-}
-
-$success_msg = $_GET["success"] ?? "";
-$error_msg   = $_GET["error"] ?? "";
+$flash       = take_flash();
+$success_msg = ($flash && $flash["type"] === "success") ? $flash["message"] : "";
+$error_msg   = ($flash && $flash["type"] === "error") ? $flash["message"] : "";
 $current_tab = $_GET["tab"] ?? "overview";
+$student_form    = null;   // add/edit form in the Student Records tab: mode, id, record, values, errors
+$student_confirm = null;   // record waiting for the deactivation confirmation
+$event_form      = null;   // add/edit form in the Campus Events tab
+$event_confirm   = null;   // event waiting for the delete confirmation
+$event_regs_view = null;   // registrations of one event
 
-// 4. Handle POST Actions (Add Student, Add Event)
+// 4. Handle POST Actions (Add Student, Add Event) – every POST must carry the CSRF token
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $action = $_POST["action"] ?? "";
 
-    if ($action === "add_student") {
-        $enrollment = trim($_POST["enrollment_no"] ?? "");
-        $name       = trim($_POST["name"] ?? "");
-        $email      = trim($_POST["email"] ?? "");
-        $course     = trim($_POST["course"] ?? "");
-        $semester   = (int)($_POST["semester"] ?? 1);
-        $gender     = trim($_POST["gender"] ?? "Male");
-
-        if (empty($name) || empty($email) || empty($course)) {
-            header("Location: admin_dashboard.php?tab=students&error=Name, Email, and Course are required fields.");
-            exit();
-        } else {
-            $stmt = $conn->prepare("INSERT INTO students (enrollment_no, name, email, course, semester, gender, status) VALUES (?, ?, ?, ?, ?, ?, 'Active')");
-            if ($stmt) {
-                $stmt->bind_param("ssssis", $enrollment, $name, $email, $course, $semester, $gender);
-                if ($stmt->execute()) {
-                    log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "CREATE_STUDENT", "Added student: $name ($email)", "SUCCESS");
-                    header("Location: admin_dashboard.php?tab=students&success=Student successfully registered.");
-                    exit();
-                } else {
-                    header("Location: admin_dashboard.php?tab=students&error=" . urlencode($stmt->error));
-                    exit();
-                }
-            }
+    // Student records (Practical 11): add, edit, soft delete and reactivation – admins only (students.manage)
+    if (in_array($action, ["add_student", "update_student", "deactivate_student", "reactivate_student"], true)) {
+        require_permission("students.manage");
+        $current_tab = "students";
+        $target_id = student_id_from($_POST["id"] ?? "");
+        $record    = $target_id > 0 ? find_student_record($conn, $target_id) : null;
+        if ($action !== "add_student" && $record === null) {
+            flash("error", "That student record was not found."); redirect("admin_dashboard.php?tab=students");
         }
-    }
-
-    if ($action === "add_event") {
-        $title       = trim($_POST["title"] ?? "");
-        $category    = trim($_POST["category"] ?? "Academic");
-        $event_date  = trim($_POST["event_date"] ?? date("Y-m-d"));
-        $location    = trim($_POST["location"] ?? "Campus Auditorium");
-        $description = trim($_POST["description"] ?? "");
-        $poster_path = null;
-
-        // Poster upload handling
-        if (isset($_FILES["poster"]) && $_FILES["poster"]["error"] === UPLOAD_ERR_OK) {
-            $file_tmp  = $_FILES["poster"]["tmp_name"];
-            $file_name = basename($_FILES["poster"]["name"]);
-            $file_size = $_FILES["poster"]["size"];
-            $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-            $allowed   = ["jpg", "jpeg", "png", "webp", "gif"];
-
-            if (!in_array($file_ext, $allowed)) {
-                header("Location: admin_dashboard.php?tab=events&error=Invalid image format. Allowed: JPG, PNG, WEBP.");
-                exit();
-            } elseif ($file_size > 2 * 1024 * 1024) {
-                header("Location: admin_dashboard.php?tab=events&error=File exceeds 2MB limit.");
-                exit();
+        if ($action === "add_student" || $action === "update_student") {
+            $existing = $action === "update_student" ? $record : null;
+            [$clean, $errors] = check_student_record($conn, $_POST, $student_courses, $existing, $existing ? $target_id : 0);
+            $result = $errors ? ["errors" => $errors] : save_student_record($conn, $clean, $existing ? $target_id : null);
+            if (isset($result["errors"])) {
+                http_response_code(422);
+                $student_form = ["mode" => $existing ? "edit" : "add", "id" => $target_id, "record" => $existing, "errors" => $result["errors"],
+                                 "values" => array_map(fn ($field) => is_string($_POST[$field] ?? null) ? $_POST[$field] : "", array_combine(STUDENT_FIELDS, STUDENT_FIELDS))];
             } else {
-                $upload_dir = __DIR__ . "/uploads/";
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
-                }
-                $new_filename = "event_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $file_ext;
-                $destination  = $upload_dir . $new_filename;
-                if (move_uploaded_file($file_tmp, $destination)) {
-                    $poster_path = "uploads/" . $new_filename;
-                }
+                $number = $result["enrollment_no"] ?? "no enrollment number";
+                log_audit($conn, $current_user["id"], $current_user["username"], $existing ? "UPDATE_STUDENT" : "CREATE_STUDENT",
+                    ($existing ? "Updated" : "Added") . " student record ID {$result["id"]} ($number)", "SUCCESS");
+                flash("success", $existing ? "Student “{$clean["name"]}” ($number) was updated."
+                                           : "Student “{$clean["name"]}” was added with enrollment number $number.");
+                redirect("admin_dashboard.php?tab=students");
             }
-        }
-
-        if (empty($title)) {
-            header("Location: admin_dashboard.php?tab=events&error=Event title is required.");
-            exit();
         } else {
-            $stmt = $conn->prepare("INSERT INTO events (title, category, event_date, location, description, poster) VALUES (?, ?, ?, ?, ?, ?)");
-            if ($stmt) {
-                $stmt->bind_param("ssssss", $title, $category, $event_date, $location, $description, $poster_path);
-                if ($stmt->execute()) {
-                    log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "CREATE_EVENT", "Created campus event: $title", "SUCCESS");
-                    header("Location: admin_dashboard.php?tab=events&success=Campus event published successfully.");
-                    exit();
-                } else {
-                    header("Location: admin_dashboard.php?tab=events&error=" . urlencode($stmt->error));
-                    exit();
-                }
+            $activate = $action === "reactivate_student";
+            $label    = "“{$record["name"]}” (" . ($record["enrollment_no"] ?: "no enrollment number") . ")";
+            if (set_student_status($conn, $target_id, $activate)) {
+                log_audit($conn, $current_user["id"], $current_user["username"], $activate ? "REACTIVATE_STUDENT" : "DEACTIVATE_STUDENT",
+                    ($activate ? "Reactivated" : "Deactivated (soft delete)") . " student record ID $target_id (" . ($record["enrollment_no"] ?: "no enrollment number") . ")", "SUCCESS");
+                flash("success", $activate ? "Student $label was reactivated."
+                                           : "Student $label was deactivated. The record, its account link and its event registrations are kept; a linked student account can no longer sign in.");
+            } else {
+                flash("error", "Student $label is already " . ($activate ? "active." : "inactive."));
             }
-        }
-    }
-}
-
-// 5. Handle GET Actions (Delete Student, Delete Event, Delete User)
-if (isset($_GET["action"])) {
-    $get_action = $_GET["action"];
-    $target_id  = (int)($_GET["id"] ?? 0);
-
-    if ($get_action === "delete_student" && $target_id > 0) {
-        $stmt = $conn->prepare("DELETE FROM students WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $target_id);
-            $stmt->execute();
-            log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_STUDENT", "Deleted student ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=students&success=Student record deleted.");
-            exit();
+            redirect("admin_dashboard.php?tab=students");
         }
     }
 
-    if ($get_action === "delete_event" && $target_id > 0) {
-        // Fetch poster file to unlink
-        $p_stmt = $conn->prepare("SELECT poster FROM events WHERE id = ?");
-        if ($p_stmt) {
-            $p_stmt->bind_param("i", $target_id);
-            $p_stmt->execute();
-            $res = $p_stmt->get_result();
-            if ($row = $res->fetch_assoc()) {
-                if (!empty($row["poster"]) && file_exists(__DIR__ . "/" . $row["poster"])) {
-                    @unlink(__DIR__ . "/" . $row["poster"]);
-                }
+    // Campus events (Practical 12): add, edit and delete with a validated poster upload – admins only (events.manage)
+    if (in_array($action, ["add_event", "update_event", "delete_event"], true)) {
+        require_permission("events.manage");
+        $current_tab  = "events";
+        $target_id    = event_id_from($_POST["id"] ?? "");
+        $event_record = $target_id > 0 ? find_event($conn, $target_id) : null;
+        if ($action !== "add_event" && $event_record === null) {
+            flash("error", "That event was not found."); redirect("admin_dashboard.php?tab=events");
+        }
+        if ($action === "delete_event") {
+            $deleted = delete_event($conn, $target_id);
+            if ($deleted["ok"]) {
+                delete_poster_file($conn, $deleted["poster"]);
+                log_audit($conn, $current_user["id"], $current_user["username"], "DELETE_EVENT", "Deleted event ID $target_id ({$event_record["title"]})", "SUCCESS");
+                flash("success", "Event “{$event_record["title"]}” was deleted.");
+            } else {
+                flash("error", $deleted["error"]);
             }
-            $p_stmt->close();
+            redirect("admin_dashboard.php?tab=events");
         }
+        $existing = $action === "update_event" ? $event_record : null;
+        [$clean, $errors] = validate_event($_POST, $event_categories, $existing);
+        $poster = validate_poster($_FILES["poster"] ?? null);
+        if (!$poster["ok"] && !$poster["none"]) {
+            $errors["poster"] = $poster["error"];
+            log_audit($conn, $current_user["id"], $current_user["username"], "UPLOAD_REJECTED",
+                "Poster rejected for " . ($existing ? "event ID $target_id" : "a new event") . ": " . $poster["error"], "FAILED");
+        }
+        $stored = null;
+        if (!$errors && $poster["ok"] && ($stored = store_poster($poster)) === null) {
+            $errors["poster"] = "The poster could not be saved. Please try again.";
+        }
+        $saved = $errors ? ["errors" => $errors] : save_event($conn, $clean, $existing ? $target_id : null, $stored);
+        if (isset($saved["errors"])) {
+            discard_new_poster($stored);
+            http_response_code(422);
+            $event_form = ["mode" => $existing ? "edit" : "add", "id" => $target_id, "record" => $existing, "errors" => $saved["errors"],
+                           "values" => array_map(fn ($field) => is_string($_POST[$field] ?? null) ? $_POST[$field] : "", array_combine(EVENT_FIELDS, EVENT_FIELDS))];
+        } else {
+            if ($saved["old_poster"] !== null) {
+                delete_poster_file($conn, $saved["old_poster"]);
+            }
+            log_audit($conn, $current_user["id"], $current_user["username"], $existing ? "UPDATE_EVENT" : "CREATE_EVENT",
+                ($existing ? "Updated" : "Created") . " event ID {$saved["id"]} ({$clean["title"]})" . ($stored !== null ? " with a new poster" : ""), "SUCCESS");
+            flash("success", $existing ? "Event “{$clean["title"]}” was updated." : "Event “{$clean["title"]}” was published.");
+            redirect("admin_dashboard.php?tab=events");
+        }
+    }
+}
 
-        $stmt = $conn->prepare("DELETE FROM events WHERE id = ?");
-        if ($stmt) {
+// 5. User accounts – POST only (CSRF token checked above); a GET link can no longer change anything.
+//    Student records are deactivated instead (soft delete) and events are deleted only without registrations (see above).
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
+    $get_action = is_string($_POST["action"]) ? $_POST["action"] : "";
+    $target_id  = (int)($_POST["id"] ?? 0);
+
+    // Help & Contact inquiries (Practical 7): mark as resolved – admins only (inquiries.manage)
+    if ($get_action === "resolve_inquiry") {
+        require_permission("inquiries.manage");
+        if ($target_id > 0 && resolve_inquiry($conn, $target_id)) {
+            log_audit($conn, $current_user["id"], $current_user["username"], "RESOLVE_INQUIRY", "Inquiry #$target_id marked as resolved", "SUCCESS");
+            flash("success", "Inquiry #$target_id was marked as resolved.");
+        } else {
+            flash("error", "That inquiry was not found or is already resolved.");
+        }
+        redirect("admin_dashboard.php?tab=inquiries");
+    }
+
+    // User accounts (Practical 14): disable / enable and delete – admins only (users.manage). The own account and the last
+    // active administrator are protected; a disabled account cannot sign in and loses its open sessions.
+    if (in_array($get_action, ["disable_user", "enable_user", "delete_user"], true)) {
+        require_permission("users.manage");
+        $account = $target_id > 0 ? find_account($conn, $target_id) : null;
+        if ($account === null) {
+            flash("error", "That account was not found."); redirect("admin_dashboard.php?tab=users");
+        }
+        if ($get_action === "delete_user") {
+            if ($target_id === $current_user["id"]) {
+                flash("error", "You cannot delete your own active administrator account."); redirect("admin_dashboard.php?tab=users");
+            }
+            if ($account["role"] === "admin" && $account["status"] === "active" && active_admin_count($conn) <= 1) {
+                flash("error", "The last active administrator cannot be deleted."); redirect("admin_dashboard.php?tab=users");
+            }
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmt->bind_param("i", $target_id);
             $stmt->execute();
-            log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_EVENT", "Deleted event ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=events&success=Event deleted successfully.");
-            exit();
+            log_audit($conn, $current_user["id"], $current_user["username"], "DELETE_USER", "Deleted user ID $target_id ({$account["username"]}, {$account["role"]})", "SUCCESS");
+            flash("success", "User account “{$account["username"]}” deleted."); redirect("admin_dashboard.php?tab=users");
         }
-    }
-
-    if ($get_action === "delete_user" && $target_id > 0) {
-        if ($target_id === (int)$_SESSION["user_id"]) {
-            header("Location: admin_dashboard.php?tab=users&error=You cannot delete your own active administrator account.");
-            exit();
+        $new_status = $get_action === "disable_user" ? "disabled" : "active";
+        $problem = set_account_status($conn, $target_id, $new_status, $current_user["id"]);
+        if ($problem !== null) {
+            flash("error", $problem);
+        } else {
+            log_audit($conn, $current_user["id"], $current_user["username"], $new_status === "disabled" ? "USER_DISABLED" : "USER_ENABLED",
+                ($new_status === "disabled" ? "Disabled" : "Enabled") . " account ID $target_id ({$account["username"]}, {$account["role"]})", "SUCCESS");
+            flash("success", $new_status === "disabled" ? "Account “{$account["username"]}” was disabled. It can no longer sign in and its open sessions end."
+                                                        : "Account “{$account["username"]}” was enabled again.");
         }
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $target_id);
-            $stmt->execute();
-            log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_USER", "Deleted user ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=users&success=User account deleted.");
-            exit();
-        }
+        redirect("admin_dashboard.php?tab=users");
     }
 }
 
-// 6. Dynamic Metrics Counters
-$total_users = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM users");
-if ($res) { $total_users = (int)$res->fetch_assoc()["cnt"]; }
+// 6. Live statistics and latest registrations (counted from the database on every page load – Practical 14)
+$stats           = dashboard_stats($conn);
+$latest_regs     = latest_registrations($conn, 5);
+$newest_accounts = newest_accounts($conn, 5);
 
-$total_students = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM students");
-if ($res) { $total_students = (int)$res->fetch_assoc()["cnt"]; }
+// 7. Role-based navigation from menu_items (only the rows up to this role; links to missing pages are hidden)
+$menu_items = menu_for_role($conn, $current_user["role"]);
 
-$total_events = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM events");
-if ($res) { $total_events = (int)$res->fetch_assoc()["cnt"]; }
+// 8. Student Records tab: add/edit form and deactivation confirmation (GET only shows them; nothing is changed)
+$student_view = is_string($_GET["view"] ?? null) ? $_GET["view"] : "";
+if ($student_form === null && $current_tab === "students" && $student_view === "add") {
+    $student_form = ["mode" => "add", "id" => 0, "record" => null, "errors" => [], "values" => array_fill_keys(STUDENT_FIELDS, "")];
+} elseif ($student_form === null && $current_tab === "students" && in_array($student_view, ["edit", "deactivate"], true)) {
+    $target_id = student_id_from($_GET["id"] ?? "");
+    $record    = $target_id > 0 ? find_student_record($conn, $target_id) : null;
+    if ($record === null) {
+        flash("error", "That student record was not found."); redirect("admin_dashboard.php?tab=students");
+    }
+    if ($student_view === "edit") {
+        $student_form = ["mode" => "edit", "id" => $target_id, "record" => $record, "errors" => [],
+                         "values" => array_map(fn ($value) => (string) ($value ?? ""), array_intersect_key($record, array_flip(STUDENT_FIELDS)))];
+    } elseif (student_is_active($record)) {
+        $student_confirm = $record + ["registrations" => student_registration_count($conn, $target_id)];
+    } else {
+        flash("error", "Student “{$record["name"]}” is already inactive."); redirect("admin_dashboard.php?tab=students");
+    }
+}
+if ($student_form !== null && $student_form["record"] !== null) {
+    $student_form["registrations"] = student_registration_count($conn, $student_form["id"]);
+}
 
-$total_audits = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM audit_logs");
-if ($res) { $total_audits = (int)$res->fetch_assoc()["cnt"]; }
+// Student list: search + filters + pagination (the same WHERE clause as the CSV export)
+$student_total    = student_count($conn, $student_filters);
+$student_pages    = max(1, (int) ceil($student_total / STUDENTS_PER_PAGE));
+$student_page     = min($student_filters["page"], $student_pages);
+$students_list    = student_list($conn, $student_filters, STUDENTS_PER_PAGE, ($student_page - 1) * STUDENTS_PER_PAGE);
+$student_counts   = student_status_counts($conn);
+$student_filtered = $student_filters["q"] !== "" || $student_filters["course"] !== "" || $student_filters["semester"] !== "" || $student_filters["status"] !== "";
 
-// 7. Dynamic Menu Items
-$menu_items = [];
-$m_res = $conn->query("SELECT title, link, icon FROM menu_items WHERE min_role IN ('user', 'editor', 'admin') ORDER BY id ASC");
-if ($m_res) {
-    while ($m = $m_res->fetch_assoc()) {
-        $menu_items[] = $m;
+// 9. Campus Events tab: add/edit form, delete confirmation and registrations list (GET only shows them)
+$event_view = is_string($_GET["view"] ?? null) ? $_GET["view"] : "";
+if ($event_form === null && $current_tab === "events" && $event_view === "add_event") {
+    $event_form = ["mode" => "add", "id" => 0, "record" => null, "errors" => [], "values" => array_merge(array_fill_keys(EVENT_FIELDS, ""), ["status" => "open"])];
+} elseif ($event_form === null && $current_tab === "events" && in_array($event_view, ["edit_event", "delete_event", "event_registrations"], true)) {
+    $target_id    = event_id_from($_GET["id"] ?? "");
+    $event_record = $target_id > 0 ? find_event($conn, $target_id) : null;
+    if ($event_record === null) {
+        flash("error", "That event was not found."); redirect("admin_dashboard.php?tab=events");
+    }
+    if ($event_view === "edit_event") {
+        $event_form = ["mode" => "edit", "id" => $target_id, "record" => $event_record, "errors" => [], "values" => [
+            "title" => $event_record["title"], "category" => $event_record["category"], "event_date" => $event_record["event_date"],
+            "event_time" => $event_record["event_time"] !== null ? substr($event_record["event_time"], 0, 5) : "", "location" => $event_record["location"],
+            "capacity" => $event_record["capacity"] !== null ? (string) $event_record["capacity"] : "", "status" => $event_record["status"],
+            "description" => (string) $event_record["description"]]];
+    } elseif ($event_view === "delete_event") {
+        $event_confirm = $event_record;
+    } else {
+        $event_regs_view = ["event" => $event_record, "rows" => event_registrations($conn, $target_id)];
     }
 }
 
-// 8. Filter / Search for Students
-$search_term = trim($_GET["search"] ?? "");
-$filter_course = trim($_GET["course_filter"] ?? "");
-
-$sql_students = "SELECT * FROM students WHERE 1=1";
-$params = [];
-$types  = "";
-
-if (!empty($search_term)) {
-    $sql_students .= " AND (name LIKE ? OR email LIKE ? OR enrollment_no LIKE ?)";
-    $st = "%" . $search_term . "%";
-    $params[] = $st; $params[] = $st; $params[] = $st;
-    $types .= "sss";
-}
-if (!empty($filter_course)) {
-    $sql_students .= " AND course = ?";
-    $params[] = $filter_course;
-    $types .= "s";
-}
-$sql_students .= " ORDER BY id DESC";
-
-$students_list = [];
-if (!empty($params)) {
-    $st_stmt = $conn->prepare($sql_students);
-    $st_stmt->bind_param($types, ...$params);
-    $st_stmt->execute();
-    $s_res = $st_stmt->get_result();
-    while ($r = $s_res->fetch_assoc()) { $students_list[] = $r; }
-} else {
-    $s_res = $conn->query($sql_students);
-    if ($s_res) {
-        while ($r = $s_res->fetch_assoc()) { $students_list[] = $r; }
-    }
-}
-
-// 9. Events List
-$events_list = [];
-$ev_res = $conn->query("SELECT * FROM events ORDER BY event_date ASC");
-if ($ev_res) {
-    while ($ev = $ev_res->fetch_assoc()) { $events_list[] = $ev; }
-}
+// Event list: search + filters + pagination
+$event_total    = event_count($conn, $event_filters);
+$event_pages    = max(1, (int) ceil($event_total / EVENTS_PER_PAGE));
+$event_page     = min($event_filters["page"], $event_pages);
+$events_list    = event_list($conn, $event_filters, EVENTS_PER_PAGE, ($event_page - 1) * EVENTS_PER_PAGE);
+$event_filtered = $event_filters["q"] !== "" || $event_filters["category"] !== "" || $event_filters["status"] !== "" || $event_filters["when"] !== "";
 
 // 10. Users List
-$users_list = [];
-$u_res = $conn->query("SELECT id, username, email, role, last_login, created_at FROM users ORDER BY id DESC");
-if ($u_res) {
-    while ($u = $u_res->fetch_assoc()) { $users_list[] = $u; }
-}
+$users_list = $conn->query("SELECT id, username, email, role, status, last_login, created_at FROM users ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
 
-// 11. Recent Audit Logs
-$audit_list = [];
-$a_res = $conn->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 50");
-if ($a_res) {
-    while ($a = $a_res->fetch_assoc()) { $audit_list[] = $a; }
-}
+// 10b. Stored Help & Contact inquiries (Practical 7), newest first; filter new / resolved
+$inquiry_status = in_array($_GET["inq_status"] ?? "", ["new", "resolved"], true) ? $_GET["inq_status"] : "";
+$inquiries      = list_inquiries($conn, $inquiry_status, 100);
+$inquiry_counts = inquiry_counts($conn);
+
+// 11. Audit log with filters (action, status, user) – the newest 100 matching entries
+$audit_action_list = audit_actions($conn);
+$audit_filters     = audit_filters($_GET, $audit_action_list);
+$audit_list        = audit_list($conn, $audit_filters, 100);
+$recent_activity   = audit_list($conn, ["action" => "", "status" => "", "user" => ""], 6);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -388,6 +414,21 @@ if ($a_res) {
             border-radius: 8px;
             border: 1px solid var(--border);
         }
+        .student-inactive {
+            --bs-table-bg: var(--bs-tertiary-bg);
+            --bs-table-color: var(--bs-secondary-color);
+        }
+        .form-card {
+            border: 1px solid var(--bs-primary-border-subtle);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.08);
+        }
+        .event-poster-preview {
+            max-width: 220px;
+            max-height: 160px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
         .modal-header {
             background: var(--bs-tertiary-bg);
             border-bottom: 1px solid var(--border);
@@ -415,9 +456,7 @@ if ($a_res) {
                 <span class="small fw-semibold"><?= htmlspecialchars($_SESSION["username"]) ?></span>
                 <span class="badge bg-danger" style="font-size: 10px;">ADMIN</span>
             </div>
-            <a href="logout.php" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-box-arrow-right"></i> Logout
-            </a>
+            <?= logout_button("btn btn-outline-danger btn-sm", "Logout") ?>
         </div>
     </div>
 
@@ -437,59 +476,33 @@ if ($a_res) {
         </div>
     <?php endif; ?>
 
-    <!-- Dynamic Metric Stat Cards (Practicals 11 & 14) -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">TOTAL USERS</span>
-                    <h2 class="fw-bold mb-0 text-primary"><?= $total_users ?></h2>
-                </div>
-                <div class="stat-icon bg-primary-subtle text-primary">
-                    <i class="bi bi-people-fill"></i>
-                </div>
+    <!-- Live statistics (Practical 14): counted from the database on every page load -->
+    <div class="row g-3 mb-4" id="dashboard-stats">
+        <?php foreach ([
+            ["Students", $stats["students"]["total"], $stats["students"]["active"] . " active · " . $stats["students"]["inactive"] . " inactive", "bi-mortarboard-fill", "success", "students"],
+            ["Events", $stats["events"]["total"], $stats["events"]["upcoming"] . " upcoming · " . $stats["events"]["open_upcoming"] . " open", "bi-calendar-event-fill", "warning", "events"],
+            ["Registrations", $stats["registrations"]["registered"], "active · " . $stats["registrations"]["cancelled"] . " cancelled · " . $stats["registrations"]["attended"] . " attended", "bi-ticket-perforated-fill", "info", "events"],
+            ["User accounts", $stats["users"]["total"], $stats["users"]["admins"] . " admin · " . $stats["users"]["editors"] . " editor · " . $stats["users"]["students"] . " student · " . $stats["users"]["disabled"] . " disabled", "bi-people-fill", "primary", "users"],
+            ["Audit log", $stats["audit"]["total"], $stats["audit"]["blocked_week"] . " security blocks in 7 days", "bi-shield-shaded", "danger", "audits"],
+        ] as [$label, $value, $note, $icon, $color, $tab]): ?>
+            <div class="col-6 col-lg">
+                <a class="stat-card h-100 text-decoration-none" href="admin_dashboard.php?tab=<?= $tab ?>" data-stat="<?= e(strtolower(strtok($label, " "))) ?>">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase"><?= e($label) ?></span>
+                        <h2 class="fw-bold mb-0 text-<?= $color ?>"><?= (int) $value ?></h2>
+                        <span class="small text-muted"><?= e($note) ?></span>
+                    </div>
+                    <div class="stat-icon bg-<?= $color ?>-subtle text-<?= $color ?>"><i class="bi <?= $icon ?>"></i></div>
+                </a>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">STUDENT RECORDS</span>
-                    <h2 class="fw-bold mb-0 text-success"><?= $total_students ?></h2>
-                </div>
-                <div class="stat-icon bg-success-subtle text-success">
-                    <i class="bi bi-mortarboard-fill"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">CAMPUS EVENTS</span>
-                    <h2 class="fw-bold mb-0 text-warning"><?= $total_events ?></h2>
-                </div>
-                <div class="stat-icon bg-warning-subtle text-warning">
-                    <i class="bi bi-calendar-event-fill"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">AUDIT LOGS</span>
-                    <h2 class="fw-bold mb-0 text-danger"><?= $total_audits ?></h2>
-                </div>
-                <div class="stat-icon bg-danger-subtle text-danger">
-                    <i class="bi bi-shield-shaded"></i>
-                </div>
-            </div>
-        </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Dynamic RBAC Navigation Bar (Practical 14) -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body p-3">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span class="small fw-bold text-muted text-uppercase"><i class="bi bi-compass me-1"></i> RBAC Dynamic Directory:</span>
+                <span class="small fw-bold text-muted text-uppercase"><i class="bi bi-compass me-1"></i> Navigation for your role (<?= e($current_user["role"]) ?>):</span>
                 <div class="d-flex flex-wrap gap-2">
                     <?php foreach ($menu_items as $item): ?>
                         <a href="<?= htmlspecialchars($item['link']) ?>" class="btn btn-sm btn-light border d-flex align-items-center gap-1 text-secondary" style="font-size: 12.5px;">
@@ -516,37 +529,48 @@ if ($a_res) {
             <button class="nav-link <?= ($current_tab === 'users') ? 'active' : '' ?>" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button"><i class="bi bi-person-gear me-1"></i> User Accounts</button>
         </li>
         <li class="nav-item">
+            <button class="nav-link <?= ($current_tab === 'inquiries') ? 'active' : '' ?>" id="inquiries-tab" data-bs-toggle="tab" data-bs-target="#inquiries" type="button"><i class="bi bi-envelope-paper me-1"></i> Inquiries<?= $inquiry_counts["new"] ? ' <span class="badge bg-danger">' . $inquiry_counts["new"] . '</span>' : "" ?></button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link <?= ($current_tab === 'audits') ? 'active' : '' ?>" id="audits-tab" data-bs-toggle="tab" data-bs-target="#audits" type="button"><i class="bi bi-shield-check me-1"></i> Security Audit Trail</button>
         </li>
     </ul>
 
     <div class="tab-content" id="adminTabsContent">
-        <!-- 1. OVERVIEW TAB -->
+        <!-- 1. OVERVIEW TAB (Practical 14: latest registrations, newest accounts, recent activity) -->
         <div class="tab-pane fade <?= ($current_tab === 'overview') ? 'show active' : '' ?>" id="overview" role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-7">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-activity text-primary me-2"></i>Recent System Activity</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Status</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-ticket-perforated text-primary me-2"></i>Latest event registrations</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle" id="latest-registrations">
+                            <thead><tr><th scope="col">Student</th><th scope="col">Event</th><th scope="col">Status</th><th scope="col">Registered</th></tr></thead>
                             <tbody>
-                                <?php foreach (array_slice($audit_list, 0, 6) as $a): ?>
+                                <?php if (!$latest_regs): ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-3">No event registrations yet.</td></tr>
+                                <?php endif; ?>
+                                <?php foreach ($latest_regs as $reg): ?>
                                     <tr>
-                                        <td class="fw-semibold"><?= htmlspecialchars($a['username']) ?></td>
-                                        <td><code><?= htmlspecialchars($a['action']) ?></code></td>
-                                        <td>
-                                            <span class="badge bg-<?= ($a['status'] === 'SUCCESS') ? 'success' : 'danger' ?>-subtle text-<?= ($a['status'] === 'SUCCESS') ? 'success' : 'danger' ?>">
-                                                <?= htmlspecialchars($a['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td class="small text-muted"><?= htmlspecialchars(substr($a['created_at'], 11, 8)) ?></td>
+                                        <td class="fw-semibold"><?= e($reg["name"]) ?> <span class="badge bg-light text-dark border"><?= e($reg["enrollment_no"] ?: "—") ?></span></td>
+                                        <td class="small"><?= e($reg["title"]) ?></td>
+                                        <td><span class="badge <?= ["registered" => "bg-success-subtle text-success", "attended" => "bg-primary-subtle text-primary", "cancelled" => "bg-secondary-subtle text-secondary"][$reg["status"]] ?? "bg-light text-dark" ?>"><?= e(ucfirst($reg["status"])) ?></span></td>
+                                        <td class="small text-muted"><?= e($reg["registered_at"]) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-activity text-primary me-2"></i>Recent system activity</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="recent-activity">
+                            <thead><tr><th scope="col">User</th><th scope="col">Action</th><th scope="col">Status</th><th scope="col">Time</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($recent_activity as $a): ?>
+                                    <tr>
+                                        <td class="fw-semibold"><?= e($a["username"]) ?></td>
+                                        <td><code><?= e($a["action"]) ?></code></td>
+                                        <td><span class="badge bg-<?= $a["status"] === "SUCCESS" ? "success" : "danger" ?>-subtle text-<?= $a["status"] === "SUCCESS" ? "success" : "danger" ?>"><?= e($a["status"]) ?></span></td>
+                                        <td class="small text-muted"><?= e($a["created_at"]) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -554,16 +578,25 @@ if ($a_res) {
                     </div>
                 </div>
                 <div class="col-lg-5">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Platform Specifications</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-person-plus text-primary me-2"></i>Newest accounts</h5>
+                    <ul class="list-group mb-4" id="newest-accounts">
+                        <?php foreach ($newest_accounts as $acc): ?>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-person-circle text-secondary me-1"></i><?= e($acc["username"]) ?>
+                                    <span class="badge badge-role-<?= e($acc["role"]) ?> ms-1"><?= e(ucfirst($acc["role"])) ?></span>
+                                    <?= $acc["status"] === "disabled" ? '<span class="badge bg-danger-subtle text-danger ms-1">Disabled</span>' : "" ?></span>
+                                <span class="small text-muted"><?= e($acc["created_at"]) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Portal</h5>
                     <div class="card border bg-light">
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0 small">
-                                <li class="mb-2"><strong>Architecture:</strong> Monolithic PHP & MySQL (PDO/MySQLi Dual Driver)</li>
-                                <li class="mb-2"><strong>Authentication:</strong> Bcrypt (Cost 10) + Session Fingerprinting</li>
-                                <li class="mb-2"><strong>RBAC Enforcement:</strong> 403 Barrier with Audit Trail</li>
-                                <li class="mb-2"><strong>Export Formats:</strong> CSV Stream Generator (`fputcsv`)</li>
-                                <li class="mb-2"><strong>Database:</strong> <code>studenthub_db</code> (UTF8mb4)</li>
-                                <li><strong>Environment:</strong> Local / Cloud Ready (Docker/Render/Heroku/cPanel)</li>
+                        <div class="card-body small">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2"><strong>Database:</strong> <code>studenthub_db</code> (migrations <?= e(implode(", ", array_column($conn->query("SELECT version FROM schema_migrations ORDER BY version")->fetch_all(MYSQLI_NUM), 0))) ?>)</li>
+                                <li class="mb-2"><strong>Linked student records:</strong> <?= (int) $stats["students"]["linked"] ?> of <?= (int) $stats["students"]["total"] ?></li>
+                                <li class="mb-2"><strong>Access control:</strong> roles admin / editor / student; every page and API action checks the permission on the server (HTTP 403 + audit entry)</li>
+                                <li><strong>Security:</strong> bcrypt passwords, CSRF tokens on every POST, session timeout, audit log</li>
                             </ul>
                         </div>
                     </div>
@@ -571,77 +604,234 @@ if ($a_res) {
             </div>
         </div>
 
-        <!-- 2. STUDENTS CRUD TAB (Practicals 11 & 13) -->
+        <!-- 2. STUDENT RECORDS TAB (Practical 11: add, edit, search, filter, soft delete, CSV export) -->
         <div class="tab-pane fade <?= ($current_tab === 'students') ? 'show active' : '' ?>" id="students" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">Student Information Records</h5>
-                    <p class="text-muted small mb-0">Manage enrolled student profiles, filter by department, and export to CSV.</p>
+                    <h5 class="fw-bold mb-1">Student Records</h5>
+                    <p class="text-muted small mb-0">Add, edit, search and deactivate student records. Deactivated records are kept with their account link and event registrations.</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="admin_dashboard.php?export=csv" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+                    <a href="<?= e(student_list_url($student_filters, ["export" => "csv"])) ?>" id="export-students" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV<?= $student_filtered ? " (filtered)" : "" ?>
                     </a>
-                    <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <a href="admin_dashboard.php?tab=students&amp;view=add#student-form" id="add-student" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
                         <i class="bi bi-person-plus-fill"></i> Add Student
-                    </button>
+                    </a>
                 </div>
             </div>
 
-            <!-- Search and Filter Form -->
-            <form method="GET" action="admin_dashboard.php" class="row g-2 mb-3">
+            <?php if ($student_form !== null): $sf = $student_form; $editing = $sf["mode"] === "edit"; ?>
+                <section class="card form-card mb-4" id="student-form" aria-labelledby="student-form-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-1" id="student-form-title"><i class="bi bi-<?= $editing ? "pencil-square" : "person-plus" ?> text-primary me-2"></i><?= $editing ? "Edit student record" : "Add a student record" ?></h6>
+                        <p class="text-muted small mb-3">
+                            <?php if ($editing): ?>
+                                Record #<?= (int) $sf["id"] ?> · <?= student_is_active($sf["record"]) ? "Active" : "Inactive" ?> · <?= $sf["record"]["user_id"] !== null ? "linked to a login account" : "no login account" ?> · <?= (int) $sf["registrations"] ?> event registration(s). Saving changes only the fields below; the status, the account link and the registrations stay as they are.
+                            <?php else: ?>
+                                Creates the student record only – no login account is created. All fields are checked on the server.
+                            <?php endif; ?>
+                        </p>
+                        <?php if ($sf["errors"]): ?>
+                            <div class="alert alert-danger py-2 small" role="alert"><i class="bi bi-exclamation-triangle-fill me-1"></i> Please correct the highlighted fields. Nothing was saved.</div>
+                        <?php endif; ?>
+                        <form method="post" action="admin_dashboard.php?tab=students#student-form" novalidate>
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="<?= $editing ? "update_student" : "add_student" ?>">
+                            <?php if ($editing): ?><input type="hidden" name="id" value="<?= (int) $sf["id"] ?>"><?php endif; ?>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="enrollment_no" class="form-label small fw-bold">Enrollment number</label>
+                                    <input type="text" id="enrollment_no" name="enrollment_no" maxlength="20" autocomplete="off" placeholder="e.g. 26IT004"
+                                           class="form-control<?= form_field_class($sf, "enrollment_no") ?>" value="<?= e($sf["values"]["enrollment_no"]) ?>"<?= form_field_aria($sf, "enrollment_no", "enrollment_no-help") ?>>
+                                    <?= form_field_error($sf, "enrollment_no") ?>
+                                    <div class="form-text" id="enrollment_no-help"><?= $editing ? "Format: 2 digits, 2 letters, 3 digits (e.g. 25CS011)." : "Leave empty to assign the next free number (admission year from the semester + course code)." ?></div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label for="name" class="form-label small fw-bold">Full name</label>
+                                    <input type="text" id="name" name="name" maxlength="100" autocomplete="off"
+                                           class="form-control<?= form_field_class($sf, "name") ?>" value="<?= e($sf["values"]["name"]) ?>"<?= form_field_aria($sf, "name") ?>>
+                                    <?= form_field_error($sf, "name") ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label small fw-bold">Email address</label>
+                                    <input type="email" id="email" name="email" maxlength="100" autocomplete="off"
+                                           class="form-control<?= form_field_class($sf, "email") ?>" value="<?= e($sf["values"]["email"]) ?>"<?= form_field_aria($sf, "email") ?>>
+                                    <?= form_field_error($sf, "email") ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="course" class="form-label small fw-bold">Course</label>
+                                    <select id="course" name="course" class="form-select<?= form_field_class($sf, "course") ?>"<?= form_field_aria($sf, "course") ?>>
+                                        <option value="">Select a course</option>
+                                        <?php foreach ($student_courses as $course): ?>
+                                            <option value="<?= e($course) ?>"<?= $sf["values"]["course"] === $course ? " selected" : "" ?>><?= e($course) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?= form_field_error($sf, "course") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="semester" class="form-label small fw-bold">Semester</label>
+                                    <select id="semester" name="semester" class="form-select<?= form_field_class($sf, "semester") ?>"<?= form_field_aria($sf, "semester") ?>>
+                                        <option value="">Select</option>
+                                        <?php for ($sem = 1; $sem <= 8; $sem++): ?>
+                                            <option value="<?= $sem ?>"<?= $sf["values"]["semester"] === (string) $sem ? " selected" : "" ?>>Semester <?= $sem ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <?= form_field_error($sf, "semester") ?>
+                                </div>
+                                <fieldset class="col-md-9"<?= form_field_aria($sf, "gender") ?>>
+                                    <legend class="form-label small fw-bold mb-2">Gender</legend>
+                                    <?php
+                                    $genders = REGISTRATION_GENDERS;
+                                    if ($editing && $sf["record"]["gender"] !== "" && !in_array($sf["record"]["gender"], $genders, true)) {
+                                        $genders[] = $sf["record"]["gender"];             // legacy value, kept as it is
+                                    }
+                                    foreach ($genders as $i => $gender): ?>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input<?= form_field_class($sf, "gender") ?>" type="radio" name="gender" id="gender-<?= $i ?>" value="<?= e($gender) ?>"<?= $sf["values"]["gender"] === $gender ? " checked" : "" ?>>
+                                            <label class="form-check-label" for="gender-<?= $i ?>"><?= e($gender) ?></label>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?= form_field_error($sf, "gender") ?>
+                                </fieldset>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i><?= $editing ? "Save changes" : "Add student" ?></button>
+                                <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($student_confirm !== null): $sc = $student_confirm; ?>
+                <section class="card border-danger-subtle mb-4" id="student-confirm" aria-labelledby="student-confirm-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-danger mb-2" id="student-confirm-title"><i class="bi bi-person-dash me-2"></i>Deactivate this student?</h6>
+                        <p class="small mb-3">Are you sure you want to deactivate <strong><?= e($sc["name"]) ?></strong>? The status changes from <strong>Active</strong> to <strong>Inactive</strong>. This is a soft delete: the record stays in the database with its account link and its <?= (int) $sc["registrations"] ?> event registration(s), it still appears in this list and in the CSV export, and it can be reactivated later. Inactive students cannot sign in or register for new events; a student who is signed in loses access at the next page request.</p>
+                        <dl class="row small mb-3">
+                            <dt class="col-sm-3">Enrollment number</dt><dd class="col-sm-9"><?= e($sc["enrollment_no"] ?: "—") ?></dd>
+                            <dt class="col-sm-3">Email</dt><dd class="col-sm-9"><?= e($sc["email"]) ?></dd>
+                            <dt class="col-sm-3">Course / semester</dt><dd class="col-sm-9"><?= e($sc["course"]) ?> · <?= $sc["semester"] !== null ? "Semester " . (int) $sc["semester"] : "—" ?></dd>
+                            <dt class="col-sm-3">Login account</dt><dd class="col-sm-9"><?= $sc["user_id"] !== null ? "Linked (kept)" : "None" ?></dd>
+                        </dl>
+                        <form method="post" action="admin_dashboard.php?tab=students" class="d-flex gap-2">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="deactivate_student">
+                            <input type="hidden" name="id" value="<?= (int) $sc["id"] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-person-dash me-1"></i>Yes, deactivate student</button>
+                            <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <!-- Search and filters (combined; GET, so the result can be bookmarked and exported) -->
+            <form method="get" action="admin_dashboard.php" class="row g-2 mb-3" role="search" aria-label="Search and filter student records">
                 <input type="hidden" name="tab" value="students">
-                <div class="col-md-5">
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search by name, email, or enrollment..." value="<?= htmlspecialchars($search_term) ?>">
+                <div class="col-lg-4 col-md-6">
+                    <label for="student-q" class="visually-hidden">Search</label>
+                    <input type="search" id="student-q" name="q" maxlength="100" class="form-control form-control-sm" placeholder="Search name, email or enrollment no." value="<?= e($student_filters["q"]) ?>">
                 </div>
-                <div class="col-md-4">
-                    <select name="course_filter" class="form-select form-select-sm">
-                        <option value="">All Courses</option>
-                        <option value="Computer Science Engineering" <?= ($filter_course === 'Computer Science Engineering') ? 'selected' : '' ?>>Computer Science Engineering</option>
-                        <option value="Information Technology" <?= ($filter_course === 'Information Technology') ? 'selected' : '' ?>>Information Technology</option>
-                        <option value="Data Science" <?= ($filter_course === 'Data Science') ? 'selected' : '' ?>>Data Science</option>
-                        <option value="Web Development" <?= ($filter_course === 'Web Development') ? 'selected' : '' ?>>Web Development</option>
+                <div class="col-lg-3 col-md-6">
+                    <label for="student-course" class="visually-hidden">Course</label>
+                    <select id="student-course" name="course" class="form-select form-select-sm">
+                        <option value="">All courses</option>
+                        <?php foreach ($student_courses as $course): ?>
+                            <option value="<?= e($course) ?>"<?= $student_filters["course"] === $course ? " selected" : "" ?>><?= e($course) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-secondary btn-sm flex-grow-1"><i class="bi bi-search"></i> Filter</button>
-                    <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Reset</a>
+                <div class="col-lg-2 col-md-4">
+                    <label for="student-semester" class="visually-hidden">Semester</label>
+                    <select id="student-semester" name="semester" class="form-select form-select-sm">
+                        <option value="">All semesters</option>
+                        <?php for ($sem = 1; $sem <= 8; $sem++): ?>
+                            <option value="<?= $sem ?>"<?= $student_filters["semester"] === (string) $sem ? " selected" : "" ?>>Semester <?= $sem ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <label for="student-status" class="visually-hidden">Status</label>
+                    <select id="student-status" name="status" class="form-select form-select-sm">
+                        <option value="">All statuses</option>
+                        <?php foreach (STUDENT_STATUSES as $status): ?>
+                            <option value="<?= $status ?>"<?= $student_filters["status"] === $status ? " selected" : "" ?>><?= $status ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-4 d-grid">
+                    <button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-search"></i> Filter</button>
                 </div>
             </form>
 
+            <div class="d-flex flex-wrap justify-content-between align-items-center small text-muted mb-2 gap-2">
+                <span id="student-summary">
+                    <?php if ($student_total > 0): ?>
+                        Showing <?= ($student_page - 1) * STUDENTS_PER_PAGE + 1 ?>–<?= ($student_page - 1) * STUDENTS_PER_PAGE + count($students_list) ?> of <?= $student_total ?> <?= $student_filtered ? "matching " : "" ?>record<?= $student_total === 1 ? "" : "s" ?>
+                    <?php else: ?>
+                        No records shown
+                    <?php endif; ?>
+                    · <?= $student_counts["Active"] ?> active, <?= $student_counts["Inactive"] ?> inactive in total
+                </span>
+                <?php if ($student_filtered): ?>
+                    <a href="admin_dashboard.php?tab=students" class="link-secondary">Reset filters</a>
+                <?php endif; ?>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
+                <table class="table table-hover table-bordered align-middle" id="student-table">
+                    <caption class="visually-hidden">Student records</caption>
+                    <thead>
                         <tr>
-                            <th>#ID</th>
-                            <th>Enrollment</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Course</th>
-                            <th>Sem</th>
-                            <th>Gender</th>
-                            <th>Status</th>
-                            <th class="text-center">Action</th>
+                            <th scope="col">Enrollment</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Course</th>
+                            <th scope="col">Sem</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Account</th>
+                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($students_list)): ?>
-                            <tr><td colspan="9" class="text-center py-4 text-muted">No student records found matching criteria.</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-muted">
+                                <?php if ($student_filtered): ?>
+                                    No student records match these filters. <a href="admin_dashboard.php?tab=students">Show all records</a>
+                                <?php else: ?>
+                                    No student records yet. <a href="admin_dashboard.php?tab=students&amp;view=add#student-form">Add the first student</a>
+                                <?php endif; ?>
+                            </td></tr>
                         <?php else: ?>
-                            <?php foreach ($students_list as $st): ?>
-                                <tr>
-                                    <td><span class="text-muted fw-bold">#<?= $st['id'] ?></span></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($st['enrollment_no'] ?: '—') ?></span></td>
-                                    <td class="fw-semibold"><?= htmlspecialchars($st['name']) ?></td>
-                                    <td class="small"><?= htmlspecialchars($st['email']) ?></td>
-                                    <td><span class="badge bg-primary-subtle text-primary"><?= htmlspecialchars($st['course']) ?></span></td>
-                                    <td><?= htmlspecialchars($st['semester']) ?></td>
-                                    <td><?= htmlspecialchars($st['gender']) ?></td>
-                                    <td><span class="badge bg-success-subtle text-success"><?= htmlspecialchars($st['status']) ?></span></td>
-                                    <td class="text-center">
-                                        <a href="admin_dashboard.php?tab=students&action=delete_student&id=<?= $st['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete student record for <?= htmlspecialchars($st['name']) ?>?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                            <?php foreach ($students_list as $st): $active = student_is_active($st); ?>
+                                <tr<?= $active ? "" : ' class="student-inactive"' ?>>
+                                    <td><span class="badge bg-light text-dark border"><?= e($st["enrollment_no"] ?: "—") ?></span></td>
+                                    <td class="fw-semibold"><?= e($st["name"]) ?></td>
+                                    <td class="small"><?= e($st["email"]) ?></td>
+                                    <td><span class="badge bg-primary-subtle text-primary"><?= e($st["course"]) ?></span></td>
+                                    <td><?= $st["semester"] !== null ? (int) $st["semester"] : "—" ?></td>
+                                    <td>
+                                        <?php if ($active): ?>
+                                            <span class="badge bg-success-subtle text-success">Active</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="small">
+                                        <?php if ($st["user_id"] !== null): ?>
+                                            <span class="badge bg-info-subtle text-info-emphasis"><i class="bi bi-link-45deg"></i> Linked</span>
+                                        <?php else: ?>
+                                            <span class="text-muted">None</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <a href="admin_dashboard.php?tab=students&amp;view=edit&amp;id=<?= (int) $st["id"] ?>#student-form" class="btn btn-outline-primary btn-sm py-0 px-2" aria-label="Edit <?= e($st["name"]) ?>"><i class="bi bi-pencil"></i> Edit</a>
+                                        <?php if ($active): ?>
+                                            <a href="admin_dashboard.php?tab=students&amp;view=deactivate&amp;id=<?= (int) $st["id"] ?>#student-confirm" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Deactivate <?= e($st["name"]) ?>"><i class="bi bi-person-dash"></i> Deactivate</a>
+                                        <?php else: ?>
+                                            <form method="post" action="admin_dashboard.php?tab=students" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="reactivate_student"><input type="hidden" name="id" value="<?= (int) $st["id"] ?>"><button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" aria-label="Reactivate <?= e($st["name"]) ?>"><i class="bi bi-arrow-counterclockwise"></i> Reactivate</button></form>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -649,57 +839,283 @@ if ($a_res) {
                     </tbody>
                 </table>
             </div>
+
+            <?php if ($student_pages > 1): ?>
+                <nav aria-label="Student record pages">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item<?= $student_page <= 1 ? " disabled" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => max(1, $student_page - 1)])) ?>">Previous</a></li>
+                        <?php for ($pg = 1; $pg <= $student_pages; $pg++): ?>
+                            <li class="page-item<?= $pg === $student_page ? " active" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => $pg])) ?>"<?= $pg === $student_page ? ' aria-current="page"' : "" ?>><?= $pg ?></a></li>
+                        <?php endfor; ?>
+                        <li class="page-item<?= $student_page >= $student_pages ? " disabled" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => min($student_pages, $student_page + 1)])) ?>">Next</a></li>
+                    </ul>
+                </nav>
+            <?php endif; ?>
         </div>
 
-        <!-- 3. CAMPUS EVENTS TAB (Practical 12) -->
+        <!-- 3. CAMPUS EVENTS TAB (Practical 12: add, edit, delete, secure poster upload, registrations) -->
         <div class="tab-pane fade <?= ($current_tab === 'events') ? 'show active' : '' ?>" id="events" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">Campus Events Management</h5>
-                    <p class="text-muted small mb-0">Publish technical symposia, hackathons, and cultural campus events with poster uploads.</p>
+                    <h5 class="fw-bold mb-1">Campus Events</h5>
+                    <p class="text-muted small mb-0">Publish and edit events with a validated poster (JPEG, PNG or WebP, max 2 MB), set the capacity and close registration. Events with registrations are kept.</p>
                 </div>
-                <button class="btn btn-warning btn-sm d-flex align-items-center gap-1 text-body fw-bold" data-bs-toggle="modal" data-bs-target="#addEventModal">
-                    <i class="bi bi-calendar-plus-fill"></i> Add New Event
-                </button>
+                <a href="admin_dashboard.php?tab=events&amp;view=add_event#event-form" id="add-event" class="btn btn-warning btn-sm d-flex align-items-center gap-1 text-body fw-bold">
+                    <i class="bi bi-calendar-plus-fill"></i> Add Event
+                </a>
+            </div>
+
+            <?php if ($event_form !== null): $ef = $event_form; $editing = $ef["mode"] === "edit"; $er = $ef["record"]; ?>
+                <section class="card form-card mb-4" id="event-form" aria-labelledby="event-form-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-1" id="event-form-title"><i class="bi bi-<?= $editing ? "pencil-square" : "calendar-plus" ?> text-warning me-2"></i><?= $editing ? "Edit event" : "Publish an event" ?></h6>
+                        <p class="text-muted small mb-3">
+                            <?php if ($editing): ?>
+                                Event #<?= (int) $ef["id"] ?> · <?= e(event_seats_label($er)) ?> seats taken · <?= (int) $er["registrations_total"] ?> registration(s). The capacity cannot be set below the seats already taken.
+                            <?php else: ?>
+                                All fields are checked on the server. The poster is optional; it is stored under a random name and delivered only to signed-in users.
+                            <?php endif; ?>
+                        </p>
+                        <?php if ($ef["errors"]): ?>
+                            <div class="alert alert-danger py-2 small" role="alert"><i class="bi bi-exclamation-triangle-fill me-1"></i> Please correct the highlighted fields. Nothing was saved<?= isset($_FILES["poster"]) && ($_FILES["poster"]["error"] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE ? " – choose the poster again" : "" ?>.</div>
+                        <?php endif; ?>
+                        <form method="post" action="admin_dashboard.php?tab=events#event-form" enctype="multipart/form-data" novalidate>
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="<?= $editing ? "update_event" : "add_event" ?>">
+                            <?php if ($editing): ?><input type="hidden" name="id" value="<?= (int) $ef["id"] ?>"><?php endif; ?>
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label for="event-title" class="form-label small fw-bold">Title</label>
+                                    <input type="text" id="event-title" name="title" maxlength="150" class="form-control<?= form_field_class($ef, "title") ?>" value="<?= e($ef["values"]["title"]) ?>"<?= form_field_aria($ef, "title") ?>>
+                                    <?= form_field_error($ef, "title") ?>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="event-category" class="form-label small fw-bold">Category</label>
+                                    <select id="event-category" name="category" class="form-select<?= form_field_class($ef, "category") ?>"<?= form_field_aria($ef, "category") ?>>
+                                        <option value="">Select a category</option>
+                                        <?php foreach ($event_categories as $category): ?>
+                                            <option value="<?= e($category) ?>"<?= $ef["values"]["category"] === $category ? " selected" : "" ?>><?= e($category) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?= form_field_error($ef, "category") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="event-date" class="form-label small fw-bold">Date</label>
+                                    <input type="date" id="event-date" name="event_date" class="form-control<?= form_field_class($ef, "event_date") ?>" value="<?= e($ef["values"]["event_date"]) ?>"<?= form_field_aria($ef, "event_date") ?>>
+                                    <?= form_field_error($ef, "event_date") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="event-time" class="form-label small fw-bold">Start time <span class="fw-normal text-muted">(optional)</span></label>
+                                    <input type="time" id="event-time" name="event_time" class="form-control<?= form_field_class($ef, "event_time") ?>" value="<?= e($ef["values"]["event_time"]) ?>"<?= form_field_aria($ef, "event_time") ?>>
+                                    <?= form_field_error($ef, "event_time") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="event-capacity" class="form-label small fw-bold">Capacity <span class="fw-normal text-muted">(empty = no limit)</span></label>
+                                    <input type="number" id="event-capacity" name="capacity" min="1" max="65535" class="form-control<?= form_field_class($ef, "capacity") ?>" value="<?= e($ef["values"]["capacity"]) ?>"<?= form_field_aria($ef, "capacity") ?>>
+                                    <?= form_field_error($ef, "capacity") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="event-status" class="form-label small fw-bold">Registration</label>
+                                    <select id="event-status" name="status" class="form-select<?= form_field_class($ef, "status") ?>"<?= form_field_aria($ef, "status") ?>>
+                                        <?php foreach (EVENT_STATUSES as $value => $label): ?>
+                                            <option value="<?= $value ?>"<?= $ef["values"]["status"] === $value ? " selected" : "" ?>><?= $label ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?= form_field_error($ef, "status") ?>
+                                </div>
+                                <div class="col-12">
+                                    <label for="event-location" class="form-label small fw-bold">Location</label>
+                                    <input type="text" id="event-location" name="location" maxlength="150" class="form-control<?= form_field_class($ef, "location") ?>" value="<?= e($ef["values"]["location"]) ?>"<?= form_field_aria($ef, "location") ?>>
+                                    <?= form_field_error($ef, "location") ?>
+                                </div>
+                                <div class="col-12">
+                                    <label for="event-description" class="form-label small fw-bold">Description <span class="fw-normal text-muted">(optional)</span></label>
+                                    <textarea id="event-description" name="description" rows="3" maxlength="2000" class="form-control<?= form_field_class($ef, "description") ?>"<?= form_field_aria($ef, "description") ?>><?= e($ef["values"]["description"]) ?></textarea>
+                                    <?= form_field_error($ef, "description") ?>
+                                </div>
+                                <div class="col-md-7">
+                                    <label for="event-poster" class="form-label small fw-bold">Poster <span class="fw-normal text-muted">(optional)</span></label>
+                                    <input type="file" id="event-poster" name="poster" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="form-control<?= form_field_class($ef, "poster") ?>"<?= form_field_aria($ef, "poster", "poster-help") ?>>
+                                    <?= form_field_error($ef, "poster") ?>
+                                    <div class="form-text" id="poster-help">JPEG, PNG or WebP, at most 2 MB. The file type is checked from its content on the server.<?= $editing ? " Leave empty to keep the current poster." : "" ?></div>
+                                </div>
+                                <?php if ($editing): ?>
+                                    <div class="col-md-5">
+                                        <span class="form-label small fw-bold d-block">Current poster</span>
+                                        <?php $poster_state = event_poster_state($er); ?>
+                                        <?php if ($poster_state === "ok"): ?>
+                                            <img src="poster.php?event=<?= (int) $er["id"] ?>" alt="Current poster of <?= e($er["title"]) ?>" class="event-poster-preview">
+                                        <?php elseif ($poster_state === "missing"): ?>
+                                            <span class="badge bg-warning-subtle text-warning-emphasis">Poster file not available</span>
+                                            <div class="form-text">An older poster reference is stored but the file does not exist. Upload a new poster to replace it.</div>
+                                        <?php else: ?>
+                                            <span class="text-muted small">No poster</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i><?= $editing ? "Save changes" : "Publish event" ?></button>
+                                <a href="admin_dashboard.php?tab=events" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($event_confirm !== null): $ec = $event_confirm; ?>
+                <section class="card border-danger-subtle mb-4" id="event-confirm" aria-labelledby="event-confirm-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-danger mb-2" id="event-confirm-title"><i class="bi bi-trash me-2"></i>Delete this event?</h6>
+                        <?php if ((int) $ec["registrations_total"] > 0): ?>
+                            <div class="alert alert-warning small mb-3" role="alert"><i class="bi bi-shield-lock me-1"></i> <strong><?= e($ec["title"]) ?></strong> has <?= (int) $ec["registrations_total"] ?> registration(s) and cannot be deleted, so that the registration history is kept. Set its registration to <strong>Closed</strong> instead.</div>
+                            <a href="admin_dashboard.php?tab=events&amp;view=edit_event&amp;id=<?= (int) $ec["id"] ?>#event-form" class="btn btn-outline-primary btn-sm">Edit the event</a>
+                            <a href="admin_dashboard.php?tab=events" class="btn btn-outline-secondary btn-sm">Back</a>
+                        <?php else: ?>
+                            <p class="small mb-3">Are you sure you want to delete <strong><?= e($ec["title"]) ?></strong> (<?= e(event_when_label($ec)) ?>, <?= e($ec["location"]) ?>)? The event and its poster file are removed permanently. It has no registrations.</p>
+                            <form method="post" action="admin_dashboard.php?tab=events" class="d-flex gap-2">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_event">
+                                <input type="hidden" name="id" value="<?= (int) $ec["id"] ?>">
+                                <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash me-1"></i>Yes, delete event</button>
+                                <a href="admin_dashboard.php?tab=events" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($event_regs_view !== null): $rv = $event_regs_view["event"]; ?>
+                <section class="card mb-4" id="event-registrations" aria-labelledby="event-registrations-title">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-1" id="event-registrations-title"><i class="bi bi-people me-2 text-primary"></i>Registrations: <?= e($rv["title"]) ?></h6>
+                                <p class="text-muted small mb-0"><?= e(event_when_label($rv)) ?> · <?= e($rv["location"]) ?> · seats taken <?= e(event_seats_label($rv)) ?> · <?= e(EVENT_STATUSES[$rv["status"]]) ?></p>
+                            </div>
+                            <a href="admin_dashboard.php?tab=events" class="btn btn-outline-secondary btn-sm">Close</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead><tr><th scope="col">Enrollment</th><th scope="col">Student</th><th scope="col">Course</th><th scope="col">Registration</th><th scope="col">Registered at</th></tr></thead>
+                                <tbody>
+                                    <?php if (!$event_regs_view["rows"]): ?>
+                                        <tr><td colspan="5" class="text-center text-muted py-3">No registrations yet.</td></tr>
+                                    <?php endif; ?>
+                                    <?php foreach ($event_regs_view["rows"] as $reg): ?>
+                                        <tr>
+                                            <td><span class="badge bg-light text-dark border"><?= e($reg["enrollment_no"] ?: "—") ?></span></td>
+                                            <td class="fw-semibold"><?= e($reg["name"]) ?><?= strcasecmp(trim((string) $reg["student_status"]), "Inactive") === 0 ? ' <span class="badge bg-danger-subtle text-danger">Inactive</span>' : "" ?></td>
+                                            <td class="small"><?= e($reg["course"]) ?></td>
+                                            <td><span class="badge <?= ["registered" => "bg-success-subtle text-success", "attended" => "bg-primary-subtle text-primary", "cancelled" => "bg-secondary-subtle text-secondary"][$reg["status"]] ?? "bg-light text-dark" ?>"><?= e(ucfirst($reg["status"])) ?></span></td>
+                                            <td class="small text-muted"><?= e($reg["registered_at"]) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <form method="get" action="admin_dashboard.php" class="row g-2 mb-3" role="search" aria-label="Search and filter events">
+                <input type="hidden" name="tab" value="events">
+                <div class="col-lg-4 col-md-6">
+                    <label for="event-q" class="visually-hidden">Search events</label>
+                    <input type="search" id="event-q" name="q" maxlength="100" class="form-control form-control-sm" placeholder="Search title, location or description" value="<?= e($event_filters["q"]) ?>">
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label for="event-filter-category" class="visually-hidden">Category</label>
+                    <select id="event-filter-category" name="category" class="form-select form-select-sm">
+                        <option value="">All categories</option>
+                        <?php foreach ($event_categories as $category): ?>
+                            <option value="<?= e($category) ?>"<?= $event_filters["category"] === $category ? " selected" : "" ?>><?= e($category) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <label for="event-filter-status" class="visually-hidden">Status</label>
+                    <select id="event-filter-status" name="status" class="form-select form-select-sm">
+                        <option value="">Open and closed</option>
+                        <?php foreach (EVENT_STATUSES as $value => $label): ?>
+                            <option value="<?= $value ?>"<?= $event_filters["status"] === $value ? " selected" : "" ?>><?= $label ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <label for="event-filter-when" class="visually-hidden">Date</label>
+                    <select id="event-filter-when" name="when" class="form-select form-select-sm">
+                        <option value="">All dates</option>
+                        <option value="upcoming"<?= $event_filters["when"] === "upcoming" ? " selected" : "" ?>>Upcoming</option>
+                        <option value="past"<?= $event_filters["when"] === "past" ? " selected" : "" ?>>Past</option>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-4 d-grid">
+                    <button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-search"></i> Filter</button>
+                </div>
+            </form>
+
+            <div class="d-flex flex-wrap justify-content-between align-items-center small text-muted mb-2 gap-2">
+                <span id="event-summary">
+                    <?php if ($event_total > 0): ?>
+                        Showing <?= ($event_page - 1) * EVENTS_PER_PAGE + 1 ?>–<?= ($event_page - 1) * EVENTS_PER_PAGE + count($events_list) ?> of <?= $event_total ?> <?= $event_filtered ? "matching " : "" ?>event<?= $event_total === 1 ? "" : "s" ?>
+                    <?php else: ?>
+                        No events shown
+                    <?php endif; ?>
+                </span>
+                <?php if ($event_filtered): ?>
+                    <a href="admin_dashboard.php?tab=events" class="link-secondary">Reset filters</a>
+                <?php endif; ?>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
+                <table class="table table-hover table-bordered align-middle" id="event-table">
+                    <caption class="visually-hidden">Campus events</caption>
+                    <thead>
                         <tr>
-                            <th>Poster</th>
-                            <th>Event Title</th>
-                            <th>Category</th>
-                            <th>Event Date</th>
-                            <th>Location</th>
-                            <th>Description</th>
-                            <th class="text-center">Action</th>
+                            <th scope="col">Poster</th>
+                            <th scope="col">Event</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Date &amp; time</th>
+                            <th scope="col">Location</th>
+                            <th scope="col">Seats</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($events_list)): ?>
-                            <tr><td colspan="7" class="text-center py-4 text-muted">No campus events published yet.</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-muted">
+                                <?php if ($event_filtered): ?>
+                                    No events match these filters. <a href="admin_dashboard.php?tab=events">Show all events</a>
+                                <?php else: ?>
+                                    No campus events published yet. <a href="admin_dashboard.php?tab=events&amp;view=add_event#event-form">Publish the first event</a>
+                                <?php endif; ?>
+                            </td></tr>
                         <?php else: ?>
-                            <?php foreach ($events_list as $ev): ?>
+                            <?php foreach ($events_list as $ev): $poster_state = event_poster_state($ev); ?>
                                 <tr>
                                     <td>
-                                        <?php if (!empty($ev['poster']) && file_exists(__DIR__ . "/" . $ev['poster'])): ?>
-                                            <img src="<?= htmlspecialchars($ev['poster']) ?>" alt="Poster" class="event-poster-thumb">
+                                        <?php if ($poster_state === "ok"): ?>
+                                            <img src="poster.php?event=<?= (int) $ev["id"] ?>" alt="Poster: <?= e($ev["title"]) ?>" class="event-poster-thumb">
                                         <?php else: ?>
-                                            <div class="event-poster-thumb bg-light d-flex align-items-center justify-content-center text-muted">
-                                                <i class="bi bi-image"></i>
+                                            <div class="event-poster-thumb bg-light d-flex align-items-center justify-content-center text-muted" title="<?= $poster_state === "missing" ? "Poster file not available" : "No poster" ?>">
+                                                <i class="bi bi-<?= $poster_state === "missing" ? "image-alt" : "image" ?>"></i>
                                             </div>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="fw-bold text-body"><?= htmlspecialchars($ev['title']) ?></td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary"><?= htmlspecialchars($ev['category']) ?></span></td>
-                                    <td class="small fw-semibold"><?= htmlspecialchars($ev['event_date']) ?></td>
-                                    <td class="small text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i><?= htmlspecialchars($ev['location']) ?></td>
-                                    <td class="small text-muted" style="max-width: 250px;"><?= htmlspecialchars(substr($ev['description'] ?? '', 0, 80)) ?>...</td>
-                                    <td class="text-center">
-                                        <a href="admin_dashboard.php?tab=events&action=delete_event&id=<?= $ev['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete event <?= htmlspecialchars($ev['title']) ?> and its poster image?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                                    <td class="fw-bold text-body"><?= e($ev["title"]) ?><?= $poster_state === "missing" ? '<div class="small fw-normal text-warning-emphasis">poster file not available</div>' : "" ?></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary"><?= e($ev["category"]) ?></span></td>
+                                    <td class="small fw-semibold text-nowrap"><?= e(event_when_label($ev)) ?></td>
+                                    <td class="small text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i><?= e($ev["location"]) ?></td>
+                                    <td class="small text-nowrap"><?= e(event_seats_label($ev)) ?></td>
+                                    <td>
+                                        <span class="badge <?= $ev["status"] === "open" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary" ?>"><?= e(EVENT_STATUSES[$ev["status"]]) ?></span>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <a href="admin_dashboard.php?tab=events&amp;view=edit_event&amp;id=<?= (int) $ev["id"] ?>#event-form" class="btn btn-outline-primary btn-sm py-0 px-2" aria-label="Edit <?= e($ev["title"]) ?>"><i class="bi bi-pencil"></i> Edit</a>
+                                        <a href="admin_dashboard.php?tab=events&amp;view=event_registrations&amp;id=<?= (int) $ev["id"] ?>#event-registrations" class="btn btn-outline-secondary btn-sm py-0 px-2" aria-label="Registrations for <?= e($ev["title"]) ?>"><i class="bi bi-people"></i> <?= (int) $ev["registrations_total"] ?></a>
+                                        <a href="admin_dashboard.php?tab=events&amp;view=delete_event&amp;id=<?= (int) $ev["id"] ?>#event-confirm" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Delete <?= e($ev["title"]) ?>"><i class="bi bi-trash"></i> Delete</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -707,57 +1123,58 @@ if ($a_res) {
                     </tbody>
                 </table>
             </div>
+
+            <?php if ($event_pages > 1): ?>
+                <nav aria-label="Event pages">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <?php for ($pg = 1; $pg <= $event_pages; $pg++): ?>
+                            <li class="page-item<?= $pg === $event_page ? " active" : "" ?>"><a class="page-link" href="<?= e(event_list_url($event_filters, ["page" => $pg])) ?>"<?= $pg === $event_page ? ' aria-current="page"' : "" ?>><?= $pg ?></a></li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
+            <?php endif; ?>
         </div>
 
-        <!-- 4. USERS TAB (Practicals 9 & 10) -->
+        <!-- 4. USERS TAB (Practicals 9, 10 and 14: roles, account status) -->
         <div class="tab-pane fade <?= ($current_tab === 'users') ? 'show active' : '' ?>" id="users" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">User Accounts & Role Management</h5>
-                    <p class="text-muted small mb-0">RBAC accounts with encrypted Bcrypt credentials and authentication tracking.</p>
+                    <h5 class="fw-bold mb-1">User Accounts &amp; Role Management</h5>
+                    <p class="text-muted small mb-0">Accounts with bcrypt passwords. A disabled account cannot sign in and its open sessions end at the next request; your own account and the last active administrator are protected.</p>
                 </div>
             </div>
-
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
+                <table class="table table-hover table-bordered align-middle" id="user-table">
+                    <thead>
                         <tr>
-                            <th>#ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Assigned Role</th>
-                            <th>Last Login</th>
-                            <th>Registered On</th>
-                            <th class="text-center">Action</th>
+                            <th scope="col">#ID</th><th scope="col">Username</th><th scope="col">Email</th><th scope="col">Role</th>
+                            <th scope="col">Status</th><th scope="col">Last login</th><th scope="col">Registered</th><th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($users_list as $u): ?>
-                            <tr>
-                                <td><span class="text-muted fw-bold">#<?= $u['id'] ?></span></td>
-                                <td class="fw-semibold">
-                                    <i class="bi bi-person-circle me-1 text-secondary"></i>
-                                    <?= htmlspecialchars($u['username']) ?>
-                                </td>
-                                <td class="small"><?= htmlspecialchars($u['email']) ?></td>
+                        <?php foreach ($users_list as $u): $is_me = (int) $u["id"] === $current_user["id"]; ?>
+                            <tr<?= $u["status"] === "disabled" ? ' class="student-inactive"' : "" ?>>
+                                <td><span class="text-muted fw-bold">#<?= (int) $u["id"] ?></span></td>
+                                <td class="fw-semibold"><i class="bi bi-person-circle me-1 text-secondary"></i><?= e($u["username"]) ?></td>
+                                <td class="small"><?= e($u["email"]) ?></td>
                                 <td>
-                                    <?php if ($u['role'] === 'admin'): ?>
+                                    <?php if ($u["role"] === "admin"): ?>
                                         <span class="badge badge-role-admin px-2 py-1"><i class="bi bi-shield-fill me-1"></i>Admin</span>
-                                    <?php elseif ($u['role'] === 'editor'): ?>
+                                    <?php elseif ($u["role"] === "editor"): ?>
                                         <span class="badge badge-role-editor px-2 py-1"><i class="bi bi-pen-fill me-1"></i>Editor</span>
                                     <?php else: ?>
                                         <span class="badge badge-role-student px-2 py-1"><i class="bi bi-person-fill me-1"></i>Student</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="small text-muted"><?= htmlspecialchars($u['last_login'] ?? 'Never') ?></td>
-                                <td class="small text-muted"><?= htmlspecialchars($u['created_at']) ?></td>
-                                <td class="text-center">
-                                    <?php if ($u['id'] != $_SESSION["user_id"]): ?>
-                                        <a href="admin_dashboard.php?tab=users&action=delete_user&id=<?= $u['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete user <?= htmlspecialchars($u['username']) ?>?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                                <td><span class="badge <?= $u["status"] === "active" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger" ?>"><?= $u["status"] === "active" ? "Active" : "Disabled" ?></span></td>
+                                <td class="small text-muted"><?= e($u["last_login"] ?? "Never") ?></td>
+                                <td class="small text-muted"><?= e($u["created_at"]) ?></td>
+                                <td class="text-center text-nowrap">
+                                    <?php if ($is_me): ?>
+                                        <span class="badge bg-secondary-subtle text-secondary">Current session</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary-subtle text-secondary">Current Session</span>
+                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $u["status"] === "active" ? "disable_user" : "enable_user" ?>"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-<?= $u["status"] === "active" ? "warning" : "success" ?> btn-sm py-0 px-2" aria-label="<?= $u["status"] === "active" ? "Disable" : "Enable" ?> <?= e($u["username"]) ?>"><i class="bi bi-<?= $u["status"] === "active" ? "person-lock" : "person-check" ?>"></i> <?= $u["status"] === "active" ? "Disable" : "Enable" ?></button></form>
+                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline" onsubmit="<?= confirm_js('Delete user ' . $u['username'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Delete <?= e($u["username"]) ?>"><i class="bi bi-trash"></i> Delete</button></form>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -767,52 +1184,41 @@ if ($a_res) {
             </div>
         </div>
 
-        <!-- 5. AUDIT LOGS TAB (Practical 14) -->
-        <div class="tab-pane fade <?= ($current_tab === 'audits') ? 'show active' : '' ?>" id="audits" role="tabpanel">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <!-- 4b. INQUIRIES TAB (Practical 7: stored Help & Contact inquiries) -->
+        <div class="tab-pane fade <?= ($current_tab === 'inquiries') ? 'show active' : '' ?>" id="inquiries" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">Live Security & Operational Audit Trail</h5>
-                    <p class="text-muted small mb-0">Tamper-evident system logs recording logins, CRUD events, exports, and 403 blocks.</p>
+                    <h5 class="fw-bold mb-1">Help &amp; Contact Inquiries</h5>
+                    <p class="text-muted small mb-0">Inquiries sent with the Help &amp; Contact form (validated on the server and stored in the database) – <?= $inquiry_counts["new"] ?> new, <?= $inquiry_counts["total"] ?> in total.</p>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Filter inquiries">
+                    <?php foreach (["" => "All", "new" => "New", "resolved" => "Resolved"] as $value => $label): ?>
+                        <a class="btn btn-outline-secondary<?= $inquiry_status === $value ? " active" : "" ?>" href="admin_dashboard.php?tab=inquiries<?= $value !== "" ? "&amp;inq_status=" . $value : "" ?>"><?= $label ?></a>
+                    <?php endforeach; ?>
                 </div>
             </div>
-
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
-                        <tr>
-                            <th>#ID</th>
-                            <th>Timestamp</th>
-                            <th>Username</th>
-                            <th>Action Type</th>
-                            <th>Details</th>
-                            <th>Client IP</th>
-                            <th>Status</th>
-                        </tr>
+                <table class="table table-hover table-bordered align-middle" id="inquiry-table">
+                    <thead>
+                        <tr><th scope="col">#</th><th scope="col">Received</th><th scope="col">From</th><th scope="col">Topic</th><th scope="col">Message</th><th scope="col">Status</th><th scope="col" class="text-center">Action</th></tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($audit_list as $log): ?>
-                            <tr>
-                                <td><span class="text-muted fw-bold">#<?= $log['id'] ?></span></td>
-                                <td class="small text-muted"><?= htmlspecialchars($log['created_at']) ?></td>
-                                <td class="fw-semibold"><?= htmlspecialchars($log['username']) ?></td>
-                                <td>
-                                    <?php
-                                    $act = $log['action'];
-                                    $badge_class = "bg-primary-subtle text-primary";
-                                    if (strpos($act, "LOGIN") !== false) $badge_class = "bg-info-subtle text-info";
-                                    if (strpos($act, "DELETE") !== false) $badge_class = "bg-danger-subtle text-danger";
-                                    if (strpos($act, "CREATE") !== false) $badge_class = "bg-success-subtle text-success";
-                                    if (strpos($act, "DENIED") !== false) $badge_class = "bg-danger text-white";
-                                    ?>
-                                    <span class="badge <?= $badge_class ?>"><code><?= htmlspecialchars($act) ?></code></span>
-                                </td>
-                                <td class="small"><?= htmlspecialchars($log['details']) ?></td>
-                                <td class="small text-muted"><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
-                                <td>
-                                    <?php if ($log['status'] === 'SUCCESS'): ?>
-                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-check me-1"></i>SUCCESS</span>
+                        <?php if (!$inquiries): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-3">No inquiries<?= $inquiry_status !== "" ? " with this status" : " yet" ?>.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach ($inquiries as $inq): ?>
+                            <tr<?= $inq["status"] === "resolved" ? ' class="student-inactive"' : "" ?>>
+                                <td class="fw-bold text-muted">#<?= (int) $inq["id"] ?></td>
+                                <td class="small text-muted"><?= e($inq["created_at"]) ?></td>
+                                <td class="small"><strong><?= e($inq["name"]) ?></strong><br><?= e($inq["email"]) ?><?= $inq["enrollment_no"] ? " · " . e($inq["enrollment_no"]) : "" ?><?= $inq["username"] ? '<br><span class="badge bg-light text-dark border">account: ' . e($inq["username"]) . "</span>" : "" ?></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary"><?= e($inq["topic"]) ?></span></td>
+                                <td class="small" style="max-width: 360px; white-space: pre-wrap;"><?= e($inq["message"]) ?></td>
+                                <td><span class="badge <?= $inq["status"] === "new" ? "bg-warning-subtle text-warning-emphasis" : "bg-success-subtle text-success" ?>"><?= $inq["status"] === "new" ? "New" : "Resolved" ?></span></td>
+                                <td class="text-center">
+                                    <?php if ($inq["status"] === "new"): ?>
+                                        <form method="post" action="admin_dashboard.php?tab=inquiries" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="resolve_inquiry"><input type="hidden" name="id" value="<?= (int) $inq["id"] ?>"><button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" aria-label="Mark inquiry <?= (int) $inq["id"] ?> as resolved"><i class="bi bi-check2"></i> Resolved</button></form>
                                     <?php else: ?>
-                                        <span class="badge bg-danger-subtle text-danger"><i class="bi bi-x me-1"></i><?= htmlspecialchars($log['status']) ?></span>
+                                        <span class="small text-muted"><?= e($inq["resolved_at"]) ?></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -821,116 +1227,81 @@ if ($a_res) {
                 </table>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Modal: Add Student -->
-<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="POST" action="admin_dashboard.php?tab=students" class="modal-content">
-            <input type="hidden" name="action" value="add_student">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Register New Student</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Enrollment Number</label>
-                    <input type="text" name="enrollment_no" class="form-control" placeholder="e.g., 25CS023" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Full Name</label>
-                    <input type="text" name="name" class="form-control" placeholder="e.g., Shreyas" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="e.g., 25cs023@charusat.edu.in" required>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-8">
-                        <label class="form-label small fw-bold">Department / Course</label>
-                        <select name="course" class="form-select" required>
-                            <option value="Computer Science Engineering">Computer Science Engineering</option>
-                            <option value="Information Technology">Information Technology</option>
-                            <option value="Data Science">Data Science</option>
-                            <option value="Web Development">Web Development</option>
-                        </select>
-                    </div>
-                    <div class="col-4">
-                        <label class="form-label small fw-bold">Semester</label>
-                        <input type="number" name="semester" class="form-control" value="3" min="1" max="8" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Gender</label>
-                    <div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="gender" id="gMale" value="Male" checked>
-                            <label class="form-check-label" for="gMale">Male</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="gender" id="gFemale" value="Female">
-                            <label class="form-check-label" for="gFemale">Female</label>
-                        </div>
-                    </div>
+        <!-- 5. AUDIT LOGS TAB (Practical 14: filtered audit trail) -->
+        <div class="tab-pane fade <?= ($current_tab === 'audits') ? 'show active' : '' ?>" id="audits" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h5 class="fw-bold mb-1">Security &amp; Operational Audit Trail</h5>
+                    <p class="text-muted small mb-0">Logins, denied access, CSRF rejections, record and event changes, exports, uploads and account changes – the newest 100 matching entries.</p>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm">Save Student Profile</button>
+            <form method="get" action="admin_dashboard.php" class="row g-2 mb-3" role="search" aria-label="Filter the audit log">
+                <input type="hidden" name="tab" value="audits">
+                <div class="col-md-4">
+                    <label for="audit-action" class="visually-hidden">Action</label>
+                    <select id="audit-action" name="audit_action" class="form-select form-select-sm">
+                        <option value="">All actions</option>
+                        <?php foreach ($audit_action_list as $act): ?>
+                            <option value="<?= e($act) ?>"<?= $audit_filters["action"] === $act ? " selected" : "" ?>><?= e($act) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="audit-status" class="visually-hidden">Status</label>
+                    <select id="audit-status" name="audit_status" class="form-select form-select-sm">
+                        <option value="">All statuses</option>
+                        <?php foreach (AUDIT_STATUSES as $st_value): ?>
+                            <option value="<?= $st_value ?>"<?= $audit_filters["status"] === $st_value ? " selected" : "" ?>><?= $st_value ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="audit-user" class="visually-hidden">User</label>
+                    <input type="search" id="audit-user" name="audit_user" maxlength="50" class="form-control form-control-sm" placeholder="Username contains…" value="<?= e($audit_filters["user"]) ?>">
+                </div>
+                <div class="col-md-2 d-grid"><button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-funnel"></i> Filter</button></div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle" id="audit-table">
+                    <thead>
+                        <tr><th scope="col">#ID</th><th scope="col">Timestamp</th><th scope="col">Username</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Client IP</th><th scope="col">Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!$audit_list): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-3">No audit entries match these filters.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach ($audit_list as $log): ?>
+                            <tr>
+                                <td><span class="text-muted fw-bold">#<?= (int) $log["id"] ?></span></td>
+                                <td class="small text-muted"><?= e($log["created_at"]) ?></td>
+                                <td class="fw-semibold"><?= e($log["username"]) ?></td>
+                                <td>
+                                    <?php
+                                    $act = $log["action"];
+                                    $badge_class = "bg-primary-subtle text-primary";
+                                    if (str_contains($act, "LOGIN")) $badge_class = "bg-info-subtle text-info";
+                                    if (str_contains($act, "DELETE") || str_contains($act, "DISABLED")) $badge_class = "bg-danger-subtle text-danger";
+                                    if (str_contains($act, "CREATE") || str_contains($act, "ENABLED")) $badge_class = "bg-success-subtle text-success";
+                                    if (str_contains($act, "DENIED") || str_contains($act, "REJECTED") || str_contains($act, "REVOKED")) $badge_class = "bg-danger text-white";
+                                    ?>
+                                    <span class="badge <?= $badge_class ?>"><code><?= e($act) ?></code></span>
+                                </td>
+                                <td class="small"><?= e($log["details"]) ?></td>
+                                <td class="small text-muted"><code><?= e($log["ip_address"]) ?></code></td>
+                                <td>
+                                    <?php if ($log["status"] === "SUCCESS"): ?>
+                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-check me-1"></i>SUCCESS</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger-subtle text-danger"><i class="bi bi-x me-1"></i><?= e($log["status"]) ?></span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal: Add Campus Event -->
-<div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="POST" action="admin_dashboard.php?tab=events" enctype="multipart/form-data" class="modal-content">
-            <input type="hidden" name="action" value="add_event">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus text-warning me-2"></i>Publish Campus Event</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Event Title</label>
-                    <input type="text" name="title" class="form-control" placeholder="e.g., National Hackathon 2026" required>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">Category</label>
-                        <select name="category" class="form-select" required>
-                            <option value="Technical">Technical</option>
-                            <option value="Cultural">Cultural</option>
-                            <option value="Sports">Sports</option>
-                            <option value="Workshop">Workshop</option>
-                            <option value="Seminar">Seminar</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">Event Date</label>
-                        <input type="date" name="event_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Venue / Location</label>
-                    <input type="text" name="location" class="form-control" placeholder="e.g., CSPIT Auditorium, Room 506" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Event Description</label>
-                    <textarea name="description" class="form-control" rows="3" placeholder="Brief event description..."></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Event Poster (Optional, Max 2MB)</label>
-                    <input type="file" name="poster" class="form-control" accept="image/*">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-warning btn-sm text-body fw-bold">Publish Event</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 

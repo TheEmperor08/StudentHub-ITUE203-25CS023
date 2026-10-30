@@ -1,0 +1,8 @@
+StudentHub Practical 15 snapshot tests
+PASS  tools/sync_practical15.py --check: Practical-15/ is byte-for-byte identical to studenthub/ and SNAPSHOT.md matches
+PASS  SNAPSHOT.md lists all 56 tracked application files
+PASS  the snapshot folder has no separate database or configuration of its own (no schema.sql, no config files)
+PASS  tests/test_auth.py against Practical-15/: Result: 132 passed, 0 failed
+PASS  tests/test_api.py against Practical-15/: Result: 72 passed, 0 failed
+
+Result: 5 passed, 0 failed, 5 checks

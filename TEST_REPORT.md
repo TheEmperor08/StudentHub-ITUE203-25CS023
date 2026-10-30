@@ -203,3 +203,34 @@ Audit of Practicals 1–7 against the integrated portal:
 | Regression: `test_dashboard` 36 / 36, `test_api` 72 / 72, `test_events` 94 / 94, `test_students` 170 / 170, `test_auth` 132 / 132, `test_001` 88 / 88, `test_002` 22 / 22, `test_003` 27 / 27, `test_004` 18 / 18; Edge `browser_auth` 14 / 14 (its weak-password check now expects the browser to stop the form – the server refusal is tested over HTTP), `browser_students` 16 / 16, `browser_inactive_login` 13 / 13, `browser_events` 16 / 16, `browser_api` 16 / 16, `browser_dashboard` 15 / 15 | all passed | outputs in `tests/` and `database/tests/` |
 
 Covered: the registration page loads the validation script with rules matching the server; a request that bypasses the browser is still refused by the server; the Data Explorer page, its sidebar link, the three JSON files and the escaping in `data.js`; the inquiry form (public, CSRF, topics, honeypot), a stored visitor inquiry with normalised e-mail/enrollment, the reference number shown once, an audit entry without the message text, nine invalid cases (incl. array parameters and the honeypot) with escaped redisplay, CSRF refusal, prefilled fields and account link for a signed-in student, 8 simultaneous inquiries all stored with distinct ids, the Inquiries tab (newest first, new-count badge, escaped messages, CSRF forms, resolve with audit entry, resolve twice, filter), students and editors refused (403). In Edge: live messages and the strength meter while typing, submit blocked with focus on the first field, the meter reaching "Strong"; the Data Explorer loading state (JSON response delayed by the test's network layer), 5 rows per page, search + filter, events sorted Z–A; server validation of the contact form, success with the reference number, the admin list and resolving.
+
+---
+
+## 13. Practical 15 – final integration, snapshot and complete test run (31 October 2026)
+`Practical-15/` was refreshed from the canonical `studenthub/` with `tools/sync_practical15.py`: 56 application files copied byte for byte, the stale files of the old independent copy (e.g. its own `schema.sql`) removed – the old copy stays in the Git history – and `Practical-15/SNAPSHOT.md` lists the SHA-256 of every file. `tests/test_snapshot.py` verifies the copy and runs the authentication suite (132 / 132) and the events API suite (72 / 72) against `Practical-15/` itself.
+
+**Complete run** – `python tests/run_all.py --browser <python with Playwright>` (output: `tests/run_all_output.txt`), every suite on its own disposable database:
+
+| Suite | Passed | Failed |
+|---|---|---|
+| Practical 8 – migration 001 and portal | 88 | 0 |
+| Migrations 002 / 003 / 004 / 005 | 22 / 27 / 18 / 14 | 0 |
+| Practicals 9/10 – registration, login, sessions, RBAC | 132 | 0 |
+| Practical 11 – student management | 170 | 0 |
+| Practical 12 – events, posters, registration | 94 | 0 |
+| Practical 13 – JSON API, Event Finder | 72 | 0 |
+| Practical 14 – admin dashboard | 36 | 0 |
+| Practicals 5–7 – validation, Data Explorer, inquiries | 40 | 0 |
+| Practical 15 – snapshot (incl. 132 + 72 checks against the snapshot) | 5 | 0 |
+| Microsoft Edge: auth 14, students 16, inactive login 13, events 16, Event Finder 16, dashboard 15, Practicals 5–7 14, end-to-end 17 | 121 | 0 |
+| **Total** | **839** | **0** |
+
+The first complete run showed one failure in the Event Finder browser test: the check for "Event full" ran before the list refresh that follows the API's 409 answer had finished (a timing race in the test; it had passed in every earlier run). The test now waits for the refreshed card; the second complete run above passed completely. `run_all.py` was also corrected to read each suite's own last summary line.
+
+**End-to-end scenario** (`tests/browser_e2e.py`, Edge, 17 / 17, screenshots `evidence/practical-15-integration/`): student registration; logout and login by e-mail; profile; editor and student refused by the Admin Console (403); admin adds a student (automatic enrollment number) and edits it; deactivation ends the open session and refuses the sign-in, reactivation restores it; a PHP file disguised as `.jpg` is refused and a real JPEG poster is stored under a random name; event edited; registration, duplicate refused ("already registered"), capacity reached for a second student ("The event is full."); cancellation keeps the row; Event Finder debounced search and registration through the JSON API without a reload; student search + status filter; dashboard counters equal the database; audit log shows ACCESS_DENIED, LOGIN_DENIED, SESSION_REVOKED and UPLOAD_REJECTED; a forged form without the CSRF token is refused and the API answers 401 to a visitor.
+
+**Database evidence for Practical 8** (`tests/browser_database_evidence.py`, 6 / 6): phpMyAdmin screenshots of a disposable copy built from `database/studenthub_demo.sql` with fictional registrations (tables, `registrations` structure and foreign keys, `students` structure, the designer view, a three-table JOIN) in `evidence/practical-08-integration/`; Practicals 9/10 screenshots from `tests/browser_auth.py` in `evidence/practical-09-10-integration/`.
+
+**Live database:** migrations 001–005 applied, each after a verified backup; the read-only live checks pass (001 24 / 24, 002 4 / 4, 003 5 / 5, 004 5 / 5, 005 4 / 4).
+
+Remaining limitations (whole project): no limit on repeated sign-in attempts; no e-mail (password reset, inquiry answers); posters are uploaded only in the Admin Console (the JSON API handles no files); `menu_items` has no editing form; the Admin Console loads Bootstrap from a CDN; the portal has no favicon (one 404 per browser session); the canvas CAPTCHA of Practical 5 was not carried into the portal; academic figures on the student pages are sample data; the standalone `Practical-1/` … `Practical-14/` folders are historical and not updated.

@@ -1,13 +1,10 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 require_once "student_profile.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view profile.");
-    exit();
-}
+$current_user = require_permission("portal.view");
 
 $user_id  = $_SESSION["user_id"];
 $username = $_SESSION["username"];
@@ -22,6 +19,7 @@ $sem           = "Semester " . $profile["semester"] . " (Division I)";
 $msg   = "";
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $form_action = $_POST["form_action"] ?? "update_contact";
 
     if ($form_action === "change_password") {
@@ -31,8 +29,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if ($old_pass === "" || $new_pass === "") {
             $error = "Please enter both your current and new password.";
-        } elseif (strlen($new_pass) < 6) {
-            $error = "New password must be at least 6 characters long.";
+        } elseif ($problems = password_problems($new_pass)) {
+            $error = "The new password needs " . implode(", ", $problems) . ".";
         } elseif ($new_pass !== $confirm_pass) {
             $error = "New passwords do not match.";
         } else {
@@ -79,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile – <?= htmlspecialchars($student_name) ?></title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -147,6 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <h2><i class="bi bi-telephone" aria-hidden="true"></i> Contact & Address</h2>
             <p>Saving phone and address details is not available yet.</p>
             <form action="profile.php" method="POST">
+                <?= csrf_field() ?>
                 <fieldset>
                     <legend class="sr-only">Edit Student Records</legend>
                     <p>
@@ -170,6 +169,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <details>
                 <summary><i class="bi bi-key" aria-hidden="true"></i> Change Login Password</summary>
                 <form action="profile.php" method="POST">
+                <?= csrf_field() ?>
                     <input type="hidden" name="form_action" value="change_password">
                     <fieldset>
                         <legend class="sr-only">Change password</legend>

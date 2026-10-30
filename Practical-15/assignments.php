@@ -1,13 +1,10 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 require_once "student_profile.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view assignments.");
-    exit();
-}
+$current_user = require_permission("portal.view");
 
 $profile = get_student_profile($conn);
 
@@ -16,6 +13,7 @@ $subjects = ["CSUC201 - FDSA", "ITUE204 - WDF", "CEUE203 - OOP", "ITUC201 - FCN"
 $msg   = "";
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $subj = $_POST["subject"] ?? "";
     // Assignment uploads are not implemented: any attached file is ignored and never written to disk
     $file_sent = ($_FILES["workfile"]["error"] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
@@ -36,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assignments – Semester 3 (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -114,6 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <p><mark>Uploads unavailable:</mark> file uploads are not available yet. You can record a submission notice for a subject (kept in the activity log), but no file is received or stored. Submit your work to the course faculty.</p>
 
             <form action="assignments.php" method="POST" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                 <fieldset>
                     <legend>Submit Assignment Solution</legend>
                     <p>

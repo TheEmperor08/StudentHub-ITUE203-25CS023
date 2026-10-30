@@ -1,0 +1,7 @@
+PASS  phpMyAdmin: database structure lists the shared tables
+PASS  registrations structure shows student_id, event_id, status and the unique key
+PASS  relation view of registrations shows the two foreign keys
+PASS  designer (ER diagram) available: True
+PASS  three-table JOIN (registrations, students, events) returns the 4 fictional registrations
+PASS  disposable database removed
+browser checks: 6 passed, 0 failed

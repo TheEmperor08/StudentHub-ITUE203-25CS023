@@ -1,0 +1,21 @@
+PASS  1. registration: account + linked student record with the next enrollment number, signed in
+PASS  2. logout (POST) and login with the e-mail address
+PASS  3. profile shows the student's own record
+PASS  4. editor and student opening the Admin Console -> HTTP 403 'Access Denied'
+PASS  5. admin adds a student (automatic enrollment number) and edits the semester
+PASS  6/7. deactivation: the signed-in student loses access and a new sign-in is refused with the generic message
+PASS  6. reactivation restores sign-in
+PASS  8/9. event: a PHP file disguised as .jpg is refused, a real JPEG poster is stored under a random name, the event is edited
+PASS  10/11. registration succeeds; a second attempt -> 'already registered'; another student on a stale page -> 'The event is full.'
+PASS  12. cancellation keeps the row as 'cancelled' and frees the seat
+PASS  13. Event Finder: debounced search and registration through the JSON API without a page reload
+PASS  14. student search + status filter
+PASS  15. dashboard counters equal the database
+PASS  16. audit log: denied access, refused sign-in, revoked session and rejected upload are recorded
+PASS  17. a forged form without the CSRF token -> 'Security check failed' (403), nothing changed; the API answers 401 to a visitor
+PASS  no JavaScript errors (only the intended 401/403/422 responses)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-15-integration/ (17 PNG files)
+browser checks: 17 passed, 0 failed

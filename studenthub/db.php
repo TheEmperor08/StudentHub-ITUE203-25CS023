@@ -46,7 +46,7 @@ function studenthub_fail(int $status, string $title, string $message): void
     $m = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
     echo "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
          "<title>$t – StudentHub</title>\n<link rel=\"stylesheet\" href=\"assets/css/auth.css?v=3\">\n</head>\n<body class=\"auth\">\n",
-         "<main class=\"auth-main\"><div class=\"auth-card\" role=\"alert\">\n<h1>$t</h1>\n<p class=\"auth-sub\">$m</p>\n",
+         "<main class=\"auth-main\" style=\"grid-column: 1 / -1;\"><div class=\"auth-card\" role=\"alert\">\n<h1>$t</h1>\n<p class=\"auth-sub\">$m</p>\n",
          "<p class=\"auth-links\"><a href=\"index.php\">&larr; Back to Home</a></p>\n</div></main>\n</body>\n</html>\n";
 }
 
