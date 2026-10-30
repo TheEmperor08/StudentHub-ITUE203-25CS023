@@ -1,0 +1,10 @@
+StudentHub migration 002 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+
+== READ-ONLY verification of the live database studenthub_db against the dump taken before migration 002
+PASS  live structure is identical to the baseline upgraded with 002 in a disposable copy
+PASS  live database records migration 002
+PASS  live users (with password hashes), students, events, registrations and menu items are unchanged
+INFO  live rows: audit_logs 65, events 5, menu_items 10, registrations 0, schema_migrations 2, students 9, users 8
+PASS  all disposable databases removed
+
+Result: 4 passed, 0 failed, 4 checks

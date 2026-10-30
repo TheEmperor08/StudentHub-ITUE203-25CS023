@@ -1,0 +1,3 @@
+# Evidence files are kept byte for byte (the CSV export uses CRLF line endings and a UTF-8 byte-order mark)
+*.csv -text
+*.png binary

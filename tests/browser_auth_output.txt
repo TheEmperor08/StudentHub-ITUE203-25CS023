@@ -9,7 +9,7 @@ PASS  wrong password -> 'Invalid username/email or password.'
 PASS  correct login -> dashboard
 PASS  student -> admin_dashboard.php: HTTP 403 'Access Denied' page
 PASS  admin login -> Admin Console with welcome message
-PASS  student delete actions are POST forms with a CSRF token (no delete links)
+PASS  student status changes are POST forms with a CSRF token (no delete/deactivate links that change data)
 PASS  admin Logout button -> signed out
 PASS  no JavaScript errors (only the intended 401/403/422 responses)
 

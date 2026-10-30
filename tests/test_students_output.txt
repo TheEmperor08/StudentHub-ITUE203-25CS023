@@ -1,0 +1,188 @@
+StudentHub student management tests - Practical 11 (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Static checks
+PASS  php -l: no syntax errors in all 32 PHP files of studenthub/ and tools/
+PASS  no page or include deletes student records (no DELETE FROM students anywhere)
+PASS  student_management.php: queries with values are prepared statements (->query() only with fixed SQL)
+PASS  admin_dashboard.php: no hard-delete action for students any more
+PASS  student actions require the students.manage permission on the server
+
+== Database (migration 002)
+PASS  students.enrollment_no has the UNIQUE index uq_students_enrollment_no
+PASS  schema_migrations records 002
+PASS  the database itself refuses a duplicate enrollment number (also in other letter case)
+PASS  several legacy records without an enrollment number (NULL) are still allowed
+
+== Student listing (admin)
+PASS  admin -> Student Records tab (200) lists the records, newest first
+PASS  table shows enrollment, name, email, course, semester, status, account link and actions
+PASS  summary: total, 6 active and 1 inactive
+PASS  inactive records are marked (Inactive badge, greyed row, Reactivate button)
+PASS  every POST form in the tab carries a CSRF token
+PASS  no hard-delete button for students; deactivation goes through a confirmation page
+PASS  empty result -> helpful empty state with a link back to all records
+
+== Add student
+PASS  GET view=add shows the add form (CSRF token, all fields, no login-account fields)
+PASS  valid student with an entered enrollment number -> 303 back to the list
+PASS  ... stored as Active with name/e-mail normalised (spaces collapsed, e-mail lower case)
+PASS  ... no login account was created (users unchanged, students.user_id NULL)
+PASS  success message names the student and the number, once (from the session)
+PASS  CREATE_STUDENT written to the audit log (record ID and number, no e-mail)
+PASS  empty enrollment number -> next number of the existing scheme (26IT102: admission year 2026 + IT)
+PASS  semester 3 -> admitted last year: 25DS001; apostrophe in the name accepted
+PASS  the name with an apostrophe is HTML-escaped in the list
+PASS  course without a code ('Computer Science') and no number -> asked to enter the number, nothing stored
+PASS  ... with an entered number the existing course name is accepted unchanged
+
+== Invalid student details (server-side validation; nothing stored)
+PASS  empty name -> 422 'Please enter the full name.'
+PASS  name with digits -> 422 'letters, spaces'
+PASS  name with HTML -> 422 'letters, spaces'
+PASS  one-letter name -> 422 '2–100 characters'
+PASS  invalid e-mail -> 422 'valid email address'
+PASS  e-mail longer than 100 characters -> 422 'valid email address'
+PASS  course not in the list -> 422 'course from the list'
+PASS  gender not in the list -> 422 'Male, Female or Other'
+PASS  enrollment number in the wrong format -> 422 '2 digits, 2 letters and 3 digits'
+PASS  enrollment number with SQL -> 422 '2 digits, 2 letters and 3 digits'
+PASS  field sent as an array -> 422 'characters that are not allowed'
+PASS  all fields empty -> a message under every required field
+PASS  no record was stored by the rejected forms
+PASS  rejected input is shown again, HTML-escaped, with the general error alert
+
+== Duplicate enrollment numbers and e-mails
+PASS  duplicate enrollment number (same) -> 'already used', nothing stored
+PASS  duplicate enrollment number (lower case) -> 'already used', nothing stored
+PASS  duplicate enrollment number (with spaces) -> 'already used', nothing stored
+PASS  duplicate e-mail (other case, spaces) -> refused
+PASS  a duplicate number is reported together with the other errors (all problems at once)
+
+== Invalid semester values
+PASS  semester '0' -> rejected ('number from 1 to 8')
+PASS  semester '9' -> rejected ('number from 1 to 8')
+PASS  semester '12' -> rejected ('number from 1 to 8')
+PASS  semester '-1' -> rejected ('number from 1 to 8')
+PASS  semester '3.5' -> rejected ('number from 1 to 8')
+PASS  semester 'abc' -> rejected ('number from 1 to 8')
+PASS  semester '1 OR 1=1' -> rejected ('number from 1 to 8')
+PASS  semester '' -> rejected ('Please select a semester.')
+PASS  no record was stored with an invalid semester
+
+== Edit student
+PASS  GET view=edit shows the form filled from the database
+PASS  ... it states the account link and the number of registrations
+PASS  valid update -> 303, new values stored
+PASS  ... account link, status, enrollment number and creation time unchanged
+PASS  ... event registrations unchanged
+PASS  ... UPDATE_STUDENT audit entry and a success message
+PASS  changing to another student's enrollment number -> refused, record unchanged
+PASS  changing to another student's e-mail -> refused
+PASS  invalid semester on edit -> refused, form shown again in edit mode
+PASS  removing the enrollment number on edit -> refused
+PASS  a new, free enrollment number in the right format can be set
+PASS  a legacy record (old number format, old course, no semester, old gender value) can be edited; unchanged values are kept
+PASS  update with an unknown or malformed id (999999, 0, '1 OR 1=1', 'abc') -> 'not found', nothing changed
+PASS  GET edit of an unknown record -> back to the list with an error
+
+== Search and filters (parameterised; combined)
+PASS  search by name {'q': 'Code'} -> exactly the 1 matching record(s)
+PASS  search by e-mail part {'q': 'code.less'} -> exactly the 1 matching record(s)
+PASS  search by enrollment number prefix {'q': '25CS'} -> exactly the 3 matching record(s)
+PASS  course filter {'course': 'Web Development'} -> exactly the 1 matching record(s)
+PASS  semester filter {'semester': '5'} -> exactly the 1 matching record(s)
+PASS  status filter Active {'status': 'Active'} -> exactly the 11 matching record(s)
+PASS  status filter Inactive {'status': 'Inactive'} -> exactly the 1 matching record(s)
+PASS  search + course {'q': '25CS', 'course': 'Web Development'} -> exactly the 1 matching record(s)
+PASS  search + semester + status {'q': 'a', 'semester': '3', 'status': 'Active'} -> exactly the 4 matching record(s)
+PASS  course + status {'course': 'Computer Science', 'status': 'Inactive'} -> exactly the 1 matching record(s)
+PASS  all four together {'q': 'e', 'course': 'Data Science', 'semester': '3', 'status': 'Active'} -> exactly the 2 matching record(s)
+PASS  the chosen filters stay selected and the search text stays in the box
+PASS  '%' in the search is matched literally (not as a wildcard)
+PASS  '_' in the search is matched literally (not as a wildcard)
+
+== SQL injection attempts
+PASS  search "' OR '1'='1" -> 200, treated as text, no extra records
+PASS  search "x%' OR 1=1 -- " -> 200, treated as text, no extra records
+PASS  search '" OR ""="' -> 200, treated as text, no extra records
+PASS  search "'; DROP TABLE students; --" -> 200, treated as text, no extra records
+PASS  injected course value is ignored (unknown value, not SQL); the search still filters
+PASS  injected semester value is ignored (unknown value, not SQL); the search still filters
+PASS  injected status value is ignored (unknown value, not SQL); the search still filters
+PASS  injected page value is ignored (unknown value, not SQL); the search still filters
+PASS  the students table still exists and no record changed
+
+== Pagination
+PASS  24 records -> 10 per page, 3 pages with page links
+PASS  the last page shows the rest
+PASS  a page number past the end shows the last page
+PASS  page links keep the search and filters
+PASS  the second filtered page has the remaining matches
+
+== Soft delete (deactivation) and reactivation
+PASS  GET view=deactivate shows a confirmation page and changes nothing
+PASS  ... it explains the soft delete and the kept registrations
+PASS  GET requests with action=deactivate_student (even with the token) change nothing
+PASS  POST deactivation without the CSRF token -> 403, unchanged
+PASS  POST deactivation with a wrong token -> 403, unchanged
+PASS  confirmed POST -> 303, status Inactive
+PASS  ... the record is not removed (same number of records, all other fields unchanged)
+PASS  ... the login-account link is kept
+PASS  ... historical event registrations are intact (same rows, statuses and times)
+PASS  ... DEACTIVATE_STUDENT audit entry and a message that the record is kept
+PASS  the inactive record is listed with the Inactive filter and offers Reactivate
+PASS  deactivating it again -> 'already inactive'
+PASS  the confirmation page is not offered for an inactive record
+PASS  an inactive student cannot register for a new event ('student_inactive')
+PASS  ... and no registration row was added
+PASS  GET with action=reactivate_student changes nothing
+PASS  POST reactivation without the token -> 403, still inactive
+PASS  reactivation with the token -> Active again, REACTIVATE_STUDENT audit entry
+PASS  after reactivation the student can register for the event again
+PASS  reactivating an active record -> 'already active'
+PASS  deactivating an unknown record -> 'not found'
+
+== Inactive records elsewhere in the portal
+PASS  a deactivated student is no longer listed in the student directory; active ones are
+PASS  ... and is listed again after reactivation
+
+== CSV export
+PASS  export -> 200 text/csv download with a .csv file name
+PASS  the file name's date and time match the database clock (portal time zone, not php.ini's Europe/Berlin)
+PASS  UTF-8 byte-order mark and CRLF line endings (Excel)
+PASS  header row: record fields only (no gender, password, role, token or session columns)
+PASS  all 27 records exported, inactive ones included with status Inactive
+PASS  no password hashes, session or CSRF data in the file
+PASS  formula injection: cells starting with = + - @ get a leading apostrophe
+PASS  ... and so do cells starting with a tab or carriage return
+PASS  quotes and commas are escaped by RFC 4180 quoting (the file parses into 9 columns per row)
+PASS  the account column shows only Linked/None
+PASS  EXPORT_CSV written to the audit log with the number of records
+PASS  the Export button carries the current search and filters
+PASS  filtered export contains exactly the 12 filtered records (all pages, not only the first 10)
+PASS  status + semester filters apply to the export
+
+== Access control (students, editors, visitors)
+PASS  student: Student Records tab, add/edit views and CSV export -> HTTP 403
+PASS  student: the 403 for the export contains no CSV data
+PASS  student: add / update / deactivate via POST with a valid token -> 403, nothing changed
+PASS  editor: Student Records tab, add/edit views and CSV export -> HTTP 403
+PASS  editor: the 403 for the export contains no CSV data
+PASS  editor: add / update / deactivate via POST with a valid token -> 403, nothing changed
+PASS  not signed in: list/export and POST -> login page, nothing changed
+
+== CSRF and GET requests
+PASS  add/update without, with a wrong or with a modified token -> 403 'Security check failed', nothing changed
+PASS  CSRF rejections are audit-logged
+PASS  a token from another admin's session is refused
+PASS  GET requests carrying add/update parameters (even the token) change nothing
+
+== Server log
+PASS  no PHP warnings, notices or fatal errors in the server log
+
+== Clean-up
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched (students, users with password hashes, registrations unchanged)
+
+Result: 148 passed, 0 failed, 148 checks

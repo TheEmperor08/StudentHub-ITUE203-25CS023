@@ -99,9 +99,11 @@ def main():
             page.wait_for_url(BASE + "admin_dashboard.php")
             check("admin login -> Admin Console with welcome message", "Admin Console" in page.content() and "signed in as administrator" in page.content())
             page.goto(BASE + "admin_dashboard.php?tab=students")
-            delete_forms = page.locator("form[action='admin_dashboard.php?tab=students'] input[name=action][value=delete_student]").count()
-            check("student delete actions are POST forms with a CSRF token (no delete links)",
-                  delete_forms > 0 and page.locator("a[href*='action=delete_']").count() == 0)
+            # Practical 11: students are deactivated (soft delete) instead of deleted; status changes are POST forms
+            status_forms = page.locator("form[action='admin_dashboard.php?tab=students'] input[name=action][value=reactivate_student]").count()
+            check("student status changes are POST forms with a CSRF token (no delete/deactivate links that change data)",
+                  status_forms > 0 and page.locator("a[href*='action=']").count() == 0
+                  and page.locator("form[action='admin_dashboard.php?tab=students']:not(:has(input[name=csrf_token]))").count() == 0)
             shot("admin-console.png")
             page.click("button:has-text('Logout')")
             page.wait_for_url(re.compile(r".*login\.php\?status=logged_out"))

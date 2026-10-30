@@ -8,13 +8,16 @@ into this database step by step; the practical folders keep their own historical
 | `studenthub_demo.sql` | Current schema + fictional demo rows for a **new** installation (no accounts, no password hashes) |
 | `migrations/001_practical8_foundation.sql` | Upgrades an **existing** database to the Practical 8 foundation |
 | `migrations/001_practical8_foundation.down.sql` | Schema rollback of migration 001 |
+| `migrations/002_unique_enrollment_no.sql` | Practical 11: UNIQUE index on `students.enrollment_no` |
+| `migrations/002_unique_enrollment_no.down.sql` | Rollback of migration 002 (drops the index only) |
 | `tests/test_001_practical8_foundation.py` | Tests of migration 001 (disposable databases only) + read-only live check |
+| `tests/test_002_unique_enrollment_no.py` | Tests of migration 002 (disposable databases only) + read-only live check |
 | `tests/fixtures/studenthub_v1_fixture.sql` | The pre-migration structure with fictional rows, used by the tests |
 
-## Tables and relationships (after migration 001)
+## Tables and relationships (after migrations 001 and 002)
 
 ```text
-users (id) ─────────1:0..1──────── students (id, user_id → users.id  ON DELETE SET NULL, UNIQUE)
+users (id) ─────────1:0..1──────── students (id, user_id → users.id  ON DELETE SET NULL, UNIQUE; enrollment_no UNIQUE)
   │                                    │
   │ 1:n (ON DELETE SET NULL)           │ 1:n (ON DELETE CASCADE)
   ▼                                    ▼
@@ -54,7 +57,8 @@ names, the roles `admin`, `editor` and `student` (an editor gets no admin rights
 C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 C:\xampp\mysql\bin\mysql.exe -u root studenthub_db < database\studenthub_demo.sql
 ```
-The demo file already contains migration 001; it refuses to run on an older database (use the migration instead).
+The demo file already contains migrations 001 and 002; it refuses to run on a database older than 001 (use the
+migrations instead).
 
 **Existing database created before migration 001:**
 ```bat
@@ -63,6 +67,34 @@ C:\xampp\mysql\bin\mysql.exe -u root studenthub_db < database\migrations\001_pra
 python database\tests\test_001_practical8_foundation.py --verify-live --baseline-dump studenthub_db_before_001.sql
 ```
 Keep the dump outside the repository – it contains real accounts and password hashes.
+
+**Existing database at migration 001** (Practical 11 student management):
+```bat
+C:\xampp\mysql\bin\mysqldump.exe -u root --single-transaction --routines --triggers --events --databases studenthub_db > studenthub_db_before_002.sql
+C:\xampp\mysql\bin\mysql.exe -u root studenthub_db < database\migrations\002_unique_enrollment_no.sql
+python database\tests\test_002_unique_enrollment_no.py --verify-live --baseline-dump studenthub_db_before_002.sql
+```
+
+## Migration 002 – unique enrollment numbers (Practical 11)
+
+The Admin Console now adds and edits student records, so two records must never share an enrollment number. The
+application checks it, and migration 002 makes the database enforce it too (also for simultaneous requests):
+
+1. **Preconditions** (nothing is changed if one fails): migration 001 is recorded; `students.enrollment_no` exists; no
+   enrollment number is used twice. The column collation is case-insensitive, so `25cs011` and `25CS011` count as the
+   same number. Duplicates are **not** corrected automatically – list them with
+   `SELECT enrollment_no, COUNT(*) FROM students WHERE enrollment_no IS NOT NULL GROUP BY enrollment_no HAVING COUNT(*) > 1;`
+2. `UNIQUE KEY uq_students_enrollment_no (enrollment_no)`. `NULL` stays allowed, any number of times (legacy rows).
+3. Verification of the index, then the row `002` in `schema_migrations`.
+
+No column, value, status, course name, account link or registration changes. Idempotent; the rollback
+(`002_unique_enrollment_no.down.sql`) drops only the index and the `002` row. Applied to the live database on
+31 Oct 2026 after a verified backup (9 records, no duplicates).
+
+**Soft delete (Practical 11):** student records are never deleted by the portal. Deactivating a student sets
+`students.status` to `Inactive` (the existing status value); the row, its `user_id` link and its `registrations` stay.
+Inactive students cannot register for events (`register_student_for_event()` refuses them) and are not listed in the
+student directory; reactivation sets the status back to `Active`.
 
 ## Migration 001 in detail
 
@@ -136,3 +168,16 @@ built-in server; a fresh install from `studenthub_demo.sql`.
 
 Results (31 Oct 2026, PHP 8.2.12, MariaDB 10.4.32): fixture **87 / 87**, real pre-migration dump **87 / 87**, live
 database after migration (`--verify-live`) **24 / 24**. Output of the fixture run: `tests/test_001_output.txt`.
+Re-run after migration 002 and the Practical 11 changes: fixture **87 / 87** (the fresh-install comparison now applies
+the later migrations to the upgraded copy first), live `--verify-live` **24 / 24**.
+
+```bat
+python database\tests\test_002_unique_enrollment_no.py                          :: fixture + migration 001
+python database\tests\test_002_unique_enrollment_no.py --source-dump <dump.sql>  :: a real dump in a disposable DB
+```
+Checked: the only structural change is the new index; every row of every table unchanged; idempotent; duplicate
+(also other letter case) refused, several `NULL` allowed; rollback restores the previous structure and can run twice;
+re-apply; precondition stops (duplicates, missing migration 001) change nothing; a fresh install equals 001 + 002; the
+demo file adds the index to a database made by its earlier version. Results (31 Oct 2026): fixture **22 / 22**, real
+dump **22 / 22**, live database after applying it (`--verify-live`) **4 / 4**. Output: `tests/test_002_output.txt`,
+`tests/test_002_verify_live_output.txt`.

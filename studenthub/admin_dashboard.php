@@ -1,6 +1,7 @@
 <?php
 require_once "db.php";
 require_once __DIR__ . "/includes/auth.php";
+require_once __DIR__ . "/includes/student_management.php";
 require_once "audit_logger.php";
 
 // 1-2. Signed in, not timed out, account still exists, role holds 'admin.console' – otherwise login page or HTTP 403
@@ -12,20 +13,36 @@ function confirm_js(string $text): string
     return e("return confirm(" . json_encode($text, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ");");
 }
 
-// 3. Handle CSV Export for Students
-if (isset($_GET["export"]) && $_GET["export"] === "csv") {
-    log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "EXPORT_CSV", "Admin exported student records to CSV.", "SUCCESS");
-    header("Content-Type: text/csv; charset=utf-8");
-    header("Content-Disposition: attachment; filename=StudentHub_Students_" . date("Ymd_His") . ".csv");
-    $output = fopen("php://output", "w");
-    fputcsv($output, ["ID", "Enrollment No", "Name", "Email", "Course", "Semester", "Gender", "Status", "Created At"]);
-    $csv_res = $conn->query("SELECT id, enrollment_no, name, email, course, semester, gender, status, created_at FROM students ORDER BY id ASC");
-    if ($csv_res) {
-        while ($row = $csv_res->fetch_assoc()) {
-            fputcsv($output, $row);
-        }
-    }
-    fclose($output);
+// Student form helpers: Bootstrap error class, ARIA attributes and the message under a field
+function student_field_class(array $form, string $field): string
+{
+    return isset($form["errors"][$field]) ? " is-invalid" : "";
+}
+
+function student_field_aria(array $form, string $field, string $help_id = ""): string
+{
+    $ids = trim((isset($form["errors"][$field]) ? "$field-error " : "") . $help_id);
+    return (isset($form["errors"][$field]) ? ' aria-invalid="true"' : "") . ($ids !== "" ? ' aria-describedby="' . $ids . '"' : "");
+}
+
+function student_field_error(array $form, string $field): string
+{
+    return isset($form["errors"][$field]) ? '<div class="invalid-feedback d-block" id="' . $field . '-error">' . e($form["errors"][$field]) . "</div>" : "";
+}
+
+// Student list options (search, course, semester, status, page) – shared by the table and the CSV export
+$student_courses = student_courses($conn);
+$student_filters = student_filters($_GET, $student_courses);
+
+// 3. CSV export of the filtered student records (read-only; admins only)
+if (($_GET["export"] ?? "") === "csv") {
+    require_permission("students.manage");
+    $export_rows = student_list($conn, $student_filters);
+    log_audit($conn, $current_user["id"], $current_user["username"], "EXPORT_CSV",
+        "Exported " . count($export_rows) . " student records to CSV (course: " . ($student_filters["course"] ?: "all")
+        . ", semester: " . ($student_filters["semester"] ?: "all") . ", status: " . ($student_filters["status"] ?: "all")
+        . ($student_filters["q"] !== "" ? ", with a search" : "") . ").", "SUCCESS");
+    send_students_csv($export_rows);
     exit();
 }
 
@@ -33,43 +50,51 @@ $flash       = take_flash();
 $success_msg = ($flash && $flash["type"] === "success") ? $flash["message"] : "";
 $error_msg   = ($flash && $flash["type"] === "error") ? $flash["message"] : "";
 $current_tab = $_GET["tab"] ?? "overview";
+$student_form    = null;   // add/edit form in the Student Records tab: mode, id, record, values, errors
+$student_confirm = null;   // record waiting for the deactivation confirmation
 
 // 4. Handle POST Actions (Add Student, Add Event) – every POST must carry the CSRF token
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     require_valid_csrf();
     $action = $_POST["action"] ?? "";
 
-    if ($action === "add_student") {
-        $enrollment = trim($_POST["enrollment_no"] ?? "");
-        $name       = trim($_POST["name"] ?? "");
-        $email      = trim($_POST["email"] ?? "");
-        $course     = trim($_POST["course"] ?? "");
-        $semester   = (int)($_POST["semester"] ?? 1);
-        $gender     = trim($_POST["gender"] ?? "Male");
-
-        if ($semester < 1 || $semester > 8) {
-            flash("error", "Semester must be between 1 and 8."); redirect("admin_dashboard.php?tab=students");
+    // Student records (Practical 11): add, edit, soft delete and reactivation – admins only (students.manage)
+    if (in_array($action, ["add_student", "update_student", "deactivate_student", "reactivate_student"], true)) {
+        require_permission("students.manage");
+        $current_tab = "students";
+        $target_id = student_id_from($_POST["id"] ?? "");
+        $record    = $target_id > 0 ? find_student_record($conn, $target_id) : null;
+        if ($action !== "add_student" && $record === null) {
+            flash("error", "That student record was not found."); redirect("admin_dashboard.php?tab=students");
         }
-        if (empty($name) || empty($email) || empty($course)) {
-            flash("error", "Name, Email, and Course are required fields."); redirect("admin_dashboard.php?tab=students");
-        } else {
-            $stmt = $conn->prepare("INSERT INTO students (enrollment_no, name, email, course, semester, gender, status) VALUES (?, ?, ?, ?, ?, ?, 'Active')");
-            if ($stmt) {
-                $stmt->bind_param("ssssis", $enrollment, $name, $email, $course, $semester, $gender);
-                try {
-                    $saved = $stmt->execute();
-                } catch (mysqli_sql_exception $e) {
-                    error_log("StudentHub admin add_student failed: [" . $e->getCode() . "] " . $e->getMessage());
-                    flash("error", $e->getCode() === 1062 ? "A student with this email address already exists." : "The student could not be saved.");
-                    redirect("admin_dashboard.php?tab=students");
-                }
-                if ($saved) {
-                    log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "CREATE_STUDENT", "Added student: $name ($email)", "SUCCESS");
-                    flash("success", "Student successfully registered."); redirect("admin_dashboard.php?tab=students");
-                } else {
-                    flash("error", "The student could not be saved."); redirect("admin_dashboard.php?tab=students");
-                }
+        if ($action === "add_student" || $action === "update_student") {
+            $existing = $action === "update_student" ? $record : null;
+            [$clean, $errors] = check_student_record($conn, $_POST, $student_courses, $existing, $existing ? $target_id : 0);
+            $result = $errors ? ["errors" => $errors] : save_student_record($conn, $clean, $existing ? $target_id : null);
+            if (isset($result["errors"])) {
+                http_response_code(422);
+                $student_form = ["mode" => $existing ? "edit" : "add", "id" => $target_id, "record" => $existing, "errors" => $result["errors"],
+                                 "values" => array_map(fn ($field) => is_string($_POST[$field] ?? null) ? $_POST[$field] : "", array_combine(STUDENT_FIELDS, STUDENT_FIELDS))];
+            } else {
+                $number = $result["enrollment_no"] ?? "no enrollment number";
+                log_audit($conn, $current_user["id"], $current_user["username"], $existing ? "UPDATE_STUDENT" : "CREATE_STUDENT",
+                    ($existing ? "Updated" : "Added") . " student record ID {$result["id"]} ($number)", "SUCCESS");
+                flash("success", $existing ? "Student “{$clean["name"]}” ($number) was updated."
+                                           : "Student “{$clean["name"]}” was added with enrollment number $number.");
+                redirect("admin_dashboard.php?tab=students");
             }
+        } else {
+            $activate = $action === "reactivate_student";
+            $label    = "“{$record["name"]}” (" . ($record["enrollment_no"] ?: "no enrollment number") . ")";
+            if (set_student_status($conn, $target_id, $activate)) {
+                log_audit($conn, $current_user["id"], $current_user["username"], $activate ? "REACTIVATE_STUDENT" : "DEACTIVATE_STUDENT",
+                    ($activate ? "Reactivated" : "Deactivated (soft delete)") . " student record ID $target_id (" . ($record["enrollment_no"] ?: "no enrollment number") . ")", "SUCCESS");
+                flash("success", $activate ? "Student $label was reactivated."
+                                           : "Student $label was deactivated. The record, its account link and its event registrations are kept.");
+            } else {
+                flash("error", "Student $label is already " . ($activate ? "active." : "inactive."));
+            }
+            redirect("admin_dashboard.php?tab=students");
         }
     }
 
@@ -129,20 +154,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// 5. Delete Student / Event / User – POST only (CSRF token checked above); a GET link can no longer delete anything
+// 5. Delete Event / User – POST only (CSRF token checked above); a GET link can no longer delete anything.
+//    Student records are never deleted: they are deactivated instead (soft delete, see above).
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
-    $get_action = (string) $_POST["action"];
+    $get_action = is_string($_POST["action"]) ? $_POST["action"] : "";
     $target_id  = (int)($_POST["id"] ?? 0);
-
-    if ($get_action === "delete_student" && $target_id > 0) {
-        $stmt = $conn->prepare("DELETE FROM students WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $target_id);
-            $stmt->execute();
-            log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_STUDENT", "Deleted student ID: $target_id", "SUCCESS");
-            flash("success", "Student record deleted."); redirect("admin_dashboard.php?tab=students");
-        }
-    }
 
     if ($get_action === "delete_event" && $target_id > 0) {
         // Fetch poster file to unlink
@@ -208,40 +224,36 @@ if ($m_res) {
     }
 }
 
-// 8. Filter / Search for Students
-$search_term = trim($_GET["search"] ?? "");
-$filter_course = trim($_GET["course_filter"] ?? "");
-
-$sql_students = "SELECT * FROM students WHERE 1=1";
-$params = [];
-$types  = "";
-
-if (!empty($search_term)) {
-    $sql_students .= " AND (name LIKE ? OR email LIKE ? OR enrollment_no LIKE ?)";
-    $st = "%" . $search_term . "%";
-    $params[] = $st; $params[] = $st; $params[] = $st;
-    $types .= "sss";
-}
-if (!empty($filter_course)) {
-    $sql_students .= " AND course = ?";
-    $params[] = $filter_course;
-    $types .= "s";
-}
-$sql_students .= " ORDER BY id DESC";
-
-$students_list = [];
-if (!empty($params)) {
-    $st_stmt = $conn->prepare($sql_students);
-    $st_stmt->bind_param($types, ...$params);
-    $st_stmt->execute();
-    $s_res = $st_stmt->get_result();
-    while ($r = $s_res->fetch_assoc()) { $students_list[] = $r; }
-} else {
-    $s_res = $conn->query($sql_students);
-    if ($s_res) {
-        while ($r = $s_res->fetch_assoc()) { $students_list[] = $r; }
+// 8. Student Records tab: add/edit form and deactivation confirmation (GET only shows them; nothing is changed)
+$student_view = is_string($_GET["view"] ?? null) ? $_GET["view"] : "";
+if ($student_form === null && $current_tab === "students" && $student_view === "add") {
+    $student_form = ["mode" => "add", "id" => 0, "record" => null, "errors" => [], "values" => array_fill_keys(STUDENT_FIELDS, "")];
+} elseif ($student_form === null && $current_tab === "students" && in_array($student_view, ["edit", "deactivate"], true)) {
+    $target_id = student_id_from($_GET["id"] ?? "");
+    $record    = $target_id > 0 ? find_student_record($conn, $target_id) : null;
+    if ($record === null) {
+        flash("error", "That student record was not found."); redirect("admin_dashboard.php?tab=students");
+    }
+    if ($student_view === "edit") {
+        $student_form = ["mode" => "edit", "id" => $target_id, "record" => $record, "errors" => [],
+                         "values" => array_map(fn ($value) => (string) ($value ?? ""), array_intersect_key($record, array_flip(STUDENT_FIELDS)))];
+    } elseif (student_is_active($record)) {
+        $student_confirm = $record + ["registrations" => student_registration_count($conn, $target_id)];
+    } else {
+        flash("error", "Student “{$record["name"]}” is already inactive."); redirect("admin_dashboard.php?tab=students");
     }
 }
+if ($student_form !== null && $student_form["record"] !== null) {
+    $student_form["registrations"] = student_registration_count($conn, $student_form["id"]);
+}
+
+// Student list: search + filters + pagination (the same WHERE clause as the CSV export)
+$student_total    = student_count($conn, $student_filters);
+$student_pages    = max(1, (int) ceil($student_total / STUDENTS_PER_PAGE));
+$student_page     = min($student_filters["page"], $student_pages);
+$students_list    = student_list($conn, $student_filters, STUDENTS_PER_PAGE, ($student_page - 1) * STUDENTS_PER_PAGE);
+$student_counts   = student_status_counts($conn);
+$student_filtered = $student_filters["q"] !== "" || $student_filters["course"] !== "" || $student_filters["semester"] !== "" || $student_filters["status"] !== "";
 
 // 9. Events List
 $events_list = [];
@@ -382,6 +394,14 @@ if ($a_res) {
             object-fit: cover;
             border-radius: 8px;
             border: 1px solid var(--border);
+        }
+        .student-inactive {
+            --bs-table-bg: var(--bs-tertiary-bg);
+            --bs-table-color: var(--bs-secondary-color);
+        }
+        .student-form-card {
+            border: 1px solid var(--bs-primary-border-subtle);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.08);
         }
         .modal-header {
             background: var(--bs-tertiary-bg);
@@ -564,75 +584,234 @@ if ($a_res) {
             </div>
         </div>
 
-        <!-- 2. STUDENTS CRUD TAB (Practicals 11 & 13) -->
+        <!-- 2. STUDENT RECORDS TAB (Practical 11: add, edit, search, filter, soft delete, CSV export) -->
         <div class="tab-pane fade <?= ($current_tab === 'students') ? 'show active' : '' ?>" id="students" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">Student Information Records</h5>
-                    <p class="text-muted small mb-0">Manage enrolled student profiles, filter by department, and export to CSV.</p>
+                    <h5 class="fw-bold mb-1">Student Records</h5>
+                    <p class="text-muted small mb-0">Add, edit, search and deactivate student records. Deactivated records are kept with their account link and event registrations.</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="admin_dashboard.php?export=csv" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+                    <a href="<?= e(student_list_url($student_filters, ["export" => "csv"])) ?>" id="export-students" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV<?= $student_filtered ? " (filtered)" : "" ?>
                     </a>
-                    <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <a href="admin_dashboard.php?tab=students&amp;view=add#student-form" id="add-student" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
                         <i class="bi bi-person-plus-fill"></i> Add Student
-                    </button>
+                    </a>
                 </div>
             </div>
 
-            <!-- Search and Filter Form -->
-            <form method="GET" action="admin_dashboard.php" class="row g-2 mb-3">
+            <?php if ($student_form !== null): $sf = $student_form; $editing = $sf["mode"] === "edit"; ?>
+                <section class="card student-form-card mb-4" id="student-form" aria-labelledby="student-form-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-1" id="student-form-title"><i class="bi bi-<?= $editing ? "pencil-square" : "person-plus" ?> text-primary me-2"></i><?= $editing ? "Edit student record" : "Add a student record" ?></h6>
+                        <p class="text-muted small mb-3">
+                            <?php if ($editing): ?>
+                                Record #<?= (int) $sf["id"] ?> · <?= student_is_active($sf["record"]) ? "Active" : "Inactive" ?> · <?= $sf["record"]["user_id"] !== null ? "linked to a login account" : "no login account" ?> · <?= (int) $sf["registrations"] ?> event registration(s). Saving changes only the fields below; the status, the account link and the registrations stay as they are.
+                            <?php else: ?>
+                                Creates the student record only – no login account is created. All fields are checked on the server.
+                            <?php endif; ?>
+                        </p>
+                        <?php if ($sf["errors"]): ?>
+                            <div class="alert alert-danger py-2 small" role="alert"><i class="bi bi-exclamation-triangle-fill me-1"></i> Please correct the highlighted fields. Nothing was saved.</div>
+                        <?php endif; ?>
+                        <form method="post" action="admin_dashboard.php?tab=students#student-form" novalidate>
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="<?= $editing ? "update_student" : "add_student" ?>">
+                            <?php if ($editing): ?><input type="hidden" name="id" value="<?= (int) $sf["id"] ?>"><?php endif; ?>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="enrollment_no" class="form-label small fw-bold">Enrollment number</label>
+                                    <input type="text" id="enrollment_no" name="enrollment_no" maxlength="20" autocomplete="off" placeholder="e.g. 26IT004"
+                                           class="form-control<?= student_field_class($sf, "enrollment_no") ?>" value="<?= e($sf["values"]["enrollment_no"]) ?>"<?= student_field_aria($sf, "enrollment_no", "enrollment_no-help") ?>>
+                                    <?= student_field_error($sf, "enrollment_no") ?>
+                                    <div class="form-text" id="enrollment_no-help"><?= $editing ? "Format: 2 digits, 2 letters, 3 digits (e.g. 25CS011)." : "Leave empty to assign the next free number (admission year from the semester + course code)." ?></div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label for="name" class="form-label small fw-bold">Full name</label>
+                                    <input type="text" id="name" name="name" maxlength="100" autocomplete="off"
+                                           class="form-control<?= student_field_class($sf, "name") ?>" value="<?= e($sf["values"]["name"]) ?>"<?= student_field_aria($sf, "name") ?>>
+                                    <?= student_field_error($sf, "name") ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label small fw-bold">Email address</label>
+                                    <input type="email" id="email" name="email" maxlength="100" autocomplete="off"
+                                           class="form-control<?= student_field_class($sf, "email") ?>" value="<?= e($sf["values"]["email"]) ?>"<?= student_field_aria($sf, "email") ?>>
+                                    <?= student_field_error($sf, "email") ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="course" class="form-label small fw-bold">Course</label>
+                                    <select id="course" name="course" class="form-select<?= student_field_class($sf, "course") ?>"<?= student_field_aria($sf, "course") ?>>
+                                        <option value="">Select a course</option>
+                                        <?php foreach ($student_courses as $course): ?>
+                                            <option value="<?= e($course) ?>"<?= $sf["values"]["course"] === $course ? " selected" : "" ?>><?= e($course) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?= student_field_error($sf, "course") ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="semester" class="form-label small fw-bold">Semester</label>
+                                    <select id="semester" name="semester" class="form-select<?= student_field_class($sf, "semester") ?>"<?= student_field_aria($sf, "semester") ?>>
+                                        <option value="">Select</option>
+                                        <?php for ($sem = 1; $sem <= 8; $sem++): ?>
+                                            <option value="<?= $sem ?>"<?= $sf["values"]["semester"] === (string) $sem ? " selected" : "" ?>>Semester <?= $sem ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <?= student_field_error($sf, "semester") ?>
+                                </div>
+                                <fieldset class="col-md-9"<?= student_field_aria($sf, "gender") ?>>
+                                    <legend class="form-label small fw-bold mb-2">Gender</legend>
+                                    <?php
+                                    $genders = REGISTRATION_GENDERS;
+                                    if ($editing && $sf["record"]["gender"] !== "" && !in_array($sf["record"]["gender"], $genders, true)) {
+                                        $genders[] = $sf["record"]["gender"];             // legacy value, kept as it is
+                                    }
+                                    foreach ($genders as $i => $gender): ?>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input<?= student_field_class($sf, "gender") ?>" type="radio" name="gender" id="gender-<?= $i ?>" value="<?= e($gender) ?>"<?= $sf["values"]["gender"] === $gender ? " checked" : "" ?>>
+                                            <label class="form-check-label" for="gender-<?= $i ?>"><?= e($gender) ?></label>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?= student_field_error($sf, "gender") ?>
+                                </fieldset>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i><?= $editing ? "Save changes" : "Add student" ?></button>
+                                <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($student_confirm !== null): $sc = $student_confirm; ?>
+                <section class="card border-danger-subtle mb-4" id="student-confirm" aria-labelledby="student-confirm-title">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-danger mb-2" id="student-confirm-title"><i class="bi bi-person-dash me-2"></i>Deactivate this student?</h6>
+                        <p class="small mb-3">Are you sure you want to deactivate <strong><?= e($sc["name"]) ?></strong>? The status changes from <strong>Active</strong> to <strong>Inactive</strong>. This is a soft delete: the record stays in the database with its account link and its <?= (int) $sc["registrations"] ?> event registration(s), it still appears in this list and in the CSV export, and it can be reactivated later. Inactive students cannot register for new events.</p>
+                        <dl class="row small mb-3">
+                            <dt class="col-sm-3">Enrollment number</dt><dd class="col-sm-9"><?= e($sc["enrollment_no"] ?: "—") ?></dd>
+                            <dt class="col-sm-3">Email</dt><dd class="col-sm-9"><?= e($sc["email"]) ?></dd>
+                            <dt class="col-sm-3">Course / semester</dt><dd class="col-sm-9"><?= e($sc["course"]) ?> · <?= $sc["semester"] !== null ? "Semester " . (int) $sc["semester"] : "—" ?></dd>
+                            <dt class="col-sm-3">Login account</dt><dd class="col-sm-9"><?= $sc["user_id"] !== null ? "Linked (kept)" : "None" ?></dd>
+                        </dl>
+                        <form method="post" action="admin_dashboard.php?tab=students" class="d-flex gap-2">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="deactivate_student">
+                            <input type="hidden" name="id" value="<?= (int) $sc["id"] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-person-dash me-1"></i>Yes, deactivate student</button>
+                            <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <!-- Search and filters (combined; GET, so the result can be bookmarked and exported) -->
+            <form method="get" action="admin_dashboard.php" class="row g-2 mb-3" role="search" aria-label="Search and filter student records">
                 <input type="hidden" name="tab" value="students">
-                <div class="col-md-5">
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search by name, email, or enrollment..." value="<?= htmlspecialchars($search_term) ?>">
+                <div class="col-lg-4 col-md-6">
+                    <label for="student-q" class="visually-hidden">Search</label>
+                    <input type="search" id="student-q" name="q" maxlength="100" class="form-control form-control-sm" placeholder="Search name, email or enrollment no." value="<?= e($student_filters["q"]) ?>">
                 </div>
-                <div class="col-md-4">
-                    <select name="course_filter" class="form-select form-select-sm">
-                        <option value="">All Courses</option>
-                        <option value="Computer Science Engineering" <?= ($filter_course === 'Computer Science Engineering') ? 'selected' : '' ?>>Computer Science Engineering</option>
-                        <option value="Information Technology" <?= ($filter_course === 'Information Technology') ? 'selected' : '' ?>>Information Technology</option>
-                        <option value="Data Science" <?= ($filter_course === 'Data Science') ? 'selected' : '' ?>>Data Science</option>
-                        <option value="Web Development" <?= ($filter_course === 'Web Development') ? 'selected' : '' ?>>Web Development</option>
+                <div class="col-lg-3 col-md-6">
+                    <label for="student-course" class="visually-hidden">Course</label>
+                    <select id="student-course" name="course" class="form-select form-select-sm">
+                        <option value="">All courses</option>
+                        <?php foreach ($student_courses as $course): ?>
+                            <option value="<?= e($course) ?>"<?= $student_filters["course"] === $course ? " selected" : "" ?>><?= e($course) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-secondary btn-sm flex-grow-1"><i class="bi bi-search"></i> Filter</button>
-                    <a href="admin_dashboard.php?tab=students" class="btn btn-outline-secondary btn-sm">Reset</a>
+                <div class="col-lg-2 col-md-4">
+                    <label for="student-semester" class="visually-hidden">Semester</label>
+                    <select id="student-semester" name="semester" class="form-select form-select-sm">
+                        <option value="">All semesters</option>
+                        <?php for ($sem = 1; $sem <= 8; $sem++): ?>
+                            <option value="<?= $sem ?>"<?= $student_filters["semester"] === (string) $sem ? " selected" : "" ?>>Semester <?= $sem ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <label for="student-status" class="visually-hidden">Status</label>
+                    <select id="student-status" name="status" class="form-select form-select-sm">
+                        <option value="">All statuses</option>
+                        <?php foreach (STUDENT_STATUSES as $status): ?>
+                            <option value="<?= $status ?>"<?= $student_filters["status"] === $status ? " selected" : "" ?>><?= $status ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-4 d-grid">
+                    <button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-search"></i> Filter</button>
                 </div>
             </form>
 
+            <div class="d-flex flex-wrap justify-content-between align-items-center small text-muted mb-2 gap-2">
+                <span id="student-summary">
+                    <?php if ($student_total > 0): ?>
+                        Showing <?= ($student_page - 1) * STUDENTS_PER_PAGE + 1 ?>–<?= ($student_page - 1) * STUDENTS_PER_PAGE + count($students_list) ?> of <?= $student_total ?> <?= $student_filtered ? "matching " : "" ?>record<?= $student_total === 1 ? "" : "s" ?>
+                    <?php else: ?>
+                        No records shown
+                    <?php endif; ?>
+                    · <?= $student_counts["Active"] ?> active, <?= $student_counts["Inactive"] ?> inactive in total
+                </span>
+                <?php if ($student_filtered): ?>
+                    <a href="admin_dashboard.php?tab=students" class="link-secondary">Reset filters</a>
+                <?php endif; ?>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
+                <table class="table table-hover table-bordered align-middle" id="student-table">
+                    <caption class="visually-hidden">Student records</caption>
+                    <thead>
                         <tr>
-                            <th>#ID</th>
-                            <th>Enrollment</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Course</th>
-                            <th>Sem</th>
-                            <th>Gender</th>
-                            <th>Status</th>
-                            <th class="text-center">Action</th>
+                            <th scope="col">Enrollment</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Course</th>
+                            <th scope="col">Sem</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Account</th>
+                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($students_list)): ?>
-                            <tr><td colspan="9" class="text-center py-4 text-muted">No student records found matching criteria.</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-muted">
+                                <?php if ($student_filtered): ?>
+                                    No student records match these filters. <a href="admin_dashboard.php?tab=students">Show all records</a>
+                                <?php else: ?>
+                                    No student records yet. <a href="admin_dashboard.php?tab=students&amp;view=add#student-form">Add the first student</a>
+                                <?php endif; ?>
+                            </td></tr>
                         <?php else: ?>
-                            <?php foreach ($students_list as $st): ?>
-                                <tr>
-                                    <td><span class="text-muted fw-bold">#<?= $st['id'] ?></span></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($st['enrollment_no'] ?: '—') ?></span></td>
-                                    <td class="fw-semibold"><?= htmlspecialchars($st['name']) ?></td>
-                                    <td class="small"><?= htmlspecialchars($st['email']) ?></td>
-                                    <td><span class="badge bg-primary-subtle text-primary"><?= htmlspecialchars($st['course']) ?></span></td>
-                                    <td><?= htmlspecialchars($st['semester']) ?></td>
-                                    <td><?= htmlspecialchars($st['gender']) ?></td>
-                                    <td><span class="badge bg-success-subtle text-success"><?= htmlspecialchars($st['status']) ?></span></td>
-                                    <td class="text-center">
-                                        <form method="post" action="admin_dashboard.php?tab=students" class="d-inline" onsubmit="<?= confirm_js('Delete student record for ' . $st['name'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_student"><input type="hidden" name="id" value="<?= (int) $st['id'] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-trash"></i> Delete</button></form>
+                            <?php foreach ($students_list as $st): $active = student_is_active($st); ?>
+                                <tr<?= $active ? "" : ' class="student-inactive"' ?>>
+                                    <td><span class="badge bg-light text-dark border"><?= e($st["enrollment_no"] ?: "—") ?></span></td>
+                                    <td class="fw-semibold"><?= e($st["name"]) ?></td>
+                                    <td class="small"><?= e($st["email"]) ?></td>
+                                    <td><span class="badge bg-primary-subtle text-primary"><?= e($st["course"]) ?></span></td>
+                                    <td><?= $st["semester"] !== null ? (int) $st["semester"] : "—" ?></td>
+                                    <td>
+                                        <?php if ($active): ?>
+                                            <span class="badge bg-success-subtle text-success">Active</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="small">
+                                        <?php if ($st["user_id"] !== null): ?>
+                                            <span class="badge bg-info-subtle text-info-emphasis"><i class="bi bi-link-45deg"></i> Linked</span>
+                                        <?php else: ?>
+                                            <span class="text-muted">None</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <a href="admin_dashboard.php?tab=students&amp;view=edit&amp;id=<?= (int) $st["id"] ?>#student-form" class="btn btn-outline-primary btn-sm py-0 px-2" aria-label="Edit <?= e($st["name"]) ?>"><i class="bi bi-pencil"></i> Edit</a>
+                                        <?php if ($active): ?>
+                                            <a href="admin_dashboard.php?tab=students&amp;view=deactivate&amp;id=<?= (int) $st["id"] ?>#student-confirm" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Deactivate <?= e($st["name"]) ?>"><i class="bi bi-person-dash"></i> Deactivate</a>
+                                        <?php else: ?>
+                                            <form method="post" action="admin_dashboard.php?tab=students" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="reactivate_student"><input type="hidden" name="id" value="<?= (int) $st["id"] ?>"><button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" aria-label="Reactivate <?= e($st["name"]) ?>"><i class="bi bi-arrow-counterclockwise"></i> Reactivate</button></form>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -640,6 +819,18 @@ if ($a_res) {
                     </tbody>
                 </table>
             </div>
+
+            <?php if ($student_pages > 1): ?>
+                <nav aria-label="Student record pages">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item<?= $student_page <= 1 ? " disabled" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => max(1, $student_page - 1)])) ?>">Previous</a></li>
+                        <?php for ($pg = 1; $pg <= $student_pages; $pg++): ?>
+                            <li class="page-item<?= $pg === $student_page ? " active" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => $pg])) ?>"<?= $pg === $student_page ? ' aria-current="page"' : "" ?>><?= $pg ?></a></li>
+                        <?php endfor; ?>
+                        <li class="page-item<?= $student_page >= $student_pages ? " disabled" : "" ?>"><a class="page-link" href="<?= e(student_list_url($student_filters, ["page" => min($student_pages, $student_page + 1)])) ?>">Next</a></li>
+                    </ul>
+                </nav>
+            <?php endif; ?>
         </div>
 
         <!-- 3. CAMPUS EVENTS TAB (Practical 12) -->
@@ -808,66 +999,6 @@ if ($a_res) {
                 </table>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Modal: Add Student -->
-<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="POST" action="admin_dashboard.php?tab=students" class="modal-content">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="add_student">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Register New Student</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Enrollment Number</label>
-                    <input type="text" name="enrollment_no" class="form-control" placeholder="e.g., 25CS023" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Full Name</label>
-                    <input type="text" name="name" class="form-control" placeholder="e.g., Shreyas" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="e.g., 25cs023@charusat.edu.in" required>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-8">
-                        <label class="form-label small fw-bold">Department / Course</label>
-                        <select name="course" class="form-select" required>
-                            <option value="Computer Science Engineering">Computer Science Engineering</option>
-                            <option value="Information Technology">Information Technology</option>
-                            <option value="Data Science">Data Science</option>
-                            <option value="Web Development">Web Development</option>
-                        </select>
-                    </div>
-                    <div class="col-4">
-                        <label class="form-label small fw-bold">Semester</label>
-                        <input type="number" name="semester" class="form-control" value="3" min="1" max="8" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Gender</label>
-                    <div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="gender" id="gMale" value="Male" checked>
-                            <label class="form-check-label" for="gMale">Male</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="gender" id="gFemale" value="Female">
-                            <label class="form-check-label" for="gFemale">Female</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm">Save Student Profile</button>
-            </div>
-        </form>
     </div>
 </div>
 

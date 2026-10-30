@@ -18,7 +18,8 @@ StudentHub is a PHP/MySQL student portal built up across 15 practicals: semantic
 * **No fallback database:** if `studenthub_db` is unreachable the portal answers HTTP 503 with a generic message and logs the reason on the server.
 * **Student pages:** dashboard, profile (with a working, verified password change), courses, attendance, assignments, results, achievements, notifications, directory and contact.
 * **Profile data from the database:** name and roll number come from the logged-in user's `students` record (`studenthub/student_profile.php`).
-* **Admin Console:** live counters, student add/search/filter/delete, CSV export, event publishing with validated poster upload, user list, audit log viewer.
+* **Student management** (Practical 11 integrated; Admin Console → *Student Records*, `admin_dashboard.php?tab=students`, logic in `studenthub/includes/student_management.php`): paginated list of the `students` records with Active/Inactive status and account-link column; add and edit forms with server-side validation (enrollment number format and uniqueness, e-mail, course from the list, semester 1–8, gender); an empty enrollment number gets the next number of the existing `YYPPnnn` scheme; combined search (name, e-mail, enrollment number) and course/semester/status filters; **soft delete** – *Deactivate* (after a confirmation page) sets the status to `Inactive` and keeps the record, its account link and its event registrations; *Reactivate* restores it; CSV export of the filtered records (UTF-8 with BOM, formula injection neutralised, no account data). Admins only (`students.manage`); every change is a POST with a CSRF token and is audit-logged. No login account is created for an added record.
+* **Admin Console:** live counters, student records (above), event publishing with validated poster upload, user list, audit log viewer.
 * **Design:** one indigo design system (`assets/css/global.css` + `assets/css/bootstrap-theme.css`), grouped sidebar with icons, mobile drawer with hamburger button, light/dark theme, skip link, visible keyboard focus, reduced-motion support.
 
 > ⚠️ **Sample data:** CGPA, SGPA, attendance and timetable figures in the student pages are **placeholders labelled "Sample / demo data"**, not real academic results.
@@ -33,7 +34,8 @@ StudentHub/
 ├── Practical-1 … Practical-15/
 ├── database/studenthub_demo.sql  # Safe demo schema + data (no accounts, no hashes)
 ├── tools/create_demo_user.php    # CLI: create local accounts (password prompted)
-├── tests/                    # Authentication tests (disposable database) + optional Edge browser test
+├── tests/                    # Authentication + student-management tests (disposable databases) + optional Edge browser tests
+├── evidence/practical-11-integration/  # Genuine Edge screenshots of the integrated student management (fictional records)
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
@@ -48,7 +50,7 @@ StudentHub/
    mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
    mysql -u root studenthub_db < database/studenthub_demo.sql
    ```
-   A `studenthub_db` created **before** the Practical 8 integration is upgraded with `database/migrations/001_practical8_foundation.sql` instead (back up first; see `database/README.md`).
+   A `studenthub_db` created **before** the Practical 8 integration is upgraded with `database/migrations/001_practical8_foundation.sql` and then `002_unique_enrollment_no.sql` instead (back up first; see `database/README.md`). A database already at migration 001 needs only migration 002.
 2. **Create accounts** (no passwords are stored in this repository; you are prompted for one):
    ```bash
    php tools/create_demo_user.php --db=studenthub_db --username=admin01 --email=admin01@example.com --role=admin
@@ -70,7 +72,7 @@ StudentHub/
    ```
    Open `http://localhost:8000/` (main portal) or `http://localhost:8000/Practical-N/…`.
 
-Database credentials default to `root` with an empty password on `localhost`; override with the `DB_HOST`, `DB_USER`, `DB_PASS` and `DB_NAME` environment variables.
+Database credentials default to `root` with an empty password on `localhost`; override with the `DB_HOST`, `DB_USER`, `DB_PASS` and `DB_NAME` environment variables. Dates use the `Asia/Kolkata` time zone (the same as MariaDB on the XAMPP server); override with `STUDENTHUB_TIMEZONE`.
 
 ---
 
@@ -89,7 +91,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 8 | PDO, prepared statements, 3NF schema | Rebuilt and tested |
 | 9 | Secure registration (hashing, duplicates) | Integrated into `studenthub/` and tested (`tests/test_auth.py`) |
 | 10 | Login, sessions, RBAC | Integrated into `studenthub/` and tested, including the inactivity timeout (remember-me is not part of the portal) |
-| 11 | Student CRUD, search, soft delete, CSV | Tested (access checks + prepared statements added) |
+| 11 | Student CRUD, search, soft delete, CSV | Integrated into `studenthub/` (Admin Console → Student Records) and tested (`tests/test_students.py`, Edge screenshots in `evidence/practical-11-integration/`) |
 | 12 | Event uploads with validation, RBAC | Tested |
 | 13 | Fetch/AJAX CRUD API with RBAC | Tested (role now taken from the server session) |
 | 14 | Admin dashboard, audit logging, 403 | Tested |
@@ -101,6 +103,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 * Passwords are hashed with bcrypt; no plaintext passwords or hashes are committed.
 * The main application and Practicals 8, 9, 10, 11, 13 and 14 use prepared statements (MySQLi or PDO) for queries with user input. Practical 12's event insert/update still uses `mysqli_real_escape_string()` (escaped, but not prepared) – listed as a remaining improvement.
 * Output is escaped with `htmlspecialchars()`.
+* Student records are never deleted by the portal (soft delete only), and the CSV export prefixes cells that start with `=`, `+`, `-`, `@`, tab or carriage return with an apostrophe so spreadsheets do not run them as formulas.
 * The main portal checks a CSRF token on every POST, logs out only by POST, sends `Cache-Control: no-store`, `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` on signed-in pages, and redirects only to its own pages.
 * Known limitations are listed in `TEST_REPORT.md`.
 

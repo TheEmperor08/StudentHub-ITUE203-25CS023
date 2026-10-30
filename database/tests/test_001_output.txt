@@ -11,7 +11,7 @@ PASS  after migration: students.user_id int(11) NULL, placed after id
 PASS  after migration: UNIQUE uq_students_user_id (one account per student record)
 PASS  after migration: fk_students_user -> users.id ON DELETE SET NULL, ON UPDATE CASCADE
 PASS  after migration: CHECK chk_students_semester (NULL or 1-8)
-PASS  after migration: students.enrollment_no unchanged (varchar(20) NULL, no new index)
+PASS  after migration: students.enrollment_no unchanged (varchar(20) NULL, no index added by 001)
 PASS  after migration: students.semester keeps int(11) NULL DEFAULT 3
 PASS  after migration: events.event_time TIME NULL after event_date
 PASS  after migration: events.capacity SMALLINT UNSIGNED NULL
@@ -101,7 +101,7 @@ PASS  Admin Console tabs load (overview, students, events, users, audits)
 PASS  admin 'add student' still works (row stored with semester 4, user_id NULL)
 PASS  admin 'add event' still works (capacity and time stay NULL)
 PASS  admin 'delete event' still works and removes the event's registration (registered first, then deleted)
-PASS  admin 'delete student' still works
+PASS  admin 'deactivate student' (Practical 11 soft delete) keeps the record and marks it Inactive
 PASS  student login -> dashboard
 PASS  all student pages load with status 200 and no PHP errors
 PASS  a student opening the Admin Console still gets the 403 page
@@ -109,6 +109,7 @@ PASS  self-registration creates the account and its student record, linked throu
 PASS  no PHP warnings or errors in the server log
 
 == Fresh install from database/studenthub_demo.sql
+INFO  upgraded copy compared after the later migrations: 002_unique_enrollment_no.sql
 PASS  studenthub_demo.sql imports into an empty database
 PASS  fresh-install structure is identical to an upgraded database
 PASS  migration 001 on a fresh install changes nothing

@@ -1,13 +1,15 @@
 -- StudentHub demo database (safe to publish)
--- Schema of the working studenthub_db (including migration 001 - Practical 8 foundation) plus fictional demo rows.
+-- Schema of the working studenthub_db (including migrations 001 - Practical 8 foundation - and 002 - unique enrollment
+-- numbers) plus fictional demo rows.
 -- Contains NO user accounts, password hashes, audit logs or real student records. All student rows except the owner
 -- are fictional (example.com).
 -- Safe to re-run: tables use IF NOT EXISTS and rows use INSERT IGNORE (nothing is dropped).
 --
 -- NEW database:      mysql -u root -e "CREATE DATABASE IF NOT EXISTS studenthub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 --                    mysql -u root studenthub_db < database/studenthub_demo.sql
--- EXISTING database created before migration 001: do not use this file; apply the migration instead:
+-- EXISTING database created before migration 001: do not use this file; apply the migrations instead:
 --                    mysql -u root studenthub_db < database/migrations/001_practical8_foundation.sql
+--                    mysql -u root studenthub_db < database/migrations/002_unique_enrollment_no.sql
 -- Accounts:          php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
 -- Details:           database/README.md
 
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- students.user_id: optional link to the login account (one account per student record)
+-- students.enrollment_no: unique (migration 002); NULL is allowed for legacy rows
 CREATE TABLE IF NOT EXISTS `students` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -53,9 +56,12 @@ CREATE TABLE IF NOT EXISTS `students` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `uq_students_user_id` (`user_id`),
+  UNIQUE KEY `uq_students_enrollment_no` (`enrollment_no`),
   CONSTRAINT `fk_students_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `chk_students_semester` CHECK (`semester` is null or `semester` between 1 and 8)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- a database created from an earlier version of this file already has the table: add the index (fails on duplicates)
+ALTER TABLE `students` ADD UNIQUE KEY IF NOT EXISTS `uq_students_enrollment_no` (`enrollment_no`);
 
 -- events.event_time / events.capacity: NULL = not set (capacity NULL = no limit)
 CREATE TABLE IF NOT EXISTS `events` (
@@ -148,6 +154,7 @@ INSERT IGNORE INTO `menu_items` (`id`, `title`, `link`, `min_role`, `icon`) VALU
 (9, 'Asynchronous SPA Manager',  '../Practical-13/index.html',      'admin', 'bi-lightning-charge'),
 (10,'Security Audit Logs',       'admin_dashboard.php?tab=audits',  'admin', 'bi-journal-text');
 
--- This structure already includes migration 001
+-- This structure already includes migrations 001 and 002
 INSERT IGNORE INTO `schema_migrations` (`version`, `description`) VALUES
-('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK');
+('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK'),
+('002', 'Practical 11 student management: UNIQUE students.enrollment_no');

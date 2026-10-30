@@ -22,6 +22,9 @@ MIGRATION = ROOT / "database" / "migrations" / "001_practical8_foundation.sql"
 ROLLBACK = ROOT / "database" / "migrations" / "001_practical8_foundation.down.sql"
 FIXTURE = ROOT / "database" / "tests" / "fixtures" / "studenthub_v1_fixture.sql"
 DEMO = ROOT / "database" / "studenthub_demo.sql"
+# migrations after 001 (e.g. 002: UNIQUE students.enrollment_no) - studenthub_demo.sql already contains them
+LATER_MIGRATIONS = sorted(p for p in (ROOT / "database" / "migrations").glob("0*.sql")
+                          if not p.name.endswith(".down.sql") and p.name != "001_practical8_foundation.sql")
 APP = ROOT / "studenthub"
 HELPER = APP / "includes" / "event_registration.php"
 LOGGER = APP / "audit_logger.php"
@@ -178,8 +181,11 @@ def check_migrated_structure(db, label):
     check(f"{label}: fk_students_user -> users.id ON DELETE SET NULL, ON UPDATE CASCADE",
           s["fks"].get(("students", "fk_students_user")) == ("user_id", "users", "id", "CASCADE", "SET NULL"), str(s["fks"].get(("students", "fk_students_user"))))
     check(f"{label}: CHECK chk_students_semester (NULL or 1-8)", "between 1 and 8" in s["checks"].get(("students", "chk_students_semester"), ""))
-    check(f"{label}: students.enrollment_no unchanged (varchar(20) NULL, no new index)",
-          col("students", "enrollment_no")[1:3] == ("varchar(20)", "YES") and not any(v[1] == "enrollment_no" for (t, _), v in s["indexes"].items() if t == "students"))
+    # migration 001 adds no index on enrollment_no; migration 002 (if recorded in this database) adds exactly its UNIQUE one
+    allowed = {"uq_students_enrollment_no"} if scalar("SELECT COUNT(*) FROM schema_migrations WHERE version='002'", db) == "1" else set()
+    check(f"{label}: students.enrollment_no unchanged (varchar(20) NULL, no index added by 001)",
+          col("students", "enrollment_no")[1:3] == ("varchar(20)", "YES")
+          and {i for (t, i), v in s["indexes"].items() if t == "students" and v[1] == "enrollment_no"} == allowed)
     check(f"{label}: students.semester keeps int(11) NULL DEFAULT 3", col("students", "semester")[1:4] == ("int(11)", "YES", "3"))
     check(f"{label}: events.event_time TIME NULL after event_date", col("events", "event_time") is not None and col("events", "event_time")[0:3] == ("4", "time", "YES"))
     check(f"{label}: events.capacity SMALLINT UNSIGNED NULL", col("events", "capacity") is not None and col("events", "capacity")[1:3] == ("smallint(5) unsigned", "YES"))
@@ -505,7 +511,7 @@ def portal_tests(workdir):
                 problems.append(f"{tab}:{status}")
         check("Admin Console tabs load (overview, students, events, users, audits)", not problems, str(problems))
         token = b.token("admin_dashboard.php")
-        status, _, page = b.get("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "W001", "name": "Web Added", "email": "mig001.web@example.com",
+        status, _, page = b.get("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "26CS950", "name": "Web Added", "email": "mig001.web@example.com",
                                                         "course": "Computer Science", "semester": "4", "gender": "Female"})
         check("admin 'add student' still works (row stored with semester 4, user_id NULL)",
               scalar("SELECT CONCAT(semester,'|',IFNULL(user_id,'NULL')) FROM students WHERE email='mig001.web@example.com'", TEST_DB) == "4|NULL")
@@ -521,8 +527,9 @@ def portal_tests(workdir):
         check("admin 'delete event' still works and removes the event's registration (registered first, then deleted)",
               had_registration and scalar(f"SELECT COUNT(*) FROM events WHERE id={new_event}", TEST_DB) == "0"
               and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "0", str(reg))
-        b.get("admin_dashboard.php", {"csrf_token": token, "action": "delete_student", "id": web_student})
-        check("admin 'delete student' still works", scalar(f"SELECT COUNT(*) FROM students WHERE id={web_student}", TEST_DB) == "0")
+        b.get("admin_dashboard.php", {"csrf_token": token, "action": "deactivate_student", "id": web_student})
+        check("admin 'deactivate student' (Practical 11 soft delete) keeps the record and marks it Inactive",
+              scalar(f"SELECT status FROM students WHERE id={web_student}", TEST_DB) == "Inactive")
         b.get("logout.php", {"csrf_token": token})
 
         s = Browser()
@@ -558,6 +565,13 @@ def portal_tests(workdir):
 
 def fresh_install_tests(migrated):
     print("\n== Fresh install from database/studenthub_demo.sql")
+    # the demo file also contains the later migrations: bring the upgraded copy to the same version before comparing
+    for later in LATER_MIGRATIONS:
+        rc, err = run_file(later, TEST_DB)
+        assert rc == 0, f"{later.name}: {err}"
+    if LATER_MIGRATIONS:
+        info("upgraded copy compared after the later migrations: " + ", ".join(p.name for p in LATER_MIGRATIONS))
+        migrated = structure(TEST_DB)
     create_disposable(FRESH_DB)
     rc, err = run_file(DEMO, FRESH_DB)
     check("studenthub_demo.sql imports into an empty database", rc == 0, err)
@@ -582,6 +596,11 @@ def verify_live(baseline):
     expected = expected_links(TEST_DB)
     rc, err = run_file(MIGRATION, TEST_DB)
     assert rc == 0, err
+    applied = {r[0] for r in mysql("SELECT version FROM schema_migrations", LIVE_DB)}
+    for later in LATER_MIGRATIONS:                       # later migrations that the live database has as well
+        if later.name[:3] in applied:
+            rc, err = run_file(later, TEST_DB)
+            assert rc == 0, f"{later.name}: {err}"
     reference = structure(TEST_DB)
     live = check_migrated_structure(LIVE_DB, "live")
     d = diff_structure(reference, live)

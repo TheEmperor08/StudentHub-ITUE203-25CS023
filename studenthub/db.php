@@ -9,6 +9,11 @@
 ini_set('display_errors', '0');          // PHP errors go to the error log, not into the page
 ini_set('log_errors', '1');
 
+// Dates (CSV file names, today's date in forms, the academic year for enrollment numbers) use the institute's time zone,
+// the same as MariaDB on this server - not XAMPP's php.ini default (Europe/Berlin). STUDENTHUB_TIMEZONE overrides it.
+$app_timezone = getenv('STUDENTHUB_TIMEZONE') ?: 'Asia/Kolkata';
+date_default_timezone_set(in_array($app_timezone, timezone_identifiers_list(), true) ? $app_timezone : 'Asia/Kolkata');
+
 $db_host = getenv('DB_HOST') ?: 'localhost';
 $db_user = getenv('DB_USER') ?: 'root';
 $db_pass = getenv('DB_PASS') ?: '';

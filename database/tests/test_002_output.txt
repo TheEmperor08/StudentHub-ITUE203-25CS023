@@ -1,0 +1,37 @@
+StudentHub migration 002 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: fixture studenthub_v1_fixture.sql + migration 001
+
+== Migration 002 on the source
+INFO  students: 7 records, 6 with an enrollment number
+PASS  migration 002 runs without errors
+PASS  the only structural change is the new UNIQUE index on students.enrollment_no
+PASS  every row of every table is unchanged (enrollment numbers, statuses, courses, links, hashes)
+PASS  schema_migrations records 002 (001 kept)
+PASS  running it again changes nothing (idempotent)
+
+== Behaviour of the index
+PASS  a second record with the same enrollment number is refused
+PASS  ... also in another letter case (case-insensitive collation)
+PASS  several records without an enrollment number (NULL, legacy) are still allowed
+PASS  data unchanged after the behaviour checks
+
+== Rollback (002_unique_enrollment_no.down.sql)
+PASS  rollback runs without errors
+PASS  structure after the rollback is identical to the structure before 002
+PASS  rollback removes the 002 record and changes no data
+PASS  rollback can run twice
+PASS  migration 002 can be applied again after the rollback
+
+== Preconditions (nothing changes when one fails)
+PASS  duplicate enrollment numbers (other letter case) -> stopped with a message
+PASS  ... no index added, no data changed, 002 not recorded
+PASS  a database without migration 001 -> stopped ('apply migration 001 first'), nothing changed
+
+== Fresh install from database/studenthub_demo.sql
+PASS  studenthub_demo.sql imports into an empty database and records 001 and 002
+PASS  fresh-install structure is identical to a database upgraded with 001 + 002
+PASS  migration 002 on a fresh install changes nothing
+PASS  importing the demo file into a database made by its earlier version adds the index and records 002
+PASS  all disposable databases removed
+
+Result: 22 passed, 0 failed, 22 checks

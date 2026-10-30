@@ -1,0 +1,20 @@
+PASS  admin: Student Records tab lists the records (10 of 12 on page 1, pagination shown)
+PASS  inactive record shown with a red Inactive badge and a Reactivate button
+PASS  Add Student opens the add form in the console
+PASS  invalid input -> messages under the fields (duplicate number, e-mail, course, semester), values kept
+PASS  valid student -> success message with the assigned enrollment number; new row first in the list
+PASS  search 'Patel' -> only matching records
+PASS  course 'Web Development' + status 'Active' -> the 3 matching records, filters stay selected, export marked 'filtered'
+PASS  Export CSV downloads studenthub_students_<date>.csv with the filtered rows only (UTF-8 BOM, header, Web Development)
+PASS  Edit opens the form filled from the database (record number, account link, registrations shown)
+PASS  Save changes -> success message; semester 8 and the new e-mail stored
+PASS  Deactivate opens a confirmation (soft delete explained); nothing changed yet
+PASS  confirmed -> record kept with status Inactive (greyed row, red badge, Reactivate button)
+PASS  Reactivate -> John Doe active again
+PASS  a student opening the Student Records tab -> HTTP 403 'Access Denied', no student data shown
+PASS  no JavaScript errors (only the intended 403/422 responses)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-11-integration/ (13 PNG files)
+browser checks: 16 passed, 0 failed

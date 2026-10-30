@@ -4,7 +4,8 @@ require_once __DIR__ . "/includes/auth.php";
 $current_user = require_permission("portal.view");
 
 $students = [];
-$res = $conn->query("SELECT enrollment_no, name, email, course, semester, gender FROM students ORDER BY id ASC");
+// Deactivated (soft-deleted) records stay in the database but are not listed in the directory
+$res = $conn->query("SELECT enrollment_no, name, email, course, semester, gender FROM students WHERE COALESCE(TRIM(status), '') <> 'Inactive' ORDER BY id ASC");
 if ($res) {
     while ($r = $res->fetch_assoc()) {
         $students[] = $r;

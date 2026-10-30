@@ -2,7 +2,7 @@ StudentHub authentication tests (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\
 INFO  source: database/studenthub_demo.sql
 
 == Static checks
-PASS  php -l: no syntax errors in all 31 PHP files of studenthub/ and tools/
+PASS  php -l: no syntax errors in all 32 PHP files of studenthub/ and tools/
 PASS  db.php has no fallback: no reference to user_registration and only one mysqli connection
 PASS  no page starts its own session (only includes/auth.php calls session_start)
 PASS  no GET logout link anywhere (logout is a POST form)
@@ -99,10 +99,10 @@ PASS  admin: all portal pages load (200)
 PASS  admin: every POST form on the portal pages carries a CSRF token
 PASS  student -> admin_dashboard.php: HTTP 403 'Access Denied' page
 PASS  ... recorded as ACCESS_DENIED in the audit log
-PASS  student cannot run admin operations (add/delete via POST -> 403, nothing changed)
+PASS  student cannot run admin operations (add/deactivate via POST -> 403, nothing changed)
 PASS  editor -> admin_dashboard.php: HTTP 403 'Access Denied' page
 PASS  ... recorded as ACCESS_DENIED in the audit log
-PASS  editor cannot run admin operations (add/delete via POST -> 403, nothing changed)
+PASS  editor cannot run admin operations (add/deactivate via POST -> 403, nothing changed)
 PASS  admin -> Admin Console (200) with the user list and audit log
 PASS  admin console tab 'students' loads; all its POST forms carry a CSRF token
 PASS  admin console tab 'events' loads; all its POST forms carry a CSRF token
@@ -114,10 +114,10 @@ PASS  admin POST without CSRF token -> 403 'Security check failed', nothing stor
 PASS  CSRF rejections are audit-logged
 PASS  admin add student with the token -> stored, message via the session (no text in the URL)
 PASS  the success message appears once, from the session
-PASS  a name with quotes cannot break out of the delete confirmation (JSON + HTML escaped)
-PASS  the old GET delete link no longer deletes anything
-PASS  POST delete without token -> 403, record kept
-PASS  POST delete with the token -> deleted
+PASS  a name with a quote is HTML-escaped in the student list
+PASS  a GET link cannot deactivate a student
+PASS  POST deactivate without token -> 403, record unchanged
+PASS  POST deactivate with the token -> soft delete (status Inactive, record kept)
 PASS  admin add student with semester 12 -> refused with a message (no database error page)
 PASS  an admin cannot delete the own account
 

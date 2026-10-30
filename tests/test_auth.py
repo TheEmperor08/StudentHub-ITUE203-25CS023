@@ -407,9 +407,11 @@ def access_tests(accounts):
         status, _, _ = b.request("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "X1", "name": "Hacked",
                                                          "email": f"{role}.hack@example.com", "course": "Computer Science", "semester": "3", "gender": "Male"})
         victim = scalar("SELECT id FROM students ORDER BY id LIMIT 1")
-        status2, _, _ = b.request("admin_dashboard.php", {"csrf_token": token, "action": "delete_student", "id": victim})
-        check(f"{role} cannot run admin operations (add/delete via POST -> 403, nothing changed)",
-              status == 403 and status2 == 403 and int(scalar("SELECT COUNT(*) FROM students")) == n)
+        victim_status = scalar(f"SELECT status FROM students WHERE id={victim}")
+        status2, _, _ = b.request("admin_dashboard.php", {"csrf_token": token, "action": "deactivate_student", "id": victim})
+        check(f"{role} cannot run admin operations (add/deactivate via POST -> 403, nothing changed)",
+              status == 403 and status2 == 403 and int(scalar("SELECT COUNT(*) FROM students")) == n
+              and scalar(f"SELECT status FROM students WHERE id={victim}") == victim_status)
     a = pages["admin"]
     status, _, page = a.request("admin_dashboard.php")
     check("admin -> Admin Console (200) with the user list and audit log", status == 200 and "Admin Console" in page)
@@ -425,25 +427,26 @@ def access_tests(accounts):
           status == 403 and "Security check failed" in page and int(scalar("SELECT COUNT(*) FROM students")) == n)
     check("CSRF rejections are audit-logged", audit_count("CSRF_REJECTED") >= 1)
     token = a.token("admin_dashboard.php")
-    st, hd, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "26CS900", "name": "x');alert(1);//",
+    st, hd, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "26CS900", "name": "Ann O'Neil",
                                                   "email": "quote.test@example.com", "course": "Computer Science", "semester": "4", "gender": "Female"})
     sid_new = scalar("SELECT id FROM students WHERE email='quote.test@example.com'")
     check("admin add student with the token -> stored, message via the session (no text in the URL)",
           sid_new is not None and hd.get("Location") == "admin_dashboard.php?tab=students")
     st, _, pg = a.request("admin_dashboard.php?tab=students")
-    check("the success message appears once, from the session", "Student successfully registered." in pg and "Student successfully registered." not in a.request("admin_dashboard.php?tab=students")[2])
-    check("a name with quotes cannot break out of the delete confirmation (JSON + HTML escaped)",
-          "x\\u0027);alert(1);" in pg and "confirm('Delete student record for x');alert" not in pg)
-    st, _, _ = a.request(f"admin_dashboard.php?tab=students&action=delete_student&id={sid_new}")
-    check("the old GET delete link no longer deletes anything", scalar(f"SELECT COUNT(*) FROM students WHERE id={sid_new}") == "1")
-    st, _, _ = a.request("admin_dashboard.php", {"action": "delete_student", "id": sid_new})
-    check("POST delete without token -> 403, record kept", st == 403 and scalar(f"SELECT COUNT(*) FROM students WHERE id={sid_new}") == "1")
-    st, hd, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "delete_student", "id": sid_new})
-    check("POST delete with the token -> deleted", st == 303 and scalar(f"SELECT COUNT(*) FROM students WHERE id={sid_new}") == "0")
-    st, _, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "Z2", "name": "Bad Sem",
-                                                 "email": "bad.sem@example.com", "course": "Computer Science", "semester": "12", "gender": "Male"})
+    added = "was added with enrollment number 26CS900."
+    check("the success message appears once, from the session", added in pg and added not in a.request("admin_dashboard.php?tab=students")[2])
+    check("a name with a quote is HTML-escaped in the student list", "Ann O&#039;Neil" in pg and "Ann O'Neil" not in pg)
+    st, _, _ = a.request(f"admin_dashboard.php?tab=students&action=deactivate_student&id={sid_new}")
+    check("a GET link cannot deactivate a student", scalar(f"SELECT status FROM students WHERE id={sid_new}") == "Active")
+    st, _, _ = a.request("admin_dashboard.php", {"action": "deactivate_student", "id": sid_new})
+    check("POST deactivate without token -> 403, record unchanged", st == 403 and scalar(f"SELECT status FROM students WHERE id={sid_new}") == "Active")
+    st, hd, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "deactivate_student", "id": sid_new})
+    check("POST deactivate with the token -> soft delete (status Inactive, record kept)",
+          st == 303 and scalar(f"SELECT CONCAT(COUNT(*), status) FROM students WHERE id={sid_new}") == "1Inactive")
+    st, _, page = a.request("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "26CS901", "name": "Bad Sem",
+                                                    "email": "bad.sem@example.com", "course": "Computer Science", "semester": "12", "gender": "Male"})
     check("admin add student with semester 12 -> refused with a message (no database error page)",
-          st == 303 and scalar("SELECT COUNT(*) FROM students WHERE email='bad.sem@example.com'") == "0" and "Semester must be between 1 and 8" in a.request("admin_dashboard.php?tab=students")[2])
+          st == 422 and scalar("SELECT COUNT(*) FROM students WHERE email='bad.sem@example.com'") == "0" and "number from 1 to 8" in page)
     admin_id = int(scalar("SELECT id FROM users WHERE username='auth_admin'"))
     a.request("admin_dashboard.php", {"csrf_token": token, "action": "delete_user", "id": admin_id})
     check("an admin cannot delete the own account", scalar(f"SELECT COUNT(*) FROM users WHERE id={admin_id}") == "1")
