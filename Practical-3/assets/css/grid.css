@@ -1,0 +1,151 @@
+/* ===== CSS Grid layouts: Dashboard (dashboard.html) and Events (events.html) =====
+   Mobile-first: one column on phones; named grid areas rearrange the page on desktop,
+   and repeat(auto-fit / auto-fill, minmax()) lets card grids choose their own column count. */
+
+/* --- Dashboard page layout --- */
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "welcome"
+        "stats"
+        "timetable"
+        "alert";
+    gap: 20px;
+}
+
+.dashboard__welcome   { grid-area: welcome; }
+.dashboard__stats     { grid-area: stats; }
+.dashboard__timetable { grid-area: timetable; min-width: 0; }
+.dashboard__alert     { grid-area: alert; }
+
+.dashboard__welcome p:last-child {
+    margin-bottom: 0;
+}
+
+/* --- Summary cards: as many columns as fit, each at least 150px --- */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stat {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+}
+
+.stat__label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.stat__value {
+    color: var(--text-dark);
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.stat meter {
+    width: 100%;
+}
+
+/* --- Timetable: the table scrolls inside its own box on narrow screens --- */
+.table-scroll {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+caption {
+    padding-bottom: 8px;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+th,
+td {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+thead th {
+    background: var(--indigo-soft);
+    color: var(--text-dark);
+}
+
+tbody th {
+    color: var(--text-dark);
+}
+
+/* --- Events page layout --- */
+.events {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "list"
+        "info";
+    gap: 20px;
+}
+
+.events__list { grid-area: list; }
+.events__info { grid-area: info; }
+
+/* --- Event cards: as many 260px+ columns as fit --- */
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.event-card {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    height: 100%;
+}
+
+.event-card__date {
+    justify-self: start;
+    margin-bottom: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--indigo-soft);
+    color: var(--indigo-dark);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.event-card p:last-child {
+    margin-bottom: 0;
+}
+
+/* --- Desktop: 1024px and wider --- */
+@media (min-width: 1024px) {
+    .dashboard {
+        grid-template-columns: 3fr 1fr;
+        grid-template-areas:
+            "welcome   welcome"
+            "stats     stats"
+            "timetable alert";
+    }
+
+    .events {
+        grid-template-columns: 2fr 1fr;
+        grid-template-areas: "list info";
+    }
+}

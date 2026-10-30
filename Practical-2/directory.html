@@ -1,66 +1,139 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Data Directory - StudentHub</title>
-    
-    
-    
-    
-    
+    <meta name="description" content="Student directory of the campus portal.">
+    <title>Directory – StudentHub</title>
 </head>
 <body>
+    <a href="#main-content">Skip to main content</a>
 
-<div >
     <header>
-        <h1>Campus Data Directory</h1>
-        <p>Dynamic JSON Rendering using Fetch API (Filter, Sort, Pagination)</p>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html" aria-current="page"><strong>Directory</strong></a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Directory</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>Campus Directory</h1>
+        <p><mark>Sample data:</mark> all entries are fictional placeholders. The directory contains no real student data.</p>
 
-    <main>
         <section>
-            <div >
-                <button  data-type="students">Students Data</button>
-                <button  data-type="events">Events Data</button>
-                <button  data-type="faqs">FAQs Data</button>
-            </div>
+            <h2>Search the directory</h2>
+            <form>
+                <p>
+                    <label for="directory-search">Name or enrollment number</label><br>
+                    <input type="search" id="directory-search" name="q">
+                </p>
+                <p>
+                    <label for="directory-course">Course</label><br>
+                    <select id="directory-course" name="course">
+                        <option value="">All courses</option>
+                        <option value="btech-cse">B.Tech CSE</option>
+                        <option value="btech-it">B.Tech IT</option>
+                        <option value="btech-ce">B.Tech CE</option>
+                        <option value="bca">BCA</option>
+                    </select>
+                </p>
+                <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Search” button is disabled and nothing is sent or saved.</p>
+                <p>
+                    <button type="submit" disabled>Search</button>
+                </p>
+            </form>
+        </section>
 
-            <div >
-                <input type="text" id="searchInput" placeholder="🔍 Search records...">
-                
-                <select id="filterSelect">
-                    <option value="all">All Categories/Branches</option>
-                    <!-- Dynamically populated -->
-                </select>
+        <section>
+            <h2>Students</h2>
+            <table border="1">
+                <caption>Student directory (sample entries)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Enrollment</th>
+                        <th scope="col">Course</th>
+                        <th scope="col">Year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">Sample Student 1</th>
+                        <td>DEMO-001</td>
+                        <td>B.Tech CSE</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Sample Student 2</th>
+                        <td>DEMO-002</td>
+                        <td>B.Tech CSE</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Sample Student 3</th>
+                        <td>DEMO-003</td>
+                        <td>B.Tech IT</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Sample Student 4</th>
+                        <td>DEMO-004</td>
+                        <td>B.Tech CE</td>
+                        <td>3rd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Sample Student 5</th>
+                        <td>DEMO-005</td>
+                        <td>BCA</td>
+                        <td>1st year</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
 
-                <select id="sortSelect">
-                    <option value="default">Sort By: Default</option>
-                    <option value="name_asc">Name/Title (A-Z)</option>
-                    <option value="name_desc">Name/Title (Z-A)</option>
-                </select>
-            </div>
-
-            <div id="status-container"></div>
-            
-            <div id="data-table-container">
-                <!-- Table rendered dynamically -->
-            </div>
-
-            <div  id="pagination-container">
-                <!-- Pagination rendered dynamically -->
-            </div>
+        <section>
+            <h2>Department contacts</h2>
+            <p>For department and helpdesk details, see the <a href="contact.html">Contact page</a>.</p>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2026 StudentHub. All rights reserved.</p>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-</div>
-
-
-    
 </body>
 </html>

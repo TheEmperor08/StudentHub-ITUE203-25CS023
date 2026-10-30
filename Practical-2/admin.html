@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Administrator console for students, events, users and audit logs.">
+    <title>Admin Console – StudentHub</title>
+</head>
+<body>
+    <a href="#main-content">Skip to main content</a>
+
+    <header>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html" aria-current="page"><strong>Admin Console</strong></a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Admin Console</span></p>
+        </nav>
+    </header>
+
+    <main id="main-content">
+        <h1>Admin Console</h1>
+        <p><mark>Sample data:</mark> every record on this page is a fictional demonstration entry. It contains no real student data, accounts or passwords.</p>
+        <p>In the full application only administrators can open this page. This static skeleton has no login check.</p>
+
+        <nav aria-label="Admin sections">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#students">Students</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="#users">Users</a></li>
+                <li><a href="#audit-log">Audit log</a></li>
+            </ul>
+        </nav>
+
+        <section id="overview">
+            <h2>Overview</h2>
+            <dl>
+                <dt>Student records</dt>
+                <dd>5</dd>
+                <dt>Published events</dt>
+                <dd>2</dd>
+                <dt>User accounts</dt>
+                <dd>3</dd>
+            </dl>
+        </section>
+
+        <section id="students">
+            <h2>Students</h2>
+            <table border="1">
+                <caption>Student records (sample entries)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Enrollment</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Course</th>
+                        <th scope="col">Year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">DEMO-001</th>
+                        <td>Sample Student 1</td>
+                        <td>B.Tech CSE</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">DEMO-002</th>
+                        <td>Sample Student 2</td>
+                        <td>B.Tech CSE</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">DEMO-003</th>
+                        <td>Sample Student 3</td>
+                        <td>B.Tech IT</td>
+                        <td>2nd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">DEMO-004</th>
+                        <td>Sample Student 4</td>
+                        <td>B.Tech CE</td>
+                        <td>3rd year</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">DEMO-005</th>
+                        <td>Sample Student 5</td>
+                        <td>BCA</td>
+                        <td>1st year</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Add a student record</h3>
+            <form>
+                <fieldset>
+                    <legend>New student</legend>
+                    <p>
+                        <label for="admin-student-name">Full name</label><br>
+                        <input type="text" id="admin-student-name" name="name" required>
+                    </p>
+                    <p>
+                        <label for="admin-student-enrollment">Enrollment number</label><br>
+                        <input type="text" id="admin-student-enrollment" name="enrollment" required>
+                    </p>
+                    <p>
+                        <label for="admin-student-course">Course</label><br>
+                        <select id="admin-student-course" name="course" required>
+                            <option value="">-- Select course --</option>
+                            <option value="btech-cse">B.Tech CSE</option>
+                            <option value="btech-it">B.Tech IT</option>
+                            <option value="btech-ce">B.Tech CE</option>
+                            <option value="bca">BCA</option>
+                        </select>
+                    </p>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Add student” button is disabled and nothing is sent or saved.</p>
+                    <p>
+                        <button type="submit" disabled>Add student</button>
+                    </p>
+                </fieldset>
+            </form>
+        </section>
+
+        <section id="events">
+            <h2>Events</h2>
+            <table border="1">
+                <caption>Published events (sample entries)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Venue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">Odoo Hackathon</th>
+                        <td><time datetime="2026-08-22">22 August 2026</time></td>
+                        <td>L.D. College of Engineering</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Independence Day Celebration</th>
+                        <td><time datetime="2026-08-15">15 August 2026</time></td>
+                        <td>CHARUSAT Campus</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Publish an event</h3>
+            <form>
+                <fieldset>
+                    <legend>New event</legend>
+                    <p>
+                        <label for="event-title">Event title</label><br>
+                        <input type="text" id="event-title" name="title" required>
+                    </p>
+                    <p>
+                        <label for="event-date">Event date</label><br>
+                        <input type="date" id="event-date" name="event_date" required>
+                    </p>
+                    <p>
+                        <label for="event-poster">Poster image (JPG or PNG)</label><br>
+                        <input type="file" id="event-poster" name="poster" accept=".jpg,.jpeg,.png">
+                    </p>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Publish event” button is disabled and nothing is sent or saved.</p>
+                    <p>
+                        <button type="submit" disabled>Publish event</button>
+                    </p>
+                </fieldset>
+            </form>
+        </section>
+
+        <section id="users">
+            <h2>Users</h2>
+            <table border="1">
+                <caption>User accounts (sample entries, no passwords shown or stored)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Username</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">sample.admin</th>
+                        <td>Admin</td>
+                        <td>Active</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">sample.student1</th>
+                        <td>Student</td>
+                        <td>Active</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">sample.student2</th>
+                        <td>Student</td>
+                        <td>Active</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="audit-log">
+            <h2>Audit log</h2>
+            <table border="1">
+                <caption>Recent account activity (sample entries)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Time</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><time datetime="2026-10-01T09:15">1 October 2026, 09:15</time></td>
+                        <td>sample.admin</td>
+                        <td>Login</td>
+                        <td>Success</td>
+                    </tr>
+                    <tr>
+                        <td><time datetime="2026-10-01T09:20">1 October 2026, 09:20</time></td>
+                        <td>sample.admin</td>
+                        <td>Published event</td>
+                        <td>Success</td>
+                    </tr>
+                    <tr>
+                        <td><time datetime="2026-10-01T10:02">1 October 2026, 10:02</time></td>
+                        <td>sample.student1</td>
+                        <td>Login</td>
+                        <td>Failed (wrong password)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
+    </footer>
+</body>
+</html>

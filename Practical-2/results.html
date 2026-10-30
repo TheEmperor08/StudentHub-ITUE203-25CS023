@@ -1,102 +1,121 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Results - Shreyas</title>
-    
-    
-    
-    
+    <meta name="description" content="Semester-wise examination results.">
+    <title>Results – StudentHub</title>
 </head>
 <body>
-
-<div >
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>Academic Examination Results</h1>
-        <p>Shreyas | Enrolment: <mark>25CS023</mark> | B.Tech CSE (CSPIT)</p>
-        
-        
-        
-            <p><mark>Sample / demo data:</mark> grades and attendance figures on this page are placeholders, not actual academic results.</p>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html" aria-current="page"><strong>Results</strong></a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Results</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>Examination Results</h1>
+        <p>Shreyas | Enrollment: 25CS023 | B.Tech CSE, CSPIT</p>
+        <p><mark>Sample data:</mark> grades on this page are placeholders, not actual academic results.</p>
 
-    <main>
         <section>
-            <h2>Cumulative Academic Performance</h2>
-            <p>Overall Cumulative Grade Point Average (CGPA): <meter value="8.05" min="0" max="10">8.05</meter> <strong>8.05 / 10.0 (First Class with Distinction)</strong></p>
-            
-            <table border="1" cellpadding="8" cellspacing="0" width="100%">
+            <h2>Cumulative performance</h2>
+            <p>Cumulative Grade Point Average (CGPA): <meter value="8.05" min="0" max="10">8.05 out of 10</meter> <strong>8.05 / 10.0</strong></p>
+            <table border="1">
+                <caption>Semester-wise SGPA and CGPA</caption>
                 <thead>
-                    <tr align="left">
-                        <th>Semester</th>
-                        <th>Institute</th>
-                        <th>Semester SGPA</th>
-                        <th>Cumulative CGPA</th>
-                        <th>Result Status</th>
-                        <th>Marksheet</th>
+                    <tr>
+                        <th scope="col">Semester</th>
+                        <th scope="col">SGPA</th>
+                        <th scope="col">CGPA</th>
+                        <th scope="col">Result</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Semester 1</strong></td>
-                        <td>CSPIT - CHARUSAT</td>
-                        <td><strong>8.32</strong></td>
+                        <th scope="row">Semester 1</th>
                         <td>8.32</td>
-                        <td><mark>PASSED</mark></td>
-                        <td><a href="#">Download PDF</a></td>
+                        <td>8.32</td>
+                        <td>Passed</td>
                     </tr>
                     <tr>
-                        <td><strong>Semester 2</strong></td>
-                        <td>CSPIT - CHARUSAT</td>
-                        <td><strong>7.77</strong></td>
-                        <td><strong>8.05</strong></td>
-                        <td><mark>PASSED</mark></td>
-                        <td><a href="#">Download PDF</a></td>
+                        <th scope="row">Semester 2</th>
+                        <td>7.77</td>
+                        <td>8.05</td>
+                        <td>Passed</td>
                     </tr>
                     <tr>
-                        <td><strong>Semester 3 (Current)</strong></td>
-                        <td>CSPIT - CHARUSAT (A7 Building)</td>
-                        <td><em>Ongoing</em></td>
-                        <td><em>Ongoing</em></td>
-                        <td><strong>21 Credits Registered</strong></td>
-                        <td><em>In Progress</em></td>
+                        <th scope="row">Semester 3 (current)</th>
+                        <td>Ongoing</td>
+                        <td>Ongoing</td>
+                        <td>21 credits registered</td>
                     </tr>
                 </tbody>
             </table>
         </section>
 
-        
-
         <section>
-            <h2>Semester 2 Grade Summary (Last Completed Semester)</h2>
-            <p>Semester 2 SGPA: <strong>7.77 / 10.0</strong></p>
-
-            <table border="1" cellpadding="6" cellspacing="0" width="100%">
+            <h2>Semester 2 grade summary</h2>
+            <table border="1">
+                <caption>Semester 2 grades by subject category, SGPA 7.77</caption>
                 <thead>
-                    <tr align="left">
-                        <th>Subject Category</th>
-                        <th>Evaluation Type</th>
-                        <th>Result Grade</th>
+                    <tr>
+                        <th scope="col">Subject category</th>
+                        <th scope="col">Evaluation type</th>
+                        <th scope="col">Grade</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Core Engineering Subjects</strong></td>
-                        <td>Theory & Practical Exams</td>
+                        <th scope="row">Core engineering subjects</th>
+                        <td>Theory and practical exams</td>
                         <td>AA / AB</td>
                     </tr>
                     <tr>
-                        <td><strong>Mathematics & Foundation</strong></td>
-                        <td>End Semester Theory</td>
+                        <th scope="row">Mathematics and foundation</th>
+                        <td>End-semester theory</td>
                         <td>AB / BB</td>
                     </tr>
                     <tr>
-                        <td><strong>Laboratory & Workshops</strong></td>
-                        <td>Practical Evaluation</td>
+                        <th scope="row">Laboratory and workshops</th>
+                        <td>Practical evaluation</td>
                         <td>AA</td>
                     </tr>
                 </tbody>
@@ -105,15 +124,8 @@
     </main>
 
     <footer>
-        
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-</div>
-
-    
 </body>
 </html>

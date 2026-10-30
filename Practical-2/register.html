@@ -1,103 +1,137 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Registration - StudentHub</title>
-    <!-- Premium Google Fonts -->
-    
-    
-    
-    
-    
+    <meta name="description" content="Register a new student account on StudentHub.">
+    <title>Register – StudentHub</title>
 </head>
 <body>
+    <a href="#main-content">Skip to main content</a>
 
-    <div >
+    <header>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html" aria-current="page"><strong>Register</strong></a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Register</span></p>
+        </nav>
+    </header>
+
+    <main id="main-content">
         <h1>Student Registration</h1>
-        <form id="registerForm" novalidate>
-            
-            <div >
-                <div >
-                    <label for="name">Full Name *</label>
-                    <input type="text" id="name" name="name" placeholder="John Doe">
-                    <div  id="nameError"></div>
-                </div>
-                <div >
-                    <label for="email">Email Address *</label>
-                    <input type="email" id="email" name="email" placeholder="john@charusat.edu.in">
-                    <div  id="emailError"></div>
-                </div>
-            </div>
+        <p>Fields marked * are required.</p>
 
-            <div >
-                <div >
-                    <label for="mobile">Mobile Number *</label>
-                    <input type="tel" id="mobile" name="mobile" placeholder="9876543210" maxlength="10">
-                    <div  id="mobileError"></div>
-                </div>
-                <div >
-                    <label>Gender *</label>
-                    <div >
-                        <label><input type="radio" name="gender" value="Male"> Male</label>
-                        <label><input type="radio" name="gender" value="Female"> Female</label>
-                        <label><input type="radio" name="gender" value="Other"> Other</label>
-                    </div>
-                    <div  id="genderError"></div>
-                </div>
-            </div>
+        <section>
+            <h2>Registration form</h2>
+            <form>
+                <fieldset>
+                    <legend>Personal details</legend>
+                    <p>
+                        <label for="reg-name">Full name *</label><br>
+                        <input type="text" id="reg-name" name="name" autocomplete="name" required>
+                    </p>
+                    <p>
+                        <label for="reg-email">College email address *</label><br>
+                        <input type="email" id="reg-email" name="email" autocomplete="email" required>
+                    </p>
+                    <p>
+                        <label for="reg-mobile">Mobile number *</label><br>
+                        <input type="tel" id="reg-mobile" name="mobile" autocomplete="tel" maxlength="10" required>
+                    </p>
+                    <fieldset>
+                        <legend>Gender *</legend>
+                        <label><input type="radio" name="gender" value="male" required> Male</label>
+                        <label><input type="radio" name="gender" value="female"> Female</label>
+                        <label><input type="radio" name="gender" value="other"> Other</label>
+                    </fieldset>
+                </fieldset>
 
-            <div >
-                <div >
-                    <label for="course">Course *</label>
-                    <select id="course" name="course">
-                        <option value="">-- Select Course --</option>
-                        <option value="BTech CSE">B.Tech - CSE</option>
-                        <option value="BTech CE">B.Tech - CE</option>
-                        <option value="BTech IT">B.Tech - IT</option>
-                        <option value="BCA">BCA</option>
-                    </select>
-                    <div  id="courseError"></div>
-                </div>
-                <div >
-                    <label for="year">Admission Year *</label>
-                    <select id="year" name="year">
-                        <option value="">-- Select Year --</option>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
-                        <option value="4">4th Year</option>
-                    </select>
-                    <div  id="yearError"></div>
-                </div>
-            </div>
+                <fieldset>
+                    <legend>Academic details</legend>
+                    <p>
+                        <label for="reg-course">Course *</label><br>
+                        <select id="reg-course" name="course" required>
+                            <option value="">-- Select course --</option>
+                            <option value="btech-cse">B.Tech – CSE</option>
+                            <option value="btech-ce">B.Tech – CE</option>
+                            <option value="btech-it">B.Tech – IT</option>
+                            <option value="bca">BCA</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label for="reg-year">Current year of study *</label><br>
+                        <select id="reg-year" name="year" required>
+                            <option value="">-- Select year --</option>
+                            <option value="1">1st year</option>
+                            <option value="2">2nd year</option>
+                            <option value="3">3rd year</option>
+                            <option value="4">4th year</option>
+                        </select>
+                    </p>
+                </fieldset>
 
-            <div >
-                <div >
-                    <label for="password">Password *</label>
-                    <input type="password" id="password" name="password" placeholder="Create a strong password">
-                    <div ><div  id="strengthBar"></div></div>
-                    <div  id="strengthText"></div>
-                    <div  id="passwordError"></div>
-                </div>
-                <div >
-                    <label for="cPassword">Confirm Password *</label>
-                    <input type="password" id="cPassword" name="cPassword" placeholder="Re-enter password">
-                    <div  id="cPasswordError"></div>
-                </div>
-            </div>
+                <fieldset>
+                    <legend>Account</legend>
+                    <p>
+                        <label for="reg-password">Password *</label><br>
+                        <input type="password" id="reg-password" name="password" autocomplete="new-password" minlength="8" required>
+                    </p>
+                    <p>
+                        <label for="reg-confirm">Confirm password *</label><br>
+                        <input type="password" id="reg-confirm" name="confirm_password" autocomplete="new-password" minlength="8" required>
+                    </p>
+                    <p>
+                        <input type="checkbox" id="reg-terms" name="terms" required>
+                        <label for="reg-terms">I agree to the terms and conditions and the privacy policy. *</label>
+                    </p>
+                </fieldset>
 
-            <div >
-                <input type="checkbox" id="terms" name="terms">
-                <label for="terms">I agree to the Terms & Conditions and Privacy Policy.</label>
-            </div>
-            <div  id="termsError"></div>
+                <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Register account” button is disabled and nothing is sent or saved.</p>
+                <p>
+                    <button type="submit" disabled>Register account</button>
+                    <button type="reset">Clear</button>
+                </p>
+            </form>
+            <p>Already registered? <a href="login.html">Go to the Login page</a>.</p>
+        </section>
+    </main>
 
-            <button type="submit" >Register Account</button>
-        </form>
-        <a href="login.html" >&larr; Back to Login</a>
-    </div>
-
-    
-    </body>
+    <footer>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
+    </footer>
+</body>
 </html>

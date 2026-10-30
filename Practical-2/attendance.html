@@ -1,126 +1,154 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Record - Shreyas</title>
-    
-    
-    
-    
+    <meta name="description" content="Subject-wise attendance record and leave application.">
+    <title>Attendance – StudentHub</title>
 </head>
 <body>
-
-<div >
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>Semester 3 Attendance Record</h1>
-        <p>Shreyas (25CS023) | CSE Department - CSPIT</p>
-        
-        
-        
-            <p><mark>Sample / demo data:</mark> grades and attendance figures on this page are placeholders, not actual academic results.</p>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html" aria-current="page"><strong>Attendance</strong></a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Attendance</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>Attendance Record</h1>
+        <p>Shreyas (25CS023) | CSE Department, CSPIT | Semester 3</p>
+        <p><mark>Sample data:</mark> attendance figures on this page are placeholders, not actual records.</p>
 
-    <main>
         <section>
-            <h2>Subject-wise Attendance (Average: 94.0%)</h2>
-            <p>University mandate: Minimum 75% attendance is required to appear for end-semester examinations.</p>
-            
-            <table border="1" cellpadding="8" cellspacing="0" width="100%">
+            <h2>Subject-wise attendance</h2>
+            <p>A minimum of 75% attendance is required to appear for end-semester examinations.</p>
+            <table border="1">
+                <caption>Subject-wise attendance, average 94.0%</caption>
                 <thead>
-                    <tr align="left">
-                        <th>Course Code & Subject</th>
-                        <th>Lectures Held</th>
-                        <th>Lectures Attended</th>
-                        <th>Percentage</th>
-                        <th>Meter Indicator</th>
+                    <tr>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Lectures held</th>
+                        <th scope="col">Lectures attended</th>
+                        <th scope="col">Percentage</th>
+                        <th scope="col">Meter</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>CSUC201 - Data Structure & Algorithm (FDSA)</strong></td>
+                        <th scope="row">CSUC201 – Data Structure and Algorithm (FDSA)</th>
                         <td>20</td>
                         <td>19</td>
                         <td>95%</td>
                         <td><meter value="95" min="0" max="100">95%</meter></td>
                     </tr>
                     <tr>
-                        <td><strong>ITUE204 - Web Development Frameworks (WDF)</strong></td>
+                        <th scope="row">ITUE203 – Web Development Frameworks (WDF)</th>
                         <td>25</td>
                         <td>24</td>
                         <td>96%</td>
                         <td><meter value="96" min="0" max="100">96%</meter></td>
                     </tr>
                     <tr>
-                        <td><strong>CEUE203 - Object Oriented Programming (OOP)</strong></td>
+                        <th scope="row">CEUE203 – Object Oriented Programming (OOP)</th>
                         <td>15</td>
                         <td>14</td>
                         <td>93.3%</td>
-                        <td><meter value="93.3" min="0" max="100">93%</meter></td>
+                        <td><meter value="93.3" min="0" max="100">93.3%</meter></td>
                     </tr>
                     <tr>
-                        <td><strong>ITUC201 - Computer Networks (FCN)</strong></td>
+                        <th scope="row">ITUC201 – Computer Networks (FCN)</th>
                         <td>25</td>
                         <td>23</td>
                         <td>92%</td>
                         <td><meter value="92" min="0" max="100">92%</meter></td>
                     </tr>
                     <tr>
-                        <td><strong>MSUD203 - Discrete Mathematics (MATHS)</strong></td>
+                        <th scope="row">MSUD203 – Discrete Mathematics (MATHS)</th>
                         <td>17</td>
                         <td>16</td>
                         <td>94.1%</td>
-                        <td><meter value="94.1" min="0" max="100">94%</meter></td>
+                        <td><meter value="94.1" min="0" max="100">94.1%</meter></td>
                     </tr>
                     <tr>
-                        <td><strong>HSUV201 - Creativity, Problem Solving (HS)</strong></td>
+                        <th scope="row">HSUV201 – Creativity, Problem Solving (HS)</th>
                         <td>16</td>
                         <td>15</td>
                         <td>93.7%</td>
-                        <td><meter value="93.7" min="0" max="100">94%</meter></td>
+                        <td><meter value="93.7" min="0" max="100">93.7%</meter></td>
                     </tr>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th>Total Average:</th>
-                        <th>118</th>
-                        <th>111</th>
-                        <th>94.0%</th>
-                        <th><meter value="94" min="0" max="100">94%</meter> Excellent</th>
+                        <th scope="row">Total</th>
+                        <td>118</td>
+                        <td>111</td>
+                        <td>94.0%</td>
+                        <td><meter value="94" min="0" max="100">94%</meter></td>
                     </tr>
                 </tfoot>
             </table>
         </section>
 
-        
-
         <section>
-            <h2>Apply for Student Leave</h2>
-            
-            <form action="attendance.html" method="POST">
+            <h2>Apply for leave</h2>
+            <form>
                 <fieldset>
-                    <legend><strong>Leave Application Form</strong></legend>
+                    <legend>Leave application</legend>
                     <p>
-                        <label for="ldate"><strong>Date of Absence:</strong></label><br>
-                        <input type="date" id="ldate" name="ldate" required>
+                        <label for="leave-date">Date of absence</label><br>
+                        <input type="date" id="leave-date" name="leave_date" required>
                     </p>
                     <p>
-                        <label for="ltype"><strong>Leave Reason / Type:</strong></label><br>
-                        <select id="ltype" name="ltype" required>
-                            <option value="hackathon">Hackathon / Technical Competition (On Duty)</option>
-                            <option value="medical">Medical / Sick Leave</option>
-                            <option value="personal">Personal Emergency</option>
+                        <label for="leave-type">Leave type</label><br>
+                        <select id="leave-type" name="leave_type" required>
+                            <option value="on-duty">Hackathon or technical competition (on duty)</option>
+                            <option value="medical">Medical or sick leave</option>
+                            <option value="personal">Personal emergency</option>
                         </select>
                     </p>
                     <p>
-                        <label for="lreason"><strong>Details:</strong></label><br>
-                        <textarea id="lreason" name="lreason" rows="3" cols="50" required placeholder="e.g., Attending Odoo Hackathon at LDCE on Aug 22"></textarea>
+                        <label for="leave-details">Details</label><br>
+                        <textarea id="leave-details" name="details" rows="3" cols="50" required></textarea>
                     </p>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Submit leave request” button is disabled and nothing is sent or saved.</p>
                     <p>
-                        <button type="submit"><strong>Submit Leave Request &rarr;</strong></button>
+                        <button type="submit" disabled>Submit leave request</button>
                     </p>
                 </fieldset>
             </form>
@@ -128,15 +156,8 @@
     </main>
 
     <footer>
-        
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-</div>
-
-    
 </body>
 </html>

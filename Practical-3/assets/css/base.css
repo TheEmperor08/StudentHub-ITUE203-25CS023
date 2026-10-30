@@ -1,0 +1,316 @@
+/* ===== StudentHub – Practical 3 base styles =====
+   Shared by the Flexbox pages (index.html, about.html) and the CSS Grid pages (dashboard.html, events.html).
+   Mobile-first: the rules outside media queries are for phones; min-width queries add tablet (768px)
+   and desktop (1024px) refinements. Colours follow the StudentHub design tokens. */
+
+:root {
+    --navy-900: #0b1437;
+    --navy-800: #121d4a;
+    --indigo: #4f46e5;
+    --indigo-dark: #4338ca;
+    --indigo-soft: #eef0ff;
+    --violet: #7c3aed;
+
+    --bg: #f3f4f9;
+    --surface: #ffffff;
+    --border: #e3e6ef;
+    --text-dark: #0f172a;
+    --text: #334155;
+    --text-muted: #5b6478;
+    --on-navy: #ffffff;
+    --on-navy-muted: #c7cbe0;
+    --warning-soft: #fff5e1;
+    --warning-ink: #8a4b00;
+
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px rgba(15, 23, 42, 0.06);
+    --gap: 16px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* --- Base --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* Flex column: on short pages the footer stays at the bottom of the screen. */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+h1,
+h2,
+h3 {
+    margin: 0 0 0.5em;
+    color: var(--text-dark);
+    line-height: 1.25;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.1rem; }
+
+p {
+    margin: 0 0 1em;
+}
+
+a {
+    color: var(--indigo-dark);
+}
+
+a:hover {
+    color: var(--indigo);
+}
+
+:focus-visible {
+    outline: 3px solid var(--violet);
+    outline-offset: 2px;
+}
+
+/* --- Skip link: hidden until it receives keyboard focus --- */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: var(--gap);
+    z-index: 100;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--indigo-dark);
+    font-weight: 600;
+}
+
+.skip-link:focus {
+    top: var(--gap);
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--gap);
+}
+
+/* --- Site header (Flexbox): brand and navigation wrap onto two lines on phones --- */
+.site-header {
+    background: var(--navy-900);
+    color: var(--on-navy);
+}
+
+.site-header__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--on-navy);
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.brand:hover {
+    color: var(--on-navy);
+}
+
+.site-nav {
+    width: 100%;
+}
+
+.site-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-nav a {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--on-navy-muted);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.site-nav a:hover {
+    background: var(--navy-800);
+    color: var(--on-navy);
+}
+
+.site-nav a[aria-current="page"] {
+    background: var(--indigo);
+    color: var(--on-navy);
+}
+
+/* --- Breadcrumb --- */
+.breadcrumb-trail {
+    padding-top: 12px;
+    font-size: 0.9rem;
+}
+
+.breadcrumb-trail ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--text-muted);
+}
+
+.breadcrumb-trail li + li::before {
+    content: "/";
+    margin-right: 4px;
+}
+
+/* --- Main content --- */
+main {
+    flex: 1 0 auto;
+    padding-top: 16px;
+    padding-bottom: 40px;
+}
+
+.lead {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+}
+
+.card {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.sample-note {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: var(--warning-soft);
+    color: var(--warning-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* --- Buttons --- */
+.button {
+    display: inline-block;
+    padding: 10px 18px;
+    border: 2px solid var(--indigo);
+    border-radius: 8px;
+    background: var(--indigo);
+    color: var(--on-navy);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.button:hover {
+    border-color: var(--indigo-dark);
+    background: var(--indigo-dark);
+    color: var(--on-navy);
+}
+
+/* --- Expandable questions --- */
+details {
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+summary {
+    color: var(--text-dark);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+details[open] summary {
+    margin-bottom: 8px;
+}
+
+details p {
+    margin: 0;
+}
+
+/* --- Footer (Flexbox): stacked on phones, one row from tablet width --- */
+.site-footer {
+    padding: 24px 0;
+    background: var(--navy-900);
+    color: var(--on-navy-muted);
+    font-size: 0.9rem;
+}
+
+.site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.site-footer p {
+    margin: 0;
+}
+
+.site-footer ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-footer a {
+    color: var(--on-navy);
+}
+
+/* --- Tablet: 768px and wider --- */
+@media (min-width: 768px) {
+    h1 { font-size: 2.1rem; }
+
+    .container {
+        padding: 0 24px;
+    }
+
+    .site-nav {
+        width: auto;
+    }
+
+    .site-footer__inner {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* --- Desktop: 1024px and wider --- */
+@media (min-width: 1024px) {
+    h1 { font-size: 2.4rem; }
+}

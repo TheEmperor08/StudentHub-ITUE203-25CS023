@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="StudentHub home page: student portal for CSE students of CSPIT, CHARUSAT.">
+    <title>Home – StudentHub</title>
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/flex.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header">
+        <div class="container site-header__inner">
+            <a class="brand" href="index.html"><img src="assets/images/studenthub-logo.svg" alt="" width="36" height="36"> StudentHub</a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <ul>
+                    <li><a href="index.html" aria-current="page">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="events.html">Events</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="register.html">Register</a></li>
+                    <li><a href="login.html">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <nav class="container breadcrumb-trail" aria-label="Breadcrumb">
+        <ol>
+            <li><span aria-current="page">Home</span></li>
+        </ol>
+    </nav>
+
+    <main id="main-content" class="container">
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero__text">
+                <h1 id="hero-title">Welcome to StudentHub</h1>
+                <p>Your portal for Computer Science &amp; Engineering at CSPIT, CHARUSAT. Check your timetable, Semester 3 subjects, attendance and campus events in one place.</p>
+                <div class="hero__actions">
+                    <a class="button" href="login.html">Login</a>
+                    <a class="button button--ghost" href="register.html">Register as a new student</a>
+                </div>
+            </div>
+            <aside class="hero__panel" aria-labelledby="alerts-title">
+                <h2 id="alerts-title">Latest campus alerts</h2>
+                <p class="sample-note">Sample data</p>
+                <ul>
+                    <li><time datetime="2026-08-22">22 Aug 2026</time> – Odoo Hackathon at L.D. College of Engineering</li>
+                    <li><time datetime="2026-08-15">15 Aug 2026</time> – Independence Day celebration at CHARUSAT Campus</li>
+                </ul>
+            </aside>
+        </section>
+
+        <section aria-labelledby="sections-title">
+            <h2 id="sections-title">Portal sections</h2>
+            <ul class="card-row">
+                <li class="card">
+                    <h3>Semester 3 dashboard</h3>
+                    <p>See your attendance, CGPA, credits and the weekly timetable at a glance.</p>
+                    <p class="card__link"><a href="dashboard.html">Open the dashboard</a></p>
+                </li>
+                <li class="card">
+                    <h3>Campus events</h3>
+                    <p>Stay updated with hackathons, celebrations and department activities.</p>
+                    <p class="card__link"><a href="events.html">View events</a></p>
+                </li>
+                <li class="card">
+                    <h3>About the portal</h3>
+                    <p>Learn who StudentHub is for and which modules it offers.</p>
+                    <p class="card__link"><a href="about.html">Read about StudentHub</a></p>
+                </li>
+            </ul>
+        </section>
+
+        <section aria-labelledby="faq-title">
+            <h2 id="faq-title">Quick FAQ</h2>
+            <details>
+                <summary>Where is the CSE Department located?</summary>
+                <p>In the A7 Building, CSPIT, CHARUSAT Campus, Changa.</p>
+            </details>
+            <details>
+                <summary>How do I create an account?</summary>
+                <p>Fill in the <a href="register.html">registration form</a> with your name, college email, course and a password.</p>
+            </details>
+            <details>
+                <summary>Where can I see my timetable?</summary>
+                <p>The weekly timetable is on the <a href="dashboard.html">Dashboard</a>.</p>
+            </details>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container site-footer__inner">
+            <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 3 by Shreyas (25CS023)</p>
+            <ul>
+                <li><a href="about.html">About</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="register.html">Register</a></li>
+            </ul>
+        </div>
+    </footer>
+</body>
+</html>

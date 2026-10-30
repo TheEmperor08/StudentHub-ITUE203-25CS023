@@ -1,66 +1,82 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Notifications - CSPIT</title>
-    
-    
-    
-    
+    <meta name="description" content="Campus announcements and academic notices.">
+    <title>Notices – StudentHub</title>
 </head>
 <body>
-
-<div >
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>Campus Announcements & Bulletins</h1>
-        <p>A7 Building, CSPIT - CHARUSAT University</p>
-        
-        
-        
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html" aria-current="page"><strong>Notices</strong></a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Notices</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>Campus Notices</h1>
+        <p><mark>Sample data:</mark> the notices below are example content for this static page.</p>
 
-    <main>
         <section>
-            <h2>Latest Campus Notices</h2>
-
+            <h2>Latest notices</h2>
             <article>
-                <h3>📢 Odoo Hackathon at LDCE on 22nd August!</h3>
-                <p>The upcoming Odoo Hackathon is scheduled at L.D. College of Engineering on <time datetime="2026-08-22">August 22, 2026</time>. CSE students interested in open-source software development and competitive programming are strongly encouraged to participate and form teams!</p>
-                <p><small>Posted on: <time datetime="2026-08-05">Aug 5, 2026</time> | Category: <mark>Hackathon Alert</mark></small></p>
+                <h3>Odoo Hackathon at LDCE on 22 August</h3>
+                <p>The Odoo Hackathon is scheduled at L.D. College of Engineering on <time datetime="2026-08-22">22 August 2026</time>. CSE students interested in open-source development are encouraged to form teams. Details are on the <a href="events.html">Events page</a>.</p>
+                <p><small>Posted on <time datetime="2026-08-05">5 August 2026</time> | Category: Hackathon</small></p>
             </article>
-
-            
-
             <article>
-                <h3>Semester 3 Academic Timetable (With Effect From July 6)</h3>
-                <p>The revised timetable for B.Tech Semester 3 CSE (Division I) has been released. Most regular theory lectures will be conducted in Room 506 (A7 Building). Practical batches A1, B1, and C1 must attend sessions in computer laboratories 631, 632, and 633.</p>
-                <p><small>Posted on: <time datetime="2026-07-06">July 6, 2026</time> | Category: Academic Notice</small></p>
+                <h3>Semester 3 timetable (with effect from 6 July)</h3>
+                <p>The revised timetable for B.Tech Semester 3 CSE has been released. Most theory lectures are in Room 506 (A7 Building); practical batches A1, B1 and C1 attend laboratories 631, 632 and 633. See the <a href="dashboard.html">Dashboard</a>.</p>
+                <p><small>Posted on <time datetime="2026-07-06">6 July 2026</time> | Category: Academic</small></p>
             </article>
-
-            
-
             <article>
-                <h3>Independence Day Celebration & Flag Hoisting</h3>
-                <p>All faculty members and students are invited to celebrate Independence Day on <time datetime="2026-08-15">August 15</time> at the central university grounds.</p>
-                <p><small>Category: Campus Event</small></p>
+                <h3>Independence Day celebration</h3>
+                <p>All faculty members and students are invited to celebrate Independence Day on <time datetime="2026-08-15">15 August 2026</time> at the central university grounds.</p>
+                <p><small>Category: Campus event</small></p>
             </article>
         </section>
     </main>
 
     <footer>
-        
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-</div>
-
-    
 </body>
 </html>

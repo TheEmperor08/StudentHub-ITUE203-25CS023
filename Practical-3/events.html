@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Campus events listed on StudentHub.">
+    <title>Events – StudentHub</title>
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/grid.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header">
+        <div class="container site-header__inner">
+            <a class="brand" href="index.html"><img src="assets/images/studenthub-logo.svg" alt="" width="36" height="36"> StudentHub</a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="events.html" aria-current="page">Events</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="register.html">Register</a></li>
+                    <li><a href="login.html">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <nav class="container breadcrumb-trail" aria-label="Breadcrumb">
+        <ol>
+            <li><a href="index.html">Home</a></li>
+            <li><span aria-current="page">Events</span></li>
+        </ol>
+    </nav>
+
+    <main id="main-content" class="container">
+        <h1>Campus Events</h1>
+        <p><span class="sample-note">Sample data</span> The events below are example content.</p>
+
+        <div class="events">
+            <section class="events__list" aria-labelledby="list-title">
+                <h2 id="list-title">Event list</h2>
+                <ul class="event-grid">
+                    <li>
+                        <article class="card event-card">
+                            <p class="event-card__date"><time datetime="2026-08-22">22 August 2026</time></p>
+                            <h3>Odoo Hackathon</h3>
+                            <p><strong>Venue:</strong> L.D. College of Engineering, Ahmedabad. A hackathon for students interested in open-source software development; CSE students can take part in teams.</p>
+                        </article>
+                    </li>
+                    <li>
+                        <article class="card event-card">
+                            <p class="event-card__date"><time datetime="2026-08-15">15 August 2026</time></p>
+                            <h3>Independence Day Celebration</h3>
+                            <p><strong>Venue:</strong> Central university grounds, CHARUSAT Campus. Flag hoisting and celebration for all students and faculty members.</p>
+                        </article>
+                    </li>
+                </ul>
+            </section>
+
+            <aside class="events__info card" aria-labelledby="info-title">
+                <h2 id="info-title">How events are published</h2>
+                <p>In the full application, administrators add events with posters from the Admin Console. Upcoming events also appear on the <a href="dashboard.html">Dashboard</a>.</p>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container site-footer__inner">
+            <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 3 by Shreyas (25CS023)</p>
+            <ul>
+                <li><a href="about.html">About</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="register.html">Register</a></li>
+            </ul>
+        </div>
+    </footer>
+</body>
+</html>

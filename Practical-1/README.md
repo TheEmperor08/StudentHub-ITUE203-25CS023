@@ -32,7 +32,7 @@ Initiate the semester-long StudentHub portal by identifying the problem scope, u
 | 4 | Sitemap PDF | [`PRAC_1_Sitemap_25CS023.pdf`](PRAC_1_Sitemap_25CS023.pdf) – 1 page, A4 landscape |
 | 5 | Low-fidelity wireframe PDF | [`PRAC_1_Wireframes_25CS023.pdf`](PRAC_1_Wireframes_25CS023.pdf) – 3 pages, A4 landscape: dashboard (desktop), home + login (desktop), mobile |
 
-Lab report: [`PRAC_1_ITUE203_25CS023.docx`](PRAC_1_ITUE203_25CS023.docx)
+Lab report: [`PRAC_1_ITUE203_25CS023.docx`](PRAC_1_ITUE203_25CS023.docx) (PDF copy: [`PRAC_1_ITUE203_25CS023.pdf`](PRAC_1_ITUE203_25CS023.pdf))
 
 ---
 
@@ -94,7 +94,8 @@ Practical-1/
 ├── PRAC_1_Sitemap_25CS023.pdf       # sitemap deliverable (1 page)
 ├── PRAC_1_Wireframes_25CS023.pdf    # wireframe deliverable (3 pages)
 ├── PRAC_1_ITUE203_25CS023.docx      # lab report
-├── screenshots/                     # genuine GitHub repository screenshot goes here
+├── PRAC_1_ITUE203_25CS023.pdf       # PDF copy of the lab report
+├── screenshots/                     # genuine GitHub repository screenshot goes here (not added yet)
 └── source/
     ├── build_diagrams.py            # regenerates the SVG + PNG diagrams
     └── export_pdfs.py               # exports the PNG diagrams to the two PDFs
@@ -104,7 +105,7 @@ SVG files are the editable vector originals; the PNG files are used in the Word 
 ---
 
 ### 💻 Source Code Evidence
-Practical 1 is a planning practical (design artefacts only). The table below points to the real StudentHub code that implements the planned page structure and navigation flow; the lab report quotes these lines unchanged.
+Practical 1 is a planning practical (design artefacts only); source code is not one of its required deliverables. The table below points to the real StudentHub code that implements the planned page structure and navigation flow; the lab report quotes these lines unchanged.
 
 | File | Lines | Shows |
 |---|---|---|

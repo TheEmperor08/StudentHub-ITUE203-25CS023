@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Register a new student account on StudentHub.">
+    <title>Register – StudentHub</title>
+    <link rel="stylesheet" href="vendor/bootstrap-5.3.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-custom.css">
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-3 p-2 bg-white rounded" href="#main-content">Skip to main content</a>
+
+    <header>
+        <nav class="navbar navbar-expand-md sh-navbar" data-bs-theme="dark" aria-label="Main navigation">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="index.html"><img src="assets/images/studenthub-logo.svg" alt="" width="36" height="36"> StudentHub</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav" aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="main-nav">
+                    <ul class="navbar-nav ms-auto gap-md-1">
+                        <li class="nav-item"><a class="nav-link px-3" href="index.html">Home</a></li>
+                        <li class="nav-item"><a class="nav-link px-3" href="about.html">About</a></li>
+                        <li class="nav-item"><a class="nav-link px-3" href="events.html">Events</a></li>
+                        <li class="nav-item"><a class="nav-link px-3" href="dashboard.html">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link px-3 active" href="register.html" aria-current="page">Register</a></li>
+                        <li class="nav-item"><a class="nav-link px-3" href="login.html">Login</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <nav class="container pt-3" aria-label="Breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Register</li>
+        </ol>
+    </nav>
+
+    <main id="main-content" class="container py-4 flex-grow-1">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-8">
+                <h1 class="h2 mb-1">Student Registration</h1>
+                <p class="text-body-secondary">Fields marked * are required.</p>
+
+                <form class="card border-0 shadow-sm">
+                    <div class="card-body p-3 p-md-4">
+                        <fieldset class="mb-4">
+                            <legend class="h5 mb-3">Personal details</legend>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-name" class="form-label">Full name *</label>
+                                    <input type="text" class="form-control" id="reg-name" name="name" autocomplete="name" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-email" class="form-label">College email address *</label>
+                                    <input type="email" class="form-control" id="reg-email" name="email" autocomplete="email" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-mobile" class="form-label">Mobile number *</label>
+                                    <input type="tel" class="form-control" id="reg-mobile" name="mobile" autocomplete="tel" maxlength="10" required>
+                                </div>
+                                <fieldset class="col-12 col-md-6">
+                                    <legend class="form-label fs-6 mb-2">Gender *</legend>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="gender" id="gender-male" value="male" required>
+                                        <label class="form-check-label" for="gender-male">Male</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="gender" id="gender-female" value="female">
+                                        <label class="form-check-label" for="gender-female">Female</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="gender" id="gender-other" value="other">
+                                        <label class="form-check-label" for="gender-other">Other</label>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="h5 mb-3">Academic details</legend>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-course" class="form-label">Course *</label>
+                                    <select class="form-select" id="reg-course" name="course" required>
+                                        <option value="">Select course</option>
+                                        <option value="btech-cse">B.Tech – CSE</option>
+                                        <option value="btech-ce">B.Tech – CE</option>
+                                        <option value="btech-it">B.Tech – IT</option>
+                                        <option value="bca">BCA</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-year" class="form-label">Current year of study *</label>
+                                    <select class="form-select" id="reg-year" name="year" required>
+                                        <option value="">Select year</option>
+                                        <option value="1">1st year</option>
+                                        <option value="2">2nd year</option>
+                                        <option value="3">3rd year</option>
+                                        <option value="4">4th year</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="h5 mb-3">Account</legend>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-password" class="form-label">Password *</label>
+                                    <input type="password" class="form-control" id="reg-password" name="password" autocomplete="new-password" minlength="8" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="reg-confirm" class="form-label">Confirm password *</label>
+                                    <input type="password" class="form-control" id="reg-confirm" name="confirm_password" autocomplete="new-password" minlength="8" required>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="reg-terms" name="terms" required>
+                                        <label class="form-check-label" for="reg-terms">I agree to the terms and conditions and the privacy policy. *</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <p class="small rounded p-2 sh-sample-note"><strong>Note:</strong> This is a static form. There is no server in this practical, so the “Register account” button is disabled and nothing is sent or saved.</p>
+                        <div class="d-flex flex-column flex-sm-row gap-2">
+                            <button type="submit" class="btn btn-primary px-4" disabled>Register account</button>
+                            <button type="reset" class="btn btn-outline-secondary px-4">Clear</button>
+                        </div>
+                    </div>
+                </form>
+
+                <p class="mt-3">Already registered? <a href="login.html">Go to the Login page</a>.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="sh-footer mt-auto py-4">
+        <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
+            <p class="mb-0">&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 3 by Shreyas (25CS023)</p>
+            <ul class="list-unstyled d-flex flex-wrap gap-3 mb-0">
+                <li><a href="about.html">About</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="register.html">Register</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script src="vendor/bootstrap-5.3.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

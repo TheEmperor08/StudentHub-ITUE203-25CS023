@@ -1,108 +1,120 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile - Shreyas</title>
-    
-    
-    
-    
+    <meta name="description" content="Student profile: personal details, contact details and password.">
+    <title>My Profile – StudentHub</title>
 </head>
 <body>
-
-<div >
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>Student Profile</h1>
-        <p>Personal and Academic Profile Record</p>
-        
-        
-        
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html" aria-current="page"><strong>My Profile</strong></a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">My Profile</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>My Profile</h1>
 
-    <main>
         <section>
-            <h2>Personal Information</h2>
-            
+            <h2>Personal information</h2>
             <dl>
-                <dt><strong>Student Name:</strong></dt>
+                <dt>Student name</dt>
                 <dd>Shreyas</dd>
-                
-                <dt><strong>Enrollment Number:</strong></dt>
+                <dt>Enrollment number</dt>
                 <dd>25CS023</dd>
-                
-                <dt><strong>Institute & Department:</strong></dt>
-                <dd>Chandubhai S. Patel Institute of Technology (CSPIT) - Computer Science & Engineering (CSE)</dd>
-                
-                <dt><strong>Campus Building:</strong></dt>
-                <dd>A7 Building, CHARUSAT University Campus, Changa</dd>
-                
-                <dt><strong>Current Semester:</strong></dt>
-                <dd>Semester 3 (Division I)</dd>
-
-                <dt><strong>Student Official Email:</strong></dt>
+                <dt>Institute and department</dt>
+                <dd>Chandubhai S. Patel Institute of Technology (CSPIT) – Computer Science &amp; Engineering (CSE)</dd>
+                <dt>Current semester</dt>
+                <dd>Semester 3</dd>
+                <dt>College email</dt>
                 <dd><a href="mailto:25cs023@charusat.edu.in">25cs023@charusat.edu.in</a></dd>
             </dl>
         </section>
 
-        
-
         <section>
-            <h2>Update Contact & Address Details</h2>
-            
-            <form action="profile.html" method="POST">
+            <h2>Update contact details</h2>
+            <form>
                 <fieldset>
-                    <legend><strong>Edit Student Records</strong></legend>
+                    <legend>Contact details</legend>
                     <p>
-                        <label for="phone"><strong>Phone Number:</strong></label><br>
-                        <input type="tel" id="phone" name="phone" value="+91-2697-265011" size="30">
+                        <label for="phone">Phone number</label><br>
+                        <input type="tel" id="phone" name="phone" autocomplete="tel">
                     </p>
                     <p>
-                        <label for="address"><strong>Hostel / Residential Address:</strong></label><br>
-                        <textarea id="address" name="address" rows="3" cols="50">A7 Building, CSPIT, CHARUSAT University Campus, Changa, Gujarat</textarea>
+                        <label for="address">Hostel or residential address</label><br>
+                        <textarea id="address" name="address" rows="3" cols="50" autocomplete="street-address"></textarea>
                     </p>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Save details” button is disabled and nothing is sent or saved.</p>
                     <p>
-                        <button type="submit"><strong>Save Details &rarr;</strong></button>
+                        <button type="submit" disabled>Save details</button>
                     </p>
                 </fieldset>
             </form>
         </section>
 
-        
-
         <section>
-            <h2>Account Security</h2>
+            <h2>Account security</h2>
             <details>
-                <summary><strong>Change Login Password</strong></summary>
-                <br>
-                <form action="profile.html" method="POST">
+                <summary>Change login password</summary>
+                <form>
                     <p>
-                        <label for="oldpass">Current Password:</label><br>
-                        <input type="password" id="oldpass" name="oldpass" required>
+                        <label for="current-password">Current password</label><br>
+                        <input type="password" id="current-password" name="current_password" autocomplete="current-password" required>
                     </p>
                     <p>
-                        <label for="newpass">New Password:</label><br>
-                        <input type="password" id="newpass" name="newpass" required minlength="6">
+                        <label for="new-password">New password</label><br>
+                        <input type="password" id="new-password" name="new_password" autocomplete="new-password" minlength="8" required>
                     </p>
-                    <button type="submit">Update Password</button>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Update password” button is disabled and nothing is sent or saved.</p>
+                    <p>
+                        <button type="submit" disabled>Update password</button>
+                    </p>
                 </form>
             </details>
         </section>
     </main>
 
     <footer>
-        
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-</div>
-
-    
 </body>
 </html>

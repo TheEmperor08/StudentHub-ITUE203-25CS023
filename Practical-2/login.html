@@ -1,98 +1,102 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - StudentHub</title>
-    
-    
-    
-    
-    
-    
+    <meta name="description" content="Sign in to the StudentHub portal.">
+    <title>Login – StudentHub</title>
 </head>
-<body >
+<body>
+    <a href="#main-content">Skip to main content</a>
 
-    <nav  >
-        <div >
-            <a  href="index.html">StudentHub</a>
-            <button  type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span ></span>
-            </button>
-            <div  id="navbarNav">
-                <ul >
-                    <li ><a  href="index.html">Home</a></li>
-                    <li ><a  href="login.html">Login</a></li>
-                    <li ><a  href="register.html">Register</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <header>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html" aria-current="page"><strong>Login</strong></a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Login</span></p>
+        </nav>
+    </header>
 
-    <main >
-        <div >
-            <div >
-                <!-- Alert messages from URL params -->
-                <div id="auth-alert"></div>
+    <main id="main-content">
+        <h1>Login</h1>
+        <p>Sign in to access your academic portal.</p>
 
-                <div >
-                    <div >
-                        <h2 >Student & Faculty Login</h2>
-                        <small>Sign in to access your academic portal</small>
-                    </div>
-                    <div >
-                        <form id="login-form">
-                            <div >
-                                <label for="role" >Role:</label>
-                                <select id="role" name="role"  required>
-                                    <option value="student">Student</option>
-                                    <option value="faculty">Faculty</option>
-                                </select>
-                            </div>
-                            <div >
-                                <label for="username" >Enrollment Number / Email:</label>
-                                <input type="text" id="username" name="username"  placeholder="Enter Enrollment No or Email" required>
-                            </div>
-                            <div >
-                                <label for="password" >Password:</label>
-                                <input type="password" id="password" name="password"  placeholder="Enter Password" required>
-                            </div>
-                            <div >
-                                <button type="submit" >Login &rarr;</button>
-                                <button type="reset" >Clear</button>
-                            </div>
-                        </form>
-                        
-                        <div >
-                            <details>
-                                <summary  >Forgot your password?</summary>
-                                <p >Please send an email to <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> from your registered email address or contact campus admin at +91-2697-265011.</p>
-                            </details>
-                        </div>
-                    </div>
-                </div>
+        <section>
+            <h2>Sign in</h2>
+            <form>
+                <fieldset>
+                    <legend>Account details</legend>
+                    <p>
+                        <label for="role">Role</label><br>
+                        <select id="role" name="role" required>
+                            <option value="student">Student</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label for="username">Enrollment number or email</label><br>
+                        <input type="text" id="username" name="username" autocomplete="username" required>
+                    </p>
+                    <p>
+                        <label for="password">Password</label><br>
+                        <input type="password" id="password" name="password" autocomplete="current-password" required>
+                    </p>
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Login” button is disabled and nothing is sent or saved.</p>
+                    <p>
+                        <button type="submit" disabled>Login</button>
+                        <button type="reset">Clear</button>
+                    </p>
+                </fieldset>
+            </form>
+            <details>
+                <summary>Forgot your password?</summary>
+                <p>Contact the portal administrator through the <a href="contact.html">Contact page</a>, using your registered college email address.</p>
+            </details>
+        </section>
 
-                <div >
-                    <h3 >New Student?</h3>
-                    <p >If you don't have a portal account yet, please register.</p>
-                    <a href="register.html" >&rarr; Go to Register Page</a>
-                </div>
-            </div>
-        </div>
+        <section>
+            <h2>New student?</h2>
+            <p>If you do not have a portal account yet, <a href="register.html">register here</a>.</p>
+        </section>
     </main>
 
-    <footer >
-        <div >
-            <p >&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-            <address >
-                A7 Building, CSPIT, CHARUSAT University Campus, Changa, Gujarat |
-                Support: <a href="mailto:support@charusat.edu.in" >support@charusat.edu.in</a> | 
-                Phone: <a href="tel:+91-2697-265011" >+91-2697-265011</a>
-            </address>
-        </div>
+    <footer>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-    
-    
 </body>
 </html>

@@ -1,146 +1,114 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudentHub - CSPIT Charusat Portal</title>
-    
-    
-    
-    
+    <meta name="description" content="StudentHub home page: student portal for CSE students of CSPIT, CHARUSAT.">
+    <title>Home – StudentHub</title>
 </head>
 <body>
-
-    <!-- Notification Banner -->
-    <div  id="notification-banner">
-        <span>🎉 Welcome to the new dynamic StudentHub portal! Check out the new dark mode.</span>
-        <button  id="close-banner">&times;</button>
-    </div>
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>StudentHub - CSPIT</h1>
-        <p>Chandubhai S. Patel Institute of Technology - CHARUSAT Campus</p>
-                <nav>
-            <div >
-                <button  id="hamburger-menu" >☰ Menu</button>
-            </div>
-            <ul id="nav-links">
-                <li><a href="index.html"><strong>Home</strong></a></li>
-                <li><a href="login.html">Login</a></li>
-                <li><a href="register.html">Register</a></li>
-                <li><a href="test_connection.php">Database Demo</a></li>
-                <li><button  >🌙 Theme</button></li>
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html" aria-current="page"><strong>Home</strong></a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html">Assignments</a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
             </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <span aria-current="page">Home</span></p>
         </nav>
     </header>
 
-    <div >
-    <main>
-        <section>
-            <h2>Welcome to Student Portal</h2>
-            <p>Your personalized portal for Computer Science & Engineering (CSE) at CSPIT, A7 Building, CHARUSAT. Access your timetable, 3rd semester subjects, attendance records, and exam results.</p>
-            <button  id="open-modal-btn">View Portal Guidelines</button>
-        </section>
-
-        <!-- Dynamic JS Image/Content Slider -->
-        <div >
-            <button  id="slider-prev">&lt;</button>
-            <div >
-                <img src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="University Campus">
-                <div >
-                    <h3>🎓 Welcome to Semester 3 CSE!</h3>
-                    <p>Experience the best learning environment at CSPIT.</p>
-                </div>
-            </div>
-            <div >
-                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Hackathon Team">
-                <div >
-                    <h3>🚀 Upcoming Odoo Hackathon</h3>
-                    <p>Join the coding battle at LDCE this weekend!</p>
-                </div>
-            </div>
-            <div >
-                <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Coding">
-                <div >
-                    <h3>📅 New Assignments Uploaded</h3>
-                    <p>Check your dashboard for the latest coding tasks.</p>
-                </div>
-            </div>
-            <button  id="slider-next">&gt;</button>
-        </div>
+    <main id="main-content">
+        <h1>Welcome to StudentHub</h1>
+        <p>Your portal for Computer Science &amp; Engineering (CSE) at CSPIT, A7 Building, CHARUSAT. Access your timetable, Semester 3 subjects, attendance records and exam results.</p>
+        <p><a href="login.html">Login</a> | <a href="register.html">Register as a new student</a></p>
 
         <section>
-            <h2>Portal Navigation</h2>
-            
-            <div >
-                <article>
-                    <h3>Semester 3 Subjects & Timetable</h3>
-                    <p>Check your enrolled CSE subjects including FDSA, WDF, OOP, FCN, and Discrete Maths.</p>
-                    <p><a href="courses.html">View Courses &rarr;</a></p>
-                </article>
-
-                <article>
-                    <h3>Attendance & CGPA</h3>
-                <p>Monitor your current 94% average attendance and check past semester marksheets (CGPA 8.05).</p>
-                <p><a href="attendance.html">Check Attendance</a> | <a href="results.html">View Results &rarr;</a></p>
-            </article>
-
+            <h2>Portal sections</h2>
             <article>
-                <h3>Assignments & Competitions</h3>
-                <p>Semester 3 assignments coming soon. Stay updated with campus hackathons and activities.</p>
-                <p><a href="assignments.html">View Assignments</a> | <a href="achievements.html">Achievements &rarr;</a></p>
+                <h3>Semester 3 subjects and timetable</h3>
+                <p>Check your enrolled CSE subjects, including FDSA, WDF, OOP, FCN and Discrete Mathematics.</p>
+                <p><a href="courses.html">View courses</a> | <a href="dashboard.html">View timetable on the dashboard</a></p>
             </article>
-            </div>
+            <article>
+                <h3>Attendance and results</h3>
+                <p>Monitor your subject-wise attendance and check the results of previous semesters.</p>
+                <p><a href="attendance.html">Check attendance</a> | <a href="results.html">View results</a></p>
+            </article>
+            <article>
+                <h3>Assignments, events and notices</h3>
+                <p>Semester 3 assignments are coming soon. Stay updated with campus hackathons and activities.</p>
+                <p><a href="assignments.html">View assignments</a> | <a href="events.html">View events</a> | <a href="notifications.html">Read notices</a></p>
+            </article>
         </section>
 
         <section>
-            <h2>Quick FAQ (Dynamic JS)</h2>
-            <div >
-                <button >Where is the CSE Department located?</button>
-                <div >The Department of Computer Science & Engineering is located in A7 Building, CSPIT, CHARUSAT Campus.</div>
-            </div>
-            <div >
-                <button >How do I check my 3rd semester schedule?</button>
-                <div >Log into your <a href="dashboard.html">Dashboard</a> to check lecture rooms (Room 506) and practical batch schedules.</div>
-            </div>
-            <div >
-                <button >Who do I contact for portal queries?</button>
-                <div >You can reach out via our <a href="contact.html">Contact Us page</a> or email support@charusat.edu.in.</div>
-            </div>
+            <h2>Portal guidelines</h2>
+            <p>All assignments must be submitted on time. For technical issues with the portal, use the <a href="contact.html">Contact page</a>.</p>
         </section>
+
+        <section>
+            <h2>Quick FAQ</h2>
+            <details>
+                <summary>Where is the CSE Department located?</summary>
+                <p>The Department of Computer Science &amp; Engineering is located in the A7 Building, CSPIT, CHARUSAT Campus.</p>
+            </details>
+            <details>
+                <summary>How do I check my Semester 3 schedule?</summary>
+                <p>Open your <a href="dashboard.html">Dashboard</a> to see lecture rooms and practical batch schedules.</p>
+            </details>
+            <details>
+                <summary>Who do I contact for portal queries?</summary>
+                <p>Use the <a href="contact.html">Contact page</a>. More answers are on the <a href="faq.html">FAQ page</a>.</p>
+            </details>
+        </section>
+
+        <aside aria-labelledby="alerts-heading">
+            <h2 id="alerts-heading">Latest campus alerts</h2>
+            <p><mark>Sample data:</mark> example notices for this static page.</p>
+            <ul>
+                <li><time datetime="2026-08-22">22 August 2026</time>: Odoo Hackathon at L.D. College of Engineering.</li>
+                <li><time datetime="2026-08-15">15 August 2026</time>: Independence Day celebration at CHARUSAT Campus.</li>
+            </ul>
+            <p><a href="notifications.html">See all notices</a></p>
+        </aside>
     </main>
 
-    <aside>
-        <div  >
-            <h2>Latest Campus Alert</h2>
-            <ul>
-                <li><time datetime="2026-08-22">August 22, 2026</time>: <mark>Odoo Hackathon at LDCE!</mark> Get your team ready and register before the deadline.</li>
-                <li><time datetime="2026-08-15">August 15, 2026</time>: Independence Day Celebration at CHARUSAT Campus.</li>
-            </ul>
-            <p><a href="notifications.html">See all announcements &rarr;</a></p>
-        </div>
-    </aside>
-    </div>
-
     <footer>
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            A7 Building, CSPIT, CHARUSAT University Campus, Changa, Gujarat.<br>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-    <!-- Modal Overlay -->
-    <div  id="custom-modal">
-        <div >
-            <button  id="close-modal-btn">&times;</button>
-            <h2>Portal Guidelines</h2>
-            <p>Welcome to StudentHub! Please note that all assignments must be submitted on time. Attendance below 80% will result in a penalty. For any technical issues, contact the admin.</p>
-            <button   onclick="document.getElementById('custom-modal').classList.remove('show-modal')">I Understand</button>
-        </div>
-    </div>
-
-    <!-- Link the Dynamic UI JS -->
-    
-    </body>
+</body>
 </html>

@@ -1,100 +1,125 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assignments - Semester 3 (CSPIT)</title>
-    
-    
-    
-    
+    <meta name="description" content="Semester 3 assignment status and submission form.">
+    <title>Assignments – StudentHub</title>
 </head>
 <body>
-
-<div >
+    <a href="#main-content">Skip to main content</a>
 
     <header>
-        <h1>Semester 3 Academic Assignments</h1>
-        <p>Shreyas | B.Tech CSE (3rd Semester) - A7 Building, CSPIT</p>
-        
-        
-        
+        <a href="index.html"><img src="images/studenthub-logo.svg" alt="StudentHub logo – go to the Home page" width="48" height="48"></a>
+        <p><strong>StudentHub</strong> – Student portal for Computer Science &amp; Engineering, CSPIT, CHARUSAT</p>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li>Public pages
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="feedback.html">Feedback</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
+                    </ul>
+                </li>
+                <li>Student area
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="profile.html">My Profile</a></li>
+                        <li><a href="courses.html">Courses</a></li>
+                        <li><a href="attendance.html">Attendance</a></li>
+                        <li><a href="assignments.html" aria-current="page"><strong>Assignments</strong></a></li>
+                        <li><a href="results.html">Results</a></li>
+                        <li><a href="notifications.html">Notices</a></li>
+                        <li><a href="directory.html">Directory</a></li>
+                    </ul>
+                </li>
+                <li>Administration
+                    <ul>
+                        <li><a href="admin.html">Admin Console</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <nav aria-label="Breadcrumb">
+            <p>You are here: <a href="index.html">Home</a> <span aria-hidden="true">&gt;</span> <a href="dashboard.html">Dashboard</a> <span aria-hidden="true">&gt;</span> <span aria-current="page">Assignments</span></p>
+        </nav>
     </header>
 
-        <nav></nav>
+    <main id="main-content">
+        <h1>Assignments</h1>
+        <p>Shreyas | B.Tech CSE, Semester 3, CSPIT</p>
+        <p><mark>Sample data:</mark> assignment status on this page is demonstration content.</p>
 
-    <main>
         <section>
-            <h2>Semester 3 Assignments Status</h2>
-            <p><strong>Notice:</strong> All theory problem sets and laboratory manuals for Semester 3 are currently being organized by course faculty.</p>
-            <h3 >⏳ Assignments Coming Soon...</h3>
-
-            <table border="1" cellpadding="8" cellspacing="0" width="100%">
+            <h2>Assignment status</h2>
+            <p><strong>Notice:</strong> theory problem sets and laboratory manuals for Semester 3 are being prepared by the course faculty. Assignments are coming soon.</p>
+            <table border="1">
+                <caption>Semester 3 assignment status by subject</caption>
                 <thead>
-                    <tr align="left">
-                        <th>Course Code & Subject Name</th>
-                        <th>Faculty Coordinator</th>
-                        <th>Assignment Status</th>
-                        <th>Submission Action</th>
+                    <tr>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Faculty coordinator</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Submission</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>CSUC201 - Data Structure and Algorithm (FDSA)</strong></td>
+                        <th scope="row">CSUC201 – Data Structure and Algorithm (FDSA)</th>
                         <td>Prof. Avani Khokhariya / Dr. Amit Thakkar</td>
-                        <td><mark>Coming Soon</mark></td>
-                        <td><em>Not open yet</em></td>
+                        <td>Coming soon</td>
+                        <td>Not open yet</td>
                     </tr>
                     <tr>
-                        <td><strong>ITUE204 - Web Development Frameworks (WDF)</strong></td>
+                        <th scope="row">ITUE203 – Web Development Frameworks (WDF)</th>
                         <td>Prof. Srushti Gajjar / Prof. Vaibhavi Patel</td>
-                        <td><mark>Coming Soon</mark></td>
-                        <td><em>Not open yet</em></td>
+                        <td>Coming soon</td>
+                        <td>Not open yet</td>
                     </tr>
                     <tr>
-                        <td><strong>CEUE203 - Object Oriented Programming (OOP)</strong></td>
+                        <th scope="row">CEUE203 – Object Oriented Programming (OOP)</th>
                         <td>Prof. Siddharth Shah / Prof. Akshita Kadam</td>
-                        <td><mark>Coming Soon</mark></td>
-                        <td><em>Not open yet</em></td>
+                        <td>Coming soon</td>
+                        <td>Not open yet</td>
                     </tr>
                     <tr>
-                        <td><strong>ITUC201 - Computer Networks (FCN)</strong></td>
+                        <th scope="row">ITUC201 – Computer Networks (FCN)</th>
                         <td>Prof. Harshul Yagnik / Prof. Brinda Patel</td>
-                        <td><mark>Coming Soon</mark></td>
-                        <td><em>Not open yet</em></td>
+                        <td>Coming soon</td>
+                        <td>Not open yet</td>
                     </tr>
                 </tbody>
             </table>
         </section>
 
-        
-
         <section>
-            <h2>Advance Submission Upload Form</h2>
-            <p>Once assignments are formally released, upload your code files and practical write-ups below.</p>
-
-            <form action="assignments.html" method="POST" enctype="multipart/form-data">
+            <h2>Submit an assignment</h2>
+            <p>Once assignments are released, solutions will be uploaded here.</p>
+            <form>
                 <fieldset>
-                    <legend><strong>Submit Assignment Solution</strong></legend>
-                    
+                    <legend>Assignment submission</legend>
                     <p>
-                        <label for="sub-select"><strong>Select Subject:</strong></label><br>
-                        <select id="sub-select" name="subject" required>
-                            <option value="">-- Choose Subject --</option>
-                            <option value="FDSA">CSUC201 - Data Structure and Algorithm (FDSA)</option>
-                            <option value="WDF">ITUE204 - Web Development Frameworks (WDF)</option>
-                            <option value="OOP">CEUE203 - Object Oriented Programming (OOP)</option>
-                            <option value="FCN">ITUC201 - Fundamentals of Computer Networks (FCN)</option>
+                        <label for="subject">Subject</label><br>
+                        <select id="subject" name="subject" required>
+                            <option value="">-- Choose subject --</option>
+                            <option value="FDSA">CSUC201 – Data Structure and Algorithm (FDSA)</option>
+                            <option value="WDF">ITUE203 – Web Development Frameworks (WDF)</option>
+                            <option value="OOP">CEUE203 – Object Oriented Programming (OOP)</option>
+                            <option value="FCN">ITUC201 – Fundamentals of Computer Networks (FCN)</option>
                         </select>
                     </p>
-
                     <p>
-                        <label for="workfile"><strong>Select Solution File (PDF/ZIP):</strong></label><br>
-                        <input type="file" id="workfile" name="workfile" required>
+                        <label for="solution-file">Solution file (PDF or ZIP)</label><br>
+                        <input type="file" id="solution-file" name="solution_file" accept=".pdf,.zip" required>
                     </p>
-
+                    <p><strong>Note:</strong> This is a static form skeleton. Practical 2 has no server, so the “Upload submission” button is disabled and nothing is sent or saved.</p>
                     <p>
-                        <button type="submit"><strong>Upload Submission &rarr;</strong></button>
+                        <button type="submit" disabled>Upload submission</button>
                     </p>
                 </fieldset>
             </form>
@@ -102,15 +127,8 @@
     </main>
 
     <footer>
-        
-        <p>&copy; <time datetime="2026">2026</time> StudentHub - CSPIT, CHARUSAT. All rights reserved.</p>
-        <address>
-            Email: <a href="mailto:support@charusat.edu.in">support@charusat.edu.in</a> | Phone: <a href="tel:+91-2697-265011">+91-2697-265011</a>
-        </address>
+        <p><a href="contact.html">Contact</a> | <a href="faq.html">FAQ</a> | <a href="feedback.html">Feedback</a></p>
+        <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 2, static HTML5 skeleton by Shreyas (25CS023). Content marked “Sample data” is for demonstration only.</p>
     </footer>
-
-</div>
-
-    
 </body>
 </html>

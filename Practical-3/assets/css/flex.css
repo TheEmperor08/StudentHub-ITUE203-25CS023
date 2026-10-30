@@ -1,0 +1,150 @@
+/* ===== Flexbox layouts: Home (index.html) and About (about.html) =====
+   Mobile-first: items stack in one column on phones and sit side by side from 768px. */
+
+/* --- Hero: text and alerts panel --- */
+.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 28px 20px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 100%);
+    color: var(--on-navy);
+}
+
+.hero h1,
+.hero h2 {
+    color: var(--on-navy);
+}
+
+.hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.hero .button {
+    border-color: var(--on-navy);
+    background: var(--on-navy);
+    color: var(--indigo-dark);
+}
+
+.hero .button--ghost {
+    background: transparent;
+    color: var(--on-navy);
+}
+
+.hero .button:hover {
+    background: var(--indigo-soft);
+    color: var(--indigo-dark);
+}
+
+.hero__panel {
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    background: var(--navy-900);
+}
+
+.hero__panel h2 {
+    font-size: 1.15rem;
+}
+
+.hero__panel ul {
+    margin: 12px 0 0;
+    padding-left: 20px;
+}
+
+/* --- Rows of cards that wrap --- */
+.card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap);
+    margin: 0 0 32px;
+    padding: 0;
+    list-style: none;
+}
+
+.card-row > * {
+    display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+}
+
+.card-row > * > p:last-child {
+    margin-bottom: 0;
+}
+
+/* A card's link is pushed to the bottom, so the links of cards in one row line up. */
+.card-row .card__link {
+    margin-top: auto;
+}
+
+/* --- Two panels side by side --- */
+.split {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    margin-bottom: 32px;
+}
+
+/* --- Wrapping list of links ("chips") --- */
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 32px;
+    padding: 0;
+    list-style: none;
+}
+
+.chip-list a {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--indigo-soft);
+    color: var(--indigo-dark);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.chip-list a:hover {
+    background: var(--indigo);
+    color: var(--on-navy);
+}
+
+/* --- Tablet: 768px and wider --- */
+@media (min-width: 768px) {
+    .hero {
+        flex-direction: row;
+        align-items: center;
+        padding: 40px;
+    }
+
+    .hero__text {
+        flex: 2 1 0;
+    }
+
+    .hero__panel {
+        flex: 1 1 0;
+    }
+
+    .card-row > * {
+        flex-basis: calc(50% - var(--gap));
+    }
+
+    .split {
+        flex-direction: row;
+    }
+
+    .split > * {
+        flex: 1 1 0;
+    }
+}
+
+/* --- Desktop: 1024px and wider: all cards of a row on one line --- */
+@media (min-width: 1024px) {
+    .card-row > * {
+        flex-basis: 0;
+    }
+}
