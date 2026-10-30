@@ -178,6 +178,30 @@ PASS  CSRF rejections are audit-logged
 PASS  a token from another admin's session is refused
 PASS  GET requests carrying add/update parameters (even the token) change nothing
 
+== Deactivated students cannot sign in or keep a session
+PASS  an active student with a linked record signs in normally (303 -> dashboard.php, page 200)
+PASS  the administrator deactivates the student's record in the console
+PASS  the signed-in student's next request -> login page with status=access_disabled
+PASS  ... the session was ended on the server: new session ID, SESSION_REVOKED written once to the audit log
+PASS  replaying the old session cookie gives no access (login_required)
+PASS  a POST with the old form token is not processed (redirect to login, password unchanged)
+PASS  the login page shows the generic access message
+PASS  public pages treat the ended session as signed out
+PASS  correct password, inactive record -> sign-in refused (HTTP 403) with the generic message
+PASS  ... no session is started (dashboard -> login_required), last_login and USER_LOGIN unchanged, LOGIN_DENIED logged
+PASS  ... the message reveals nothing about the record (no 'inactive', 'deactivated', name or enrollment number)
+PASS  signing in with the e-mail address is refused the same way
+PASS  a wrong password for the inactive account gets the normal 'Invalid username/email or password.' (status not revealed)
+PASS  an editor signed in before its linked record is deactivated keeps access
+PASS  an editor linked to an inactive record signs in normally; the editor still gets 403 for the Admin Console (permissions unchanged)
+PASS  an admin linked to an inactive record signs in normally and opens the Admin Console
+PASS  the administrator's own session is unaffected throughout
+PASS  a student account without a linked student record signs in normally; no link is created
+PASS  the administrator reactivates the record
+PASS  after reactivation the student signs in again (303 -> dashboard.php, pages 200, last_login and USER_LOGIN updated)
+PASS  users (incl. password hashes), student records (all fields but status), account links and registrations are unchanged
+PASS  only the status of the records that were deactivated changed
+
 == Server log
 PASS  no PHP warnings, notices or fatal errors in the server log
 
@@ -185,4 +209,4 @@ PASS  no PHP warnings, notices or fatal errors in the server log
 PASS  disposable database removed
 PASS  the live studenthub_db was not touched (students, users with password hashes, registrations unchanged)
 
-Result: 148 passed, 0 failed, 148 checks
+Result: 170 passed, 0 failed, 170 checks

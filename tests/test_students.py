@@ -490,7 +490,7 @@ def soft_delete_tests(a, token, linked_id, linked_uid, driver):
           mysql(f"SELECT registration_id, event_id, status, registered_at FROM registrations WHERE student_id={linked_id} ORDER BY 1") == regs_before and len(regs_before) == 2)
     msg = flash_of(a.request(CONSOLE)[2])
     check("... DEACTIVATE_STUDENT audit entry and a message that the record is kept", audit_count("DEACTIVATE_STUDENT") == deact_before + 1
-          and msg is not None and msg[0] == "success" and "was deactivated. The record, its account link and its event registrations are kept." in msg[1], str(msg))
+          and msg is not None and msg[0] == "success" and "was deactivated. The record, its account link and its event registrations are kept; a linked student account can no longer sign in." in msg[1], str(msg))
     _, _, page = a.request(f"{CONSOLE}&status=Inactive")
     check("the inactive record is listed with the Inactive filter and offers Reactivate", before["enrollment_no"] in shown(page) and 'value="reactivate_student"' in page)
     st, _, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "deactivate_student", "id": str(linked_id)})
@@ -634,6 +634,115 @@ def csrf_get_tests(a, token):
     check("GET requests carrying add/update parameters (even the token) change nothing", count() == n and student(f"id={victim['id']}") == victim)
 
 
+def inactive_login_tests(a, token):
+    print("\n== Deactivated students cannot sign in or keep a session")
+    mysql("INSERT INTO students (enrollment_no, name, email, course, gender, semester, status) VALUES "
+          "('23DS801', 'Lina Learner', 'p11_learner@example.com', 'Data Science', 'Female', 7, 'Active'), "
+          "('23DS802', 'Eddie Editor', 'p11_editor.record@example.com', 'Data Science', 'Male', 7, 'Active'), "
+          "('23DS803', 'Ada Admin', 'p11_admin2.record@example.com', 'Data Science', 'Female', 7, 'Active')")
+    uid = {u: int(scalar(f"SELECT id FROM users WHERE username='{u}'")) for u in ("p11_learner", "p11_unlinked", "p11_editor", "p11_admin2")}
+    rec = {n: int(scalar(f"SELECT id FROM students WHERE enrollment_no='{n}'")) for n in ("23DS801", "23DS802", "23DS803")}
+    # links as self-registration would create them; the editor and admin links prove that only student accounts are affected
+    mysql(f"UPDATE students SET user_id={uid['p11_learner']} WHERE id={rec['23DS801']}; UPDATE students SET user_id={uid['p11_editor']} WHERE id={rec['23DS802']}; "
+          f"UPDATE students SET user_id={uid['p11_admin2']} WHERE id={rec['23DS803']}")
+    users_snap = lambda: mysql("SELECT id, username, email, password, role FROM users ORDER BY id")
+    students_snap = lambda: mysql("SELECT id, IFNULL(user_id,''), IFNULL(enrollment_no,''), name, email, course, IFNULL(semester,''), gender, created_at FROM students ORDER BY id")
+    regs_snap = lambda: mysql("SELECT * FROM registrations ORDER BY registration_id")
+    before = (users_snap(), students_snap(), regs_snap())
+    last_login = lambda u: scalar(f"SELECT IFNULL(last_login,'never') FROM users WHERE id={uid[u]}")
+    logins = lambda u: int(scalar(f"SELECT COUNT(*) FROM audit_logs WHERE action='USER_LOGIN' AND username={q(u)}"))
+    message = "Your access to StudentHub is currently disabled. Please contact the administrator."
+
+    def set_status(record, active):
+        st, _, _ = a.request("admin_dashboard.php", {"csrf_token": token, "action": "reactivate_student" if active else "deactivate_student", "id": str(record)})
+        return st == 303 and student(f"id={record}")["status"] == ("Active" if active else "Inactive")
+
+    # active linked student
+    s = Browser(PORT)
+    st, hd, _ = s.login("p11_learner", ACCOUNTS["p11_learner"])
+    check("an active student with a linked record signs in normally (303 -> dashboard.php, page 200)",
+          st == 303 and hd.get("Location") == "dashboard.php" and s.request("dashboard.php")[0] == 200, f"{st} {hd.get('Location')}")
+
+    # an existing session loses access after the deactivation
+    old_sid, old_token = s.sid(), s.token("profile.php")
+    hash_before = scalar(f"SELECT password FROM users WHERE id={uid['p11_learner']}")
+    revoked_before = int(scalar("SELECT COUNT(*) FROM audit_logs WHERE action='SESSION_REVOKED' AND username='p11_learner'"))
+    check("the administrator deactivates the student's record in the console", set_status(rec["23DS801"], False))
+    st, hd, _ = s.request("dashboard.php")
+    check("the signed-in student's next request -> login page with status=access_disabled",
+          st == 303 and hd.get("Location") == "login.php?status=access_disabled", f"{st} {hd.get('Location')}")
+    check("... the session was ended on the server: new session ID, SESSION_REVOKED written once to the audit log",
+          s.sid() != old_sid and int(scalar("SELECT COUNT(*) FROM audit_logs WHERE action='SESSION_REVOKED' AND username='p11_learner'")) == revoked_before + 1)
+    r = Browser(PORT)
+    r.set_sid(old_sid)
+    st, hd, _ = r.request("dashboard.php")
+    check("replaying the old session cookie gives no access (login_required)", st == 303 and hd.get("Location") == "login.php?status=login_required", f"{st} {hd.get('Location')}")
+    st, hd, _ = s.request("profile.php", {"csrf_token": old_token, "form_action": "change_password", "oldpass": ACCOUNTS["p11_learner"],
+                                          "newpass": "N3w!Password", "confirm_newpass": "N3w!Password"})
+    check("a POST with the old form token is not processed (redirect to login, password unchanged)",
+          st == 303 and "login.php" in hd.get("Location", "") and scalar(f"SELECT password FROM users WHERE id={uid['p11_learner']}") == hash_before)
+    _, _, page = s.request("login.php?status=access_disabled")
+    check("the login page shows the generic access message", message in page)
+    _, _, page = s.request("index.php")
+    check("public pages treat the ended session as signed out", "p11_learner" not in page)
+
+    # sign-in refused while the record is inactive
+    ll_before, logins_before = last_login("p11_learner"), logins("p11_learner")
+    denied_before = int(scalar("SELECT COUNT(*) FROM audit_logs WHERE action='LOGIN_DENIED' AND username='p11_learner'"))
+    d = Browser(PORT)
+    st, _, page = d.login("p11_learner", ACCOUNTS["p11_learner"])
+    check("correct password, inactive record -> sign-in refused (HTTP 403) with the generic message", st == 403 and message in page, str(st))
+    st_d, hd_d, _ = d.request("dashboard.php")
+    check("... no session is started (dashboard -> login_required), last_login and USER_LOGIN unchanged, LOGIN_DENIED logged",
+          st_d == 303 and hd_d.get("Location") == "login.php?status=login_required"
+          and last_login("p11_learner") == ll_before and logins("p11_learner") == logins_before
+          and int(scalar("SELECT COUNT(*) FROM audit_logs WHERE action='LOGIN_DENIED' AND username='p11_learner'")) == denied_before + 1)
+    lower = page.lower()
+    check("... the message reveals nothing about the record (no 'inactive', 'deactivated', name or enrollment number)",
+          "inactive" not in lower and "deactivat" not in lower and "Lina Learner" not in page and "23DS801" not in page)
+    st, _, page = Browser(PORT).login("p11_learner@example.com", ACCOUNTS["p11_learner"])
+    check("signing in with the e-mail address is refused the same way", st == 403 and message in page)
+    st, _, page = Browser(PORT).login("p11_learner", "Wrong!Pass123")
+    check("a wrong password for the inactive account gets the normal 'Invalid username/email or password.' (status not revealed)",
+          st == 401 and "Invalid username/email or password." in page and message not in page)
+
+    # admin and editor accounts are not affected, even when linked to an inactive record
+    e = Browser(PORT)
+    e.login("p11_editor", ACCOUNTS["p11_editor"])
+    check("an editor signed in before its linked record is deactivated keeps access", set_status(rec["23DS802"], False) and e.request("dashboard.php")[0] == 200)
+    e2 = Browser(PORT)
+    st, hd, _ = e2.login("p11_editor", ACCOUNTS["p11_editor"])
+    check("an editor linked to an inactive record signs in normally; the editor still gets 403 for the Admin Console (permissions unchanged)",
+          st == 303 and hd.get("Location") == "dashboard.php" and e2.request("profile.php")[0] == 200 and e2.request(CONSOLE)[0] == 403)
+    set_status(rec["23DS803"], False)
+    a2 = Browser(PORT)
+    st, hd, _ = a2.login("p11_admin2", ACCOUNTS["p11_admin2"])
+    check("an admin linked to an inactive record signs in normally and opens the Admin Console",
+          st == 303 and hd.get("Location") == "admin_dashboard.php" and a2.request(CONSOLE)[0] == 200)
+    check("the administrator's own session is unaffected throughout", a.request(CONSOLE)[0] == 200)
+
+    # a student account without a linked record
+    u = Browser(PORT)
+    st, hd, _ = u.login("p11_unlinked", ACCOUNTS["p11_unlinked"])
+    check("a student account without a linked student record signs in normally; no link is created",
+          st == 303 and hd.get("Location") == "dashboard.php" and u.request("dashboard.php")[0] == 200
+          and scalar(f"SELECT COUNT(*) FROM students WHERE user_id={uid['p11_unlinked']}") == "0")
+
+    # reactivation restores normal access
+    check("the administrator reactivates the record", set_status(rec["23DS801"], True))
+    s2 = Browser(PORT)
+    st, hd, _ = s2.login("p11_learner", ACCOUNTS["p11_learner"])
+    check("after reactivation the student signs in again (303 -> dashboard.php, pages 200, last_login and USER_LOGIN updated)",
+          st == 303 and hd.get("Location") == "dashboard.php" and s2.request("dashboard.php")[0] == 200 and s2.request("profile.php")[0] == 200
+          and last_login("p11_learner") != "never" and logins("p11_learner") == logins_before + 1)
+
+    after = (users_snap(), students_snap(), regs_snap())
+    check("users (incl. password hashes), student records (all fields but status), account links and registrations are unchanged",
+          after == before)
+    check("only the status of the records that were deactivated changed",
+          [r[0] for r in mysql("SELECT enrollment_no FROM students WHERE TRIM(status)='Inactive' AND enrollment_no LIKE '23DS80%' ORDER BY 1")] == ["23DS802", "23DS803"])
+
+
 def server_log_tests(server):
     print("\n== Server log")
     log = server.logged()
@@ -656,7 +765,8 @@ def main():
     server = None
     try:
         create_test_db(args.source_dump)
-        for name, role in (("p11_admin", "admin"), ("p11_admin2", "admin"), ("p11_editor", "editor"), ("p11_student", "student")):
+        for name, role in (("p11_admin", "admin"), ("p11_admin2", "admin"), ("p11_editor", "editor"), ("p11_student", "student"),
+                           ("p11_learner", "student"), ("p11_unlinked", "student")):
             ACCOUNTS[name] = secrets.token_urlsafe(12) + "A1!"
             create_account(name, f"{name}@example.com", role, ACCOUNTS[name])
         # a student record linked to the student account, with two historical event registrations
@@ -684,6 +794,7 @@ def main():
         csv_tests(a)
         access_tests(ACCOUNTS)
         csrf_get_tests(a, token)
+        inactive_login_tests(a, token)
         server_log_tests(server)
     finally:
         if server:

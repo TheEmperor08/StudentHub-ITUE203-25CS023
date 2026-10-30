@@ -94,7 +94,9 @@ No column, value, status, course name, account link or registration changes. Ide
 **Soft delete (Practical 11):** student records are never deleted by the portal. Deactivating a student sets
 `students.status` to `Inactive` (the existing status value); the row, its `user_id` link and its `registrations` stay.
 Inactive students cannot register for events (`register_student_for_event()` refuses them) and are not listed in the
-student directory; reactivation sets the status back to `Active`.
+student directory. A `student` account whose linked record (`students.user_id`) is `Inactive` cannot sign in, and an open
+session ends at its next request (`studenthub/includes/auth.php`); admin and editor accounts and accounts without a linked
+record are not affected. Reactivation sets the status back to `Active` and restores normal sign-in.
 
 ## Migration 001 in detail
 

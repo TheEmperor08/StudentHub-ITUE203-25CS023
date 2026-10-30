@@ -90,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 log_audit($conn, $current_user["id"], $current_user["username"], $activate ? "REACTIVATE_STUDENT" : "DEACTIVATE_STUDENT",
                     ($activate ? "Reactivated" : "Deactivated (soft delete)") . " student record ID $target_id (" . ($record["enrollment_no"] ?: "no enrollment number") . ")", "SUCCESS");
                 flash("success", $activate ? "Student $label was reactivated."
-                                           : "Student $label was deactivated. The record, its account link and its event registrations are kept.");
+                                           : "Student $label was deactivated. The record, its account link and its event registrations are kept; a linked student account can no longer sign in.");
             } else {
                 flash("error", "Student $label is already " . ($activate ? "active." : "inactive."));
             }
@@ -688,7 +688,7 @@ if ($a_res) {
                 <section class="card border-danger-subtle mb-4" id="student-confirm" aria-labelledby="student-confirm-title">
                     <div class="card-body">
                         <h6 class="fw-bold text-danger mb-2" id="student-confirm-title"><i class="bi bi-person-dash me-2"></i>Deactivate this student?</h6>
-                        <p class="small mb-3">Are you sure you want to deactivate <strong><?= e($sc["name"]) ?></strong>? The status changes from <strong>Active</strong> to <strong>Inactive</strong>. This is a soft delete: the record stays in the database with its account link and its <?= (int) $sc["registrations"] ?> event registration(s), it still appears in this list and in the CSV export, and it can be reactivated later. Inactive students cannot register for new events.</p>
+                        <p class="small mb-3">Are you sure you want to deactivate <strong><?= e($sc["name"]) ?></strong>? The status changes from <strong>Active</strong> to <strong>Inactive</strong>. This is a soft delete: the record stays in the database with its account link and its <?= (int) $sc["registrations"] ?> event registration(s), it still appears in this list and in the CSV export, and it can be reactivated later. Inactive students cannot sign in or register for new events; a student who is signed in loses access at the next page request.</p>
                         <dl class="row small mb-3">
                             <dt class="col-sm-3">Enrollment number</dt><dd class="col-sm-9"><?= e($sc["enrollment_no"] ?: "—") ?></dd>
                             <dt class="col-sm-3">Email</dt><dd class="col-sm-9"><?= e($sc["email"]) ?></dd>

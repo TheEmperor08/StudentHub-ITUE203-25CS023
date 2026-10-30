@@ -1,0 +1,17 @@
+PASS  the student registers and is signed in; the student record is linked to the account (students.user_id)
+PASS  the confirmation says that inactive students cannot sign in
+PASS  administrator: record deactivated; the message says the linked account can no longer sign in
+PASS  the signed-in student's next page request -> sign-in page with the generic access message (session ended)
+PASS  ... and the student stays signed out (profile -> sign-in page)
+PASS  signing in again with the correct password is refused with the same generic message (no record details)
+PASS  ... no session was started (dashboard -> sign-in page)
+PASS  administrator: record reactivated
+PASS  after reactivation the student signs in normally: dashboard with welcome message and own name/enrollment number
+PASS  ... and can open the other portal pages (profile)
+PASS  the administrator's session was never affected
+PASS  no JavaScript errors (only the intended 403 response of the refused sign-in)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-11-integration/ (14-17)
+browser checks: 13 passed, 0 failed

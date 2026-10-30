@@ -10,10 +10,12 @@ const LOGIN_STATUS = [
     "timeout"             => ["info", "Your session ended because you were inactive for too long. Please sign in again."],
     "logged_out"          => ["success", "You have been signed out."],
     "account_unavailable" => ["error", "Your account is no longer available. Please contact the administrator."],
+    "access_disabled"     => ["error", "Your access to StudentHub is currently disabled. Please contact the administrator."],
 ];
 $status  = is_string($_GET["status"] ?? null) && isset(LOGIN_STATUS[$_GET["status"]]) ? LOGIN_STATUS[$_GET["status"]] : null;
 $error   = "";
 $entered = "";
+$denied  = false;          // correct password, but the student account is deactivated
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $entered  = trim((string) (is_string($_POST["login_input"] ?? null) ? $_POST["login_input"] : ""));
@@ -26,7 +28,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } else {
         // An e-mail address contains "@", a username never does
         $column = str_contains($entered, "@") ? "email" : "username";
-        $stmt = $conn->prepare("SELECT id, username, email, password, role FROM users WHERE $column = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT u.id, u.username, u.email, u.password, u.role, s.status AS student_status
+                                FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE u.$column = ? LIMIT 1");
         $stmt->bind_param("s", $entered);
         $stmt->execute();
         $account = $stmt->get_result()->fetch_assoc();
@@ -35,7 +38,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // An unknown account is checked against a dummy hash, so both failures take about the same time
         $hash = $account["password"] ?? '$2y$10$cL5pLAsT9eF311SYAHI/9OCtAW62Xl1zkDZ3VA2wDn4DbvPI3.YlC';
         $verified = password_verify($password, $hash);
-        if ($account !== null && $verified && in_array($account["role"], STUDENTHUB_ROLES, true)) {
+        // Correct password, but the linked student record is deactivated: no session is started (generic message; the
+        // status is only revealed to someone who knows the password)
+        $denied = $account !== null && $verified && account_is_deactivated($account["role"], $account["student_status"]);
+        if ($denied) {
+            log_audit($conn, (int) $account["id"], $account["username"], "LOGIN_DENIED", "Sign-in refused: the linked student record is inactive.", "SECURITY_BLOCK");
+        } elseif ($account !== null && $verified && in_array($account["role"], STUDENTHUB_ROLES, true)) {
             login_user($account);
             $up = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
             $up->bind_param("i", $account["id"]);
@@ -49,11 +57,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             flash("success", "Welcome back, " . $account["username"] . ".");
             redirect("dashboard.php");
         }
-        $error = "Invalid username/email or password.";
-        log_audit($conn, null, mb_substr($entered, 0, 100), "LOGIN_FAILED",
-            $account === null ? "Sign-in attempt for an unknown account." : "Wrong password.", "FAILED");
+        if ($denied) {
+            $error = LOGIN_STATUS["access_disabled"][1];
+        } else {
+            $error = "Invalid username/email or password.";
+            log_audit($conn, null, mb_substr($entered, 0, 100), "LOGIN_FAILED",
+                $account === null ? "Sign-in attempt for an unknown account." : "Wrong password.", "FAILED");
+        }
     }
-    http_response_code(401);
+    http_response_code($denied ? 403 : 401);
 }
 ?>
 <!DOCTYPE html>
