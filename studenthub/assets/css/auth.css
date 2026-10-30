@@ -89,6 +89,20 @@ body.auth {
 .btn-danger-outline { background: transparent; color: var(--danger); border-color: currentColor; box-shadow: none; }
 .btn-danger-outline:hover { background: var(--danger-soft); color: var(--danger); }
 
+/* Field-level validation messages (registration) and the POST logout button */
+.label-text { display: block; font-weight: 600; font-size: 0.9rem; }
+.field-help { margin: 6px 0 0; font-size: 0.8rem; color: var(--text-muted); }
+.field-error { margin: 6px 0 0; font-size: 0.82rem; font-weight: 600; color: var(--danger); }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--danger); }
+.logout-form { display: inline; margin: 0; }
+.link-button {
+    display: inline; padding: 0; margin: 0; border: 0; background: none; box-shadow: none;
+    color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer;
+}
+.link-button:hover { background: none; color: inherit; }
+.action-row .logout-form { display: flex; flex: 1 1 180px; }
+.action-row .logout-form button { flex: 1; }
+
 @media (max-width: 900px) {
     body.auth { grid-template-columns: minmax(0, 1fr); }
     .auth-brand { padding: 20px 20px 22px; gap: 14px; }

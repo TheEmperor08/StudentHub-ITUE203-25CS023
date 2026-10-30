@@ -1,8 +1,9 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
+$current_user = optional_user();   // public page: a valid session shows the personal links
 
-$is_logged_in = isset($_SESSION["user_id"]);
+$is_logged_in = $current_user !== null;
 $user_role    = $_SESSION["role"] ?? "guest";
 $username     = $_SESSION["username"] ?? "";
 
@@ -21,7 +22,7 @@ if ($e_res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudentHub - CSPIT Charusat Portal</title>
-    <link rel="stylesheet" href="assets/css/home.css?v=1">
+    <link rel="stylesheet" href="assets/css/home.css?v=2">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -54,7 +55,7 @@ if ($e_res) {
                         <?php if ($user_role === "admin"): ?>
                             <li><a href="admin_dashboard.php" class="nav-admin"><i class="bi bi-shield-lock" aria-hidden="true"></i> Admin Console</a></li>
                         <?php endif; ?>
-                        <li><a href="logout.php">Logout</a></li>
+                        <li><?= logout_button("hero-nav-button", "Logout") ?></li>
                     <?php else: ?>
                         <li><a href="login.php">Login</a></li>
                         <li><a href="register.php">Register</a></li>

@@ -105,8 +105,7 @@ PASS  admin 'delete student' still works
 PASS  student login -> dashboard
 PASS  all student pages load with status 200 and no PHP errors
 PASS  a student opening the Admin Console still gets the 403 page
-PASS  self-registration still creates the account and the student record (semester 3)
-INFO  new registrations are not linked yet (students.user_id = NULL); register.php will set the link in Practical 9
+PASS  self-registration creates the account and its student record, linked through students.user_id (Practical 9)
 PASS  no PHP warnings or errors in the server log
 
 == Fresh install from database/studenthub_demo.sql

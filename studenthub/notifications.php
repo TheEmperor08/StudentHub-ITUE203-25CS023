@@ -1,10 +1,7 @@
 <?php
-session_start();
 require_once "db.php";
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view notifications.");
-    exit();
-}
+require_once __DIR__ . "/includes/auth.php";
+$current_user = require_permission("portal.view");
 
 $events = [];
 $e_res = $conn->query("SELECT id, title, category, event_date, location, description FROM events ORDER BY event_date ASC");
@@ -20,7 +17,7 @@ if ($e_res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Notifications – CSPIT Charusat</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=8">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>

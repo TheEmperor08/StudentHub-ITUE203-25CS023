@@ -62,3 +62,21 @@ This report lists **only tests that were actually executed**. The previous repor
 * With `php -S`, `Practical-7/private/contacts.csv` can be downloaded directly; it is protected only on Apache and is excluded from the repository.
 * The live `studenthub_db` still contains a menu link to a non-existent `faculty.php` (the demo SQL omits it).
 * Academic figures are sample data, not real results.
+
+---
+
+## 6. Practicals 9 and 10 integrated into `studenthub/` (31 October 2026)
+Executed on the same environment against the disposable database `studenthub_auth_test` (built from `database/studenthub_demo.sql`, dropped afterwards); the live `studenthub_db` users and password hashes were compared before and after and were unchanged. A second run used a restored copy of the real pre-change dump (also disposable) and gave the same result.
+
+| Suite | Result | Output |
+|---|---|---|
+| `tests/test_auth.py` – HTTP tests against PHP's built-in server | **132 / 132 passed** | `tests/test_auth_output.txt` |
+| `tests/browser_auth.py` – Microsoft Edge (headless, Playwright) | **14 / 14 passed** | `tests/browser_auth_output.txt` |
+| `database/tests/test_001_practical8_foundation.py` – re-run after the change | **87 / 87 passed** | `database/tests/test_001_output.txt` |
+| `php -l` on all 31 PHP files of `studenthub/` and `tools/` | no syntax errors | (part of `test_auth.py`) |
+
+Covered: successful registration, invalid email, weak/short/too-long password, mismatched passwords, duplicate email and username (case and spaces ignored), `role=admin` sent by the form ignored, transaction rollback when the student insert fails, `students.user_id` linkage, five simultaneous registrations (consecutive enrollment numbers), login by username and email, wrong password and unknown account (same generic message, HTTP 401), session ID regeneration, the inactivity timeout (2-second test server), POST logout and replay of the old cookie, unauthenticated direct URLs, student and editor denied the Admin Console (403 + audit entry, admin POST operations refused), admin access, CSRF rejection on every form, role change/deletion while signed in, open-redirect attempts, the database unavailable (unknown database and wrong password → HTTP 503 with no details and no fallback to `user_registration`), and no PHP warnings or passwords in the server log.
+
+Items above that this supersedes: §2 "accounts without a student record show Shreyas / 25CS023" (they now see only their own username and no enrollment number); §4 "Practical 10 inactivity timeout" (tested for the portal); §5 "admin delete actions use GET links without CSRF tokens; the login page reveals whether an account exists" (fixed) and "all practicals and the main portal share one PHP session" (the portal now uses its own `STUDENTHUBSESSID` cookie; the practical folders still share theirs).
+
+Not covered: no limit on repeated login attempts; editors hold only the student-portal permission; `Practical-15/` is still the older copy of the portal; the browser reports one 404 for `/favicon.ico` because the portal has no favicon.

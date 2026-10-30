@@ -1,26 +1,15 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 
-// 1. RBAC Authentication Check
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please sign in with administrator credentials.");
-    exit();
-}
+// 1-2. Signed in, not timed out, account still exists, role holds 'admin.console' – otherwise login page or HTTP 403
+$current_user = require_permission("admin.console");
 
-// 2. RBAC Authorization Check (Admins Only)
-if (($_SESSION["role"] ?? "") !== "admin") {
-    log_audit(
-        $conn,
-        $_SESSION["user_id"],
-        $_SESSION["username"] ?? "Unknown",
-        "ACCESS_DENIED",
-        "Unauthorized role='" . ($_SESSION["role"] ?? "guest") . "' attempted to access admin_dashboard.php",
-        "SECURITY_BLOCK"
-    );
-    include "403.php";
-    exit();
+// Confirmation text for a delete button: JSON-encoded (quotes become \u0027) and then HTML-escaped for the attribute
+function confirm_js(string $text): string
+{
+    return e("return confirm(" . json_encode($text, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ");");
 }
 
 // 3. Handle CSV Export for Students
@@ -40,12 +29,14 @@ if (isset($_GET["export"]) && $_GET["export"] === "csv") {
     exit();
 }
 
-$success_msg = $_GET["success"] ?? "";
-$error_msg   = $_GET["error"] ?? "";
+$flash       = take_flash();
+$success_msg = ($flash && $flash["type"] === "success") ? $flash["message"] : "";
+$error_msg   = ($flash && $flash["type"] === "error") ? $flash["message"] : "";
 $current_tab = $_GET["tab"] ?? "overview";
 
-// 4. Handle POST Actions (Add Student, Add Event)
+// 4. Handle POST Actions (Add Student, Add Event) – every POST must carry the CSRF token
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $action = $_POST["action"] ?? "";
 
     if ($action === "add_student") {
@@ -56,20 +47,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $semester   = (int)($_POST["semester"] ?? 1);
         $gender     = trim($_POST["gender"] ?? "Male");
 
+        if ($semester < 1 || $semester > 8) {
+            flash("error", "Semester must be between 1 and 8."); redirect("admin_dashboard.php?tab=students");
+        }
         if (empty($name) || empty($email) || empty($course)) {
-            header("Location: admin_dashboard.php?tab=students&error=Name, Email, and Course are required fields.");
-            exit();
+            flash("error", "Name, Email, and Course are required fields."); redirect("admin_dashboard.php?tab=students");
         } else {
             $stmt = $conn->prepare("INSERT INTO students (enrollment_no, name, email, course, semester, gender, status) VALUES (?, ?, ?, ?, ?, ?, 'Active')");
             if ($stmt) {
                 $stmt->bind_param("ssssis", $enrollment, $name, $email, $course, $semester, $gender);
-                if ($stmt->execute()) {
+                try {
+                    $saved = $stmt->execute();
+                } catch (mysqli_sql_exception $e) {
+                    error_log("StudentHub admin add_student failed: [" . $e->getCode() . "] " . $e->getMessage());
+                    flash("error", $e->getCode() === 1062 ? "A student with this email address already exists." : "The student could not be saved.");
+                    redirect("admin_dashboard.php?tab=students");
+                }
+                if ($saved) {
                     log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "CREATE_STUDENT", "Added student: $name ($email)", "SUCCESS");
-                    header("Location: admin_dashboard.php?tab=students&success=Student successfully registered.");
-                    exit();
+                    flash("success", "Student successfully registered."); redirect("admin_dashboard.php?tab=students");
                 } else {
-                    header("Location: admin_dashboard.php?tab=students&error=" . urlencode($stmt->error));
-                    exit();
+                    flash("error", "The student could not be saved."); redirect("admin_dashboard.php?tab=students");
                 }
             }
         }
@@ -92,11 +90,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $allowed   = ["jpg", "jpeg", "png", "webp", "gif"];
 
             if (!in_array($file_ext, $allowed)) {
-                header("Location: admin_dashboard.php?tab=events&error=Invalid image format. Allowed: JPG, PNG, WEBP.");
-                exit();
+                flash("error", "Invalid image format. Allowed: JPG, PNG, WEBP."); redirect("admin_dashboard.php?tab=events");
             } elseif ($file_size > 2 * 1024 * 1024) {
-                header("Location: admin_dashboard.php?tab=events&error=File exceeds 2MB limit.");
-                exit();
+                flash("error", "File exceeds 2MB limit."); redirect("admin_dashboard.php?tab=events");
             } else {
                 $upload_dir = __DIR__ . "/uploads/";
                 if (!is_dir($upload_dir)) {
@@ -111,29 +107,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         if (empty($title)) {
-            header("Location: admin_dashboard.php?tab=events&error=Event title is required.");
-            exit();
+            flash("error", "Event title is required."); redirect("admin_dashboard.php?tab=events");
         } else {
             $stmt = $conn->prepare("INSERT INTO events (title, category, event_date, location, description, poster) VALUES (?, ?, ?, ?, ?, ?)");
             if ($stmt) {
                 $stmt->bind_param("ssssss", $title, $category, $event_date, $location, $description, $poster_path);
-                if ($stmt->execute()) {
+                try {
+                    $saved = $stmt->execute();
+                } catch (mysqli_sql_exception $e) {
+                    error_log("StudentHub admin add_event failed: [" . $e->getCode() . "] " . $e->getMessage());
+                    flash("error", "The event could not be saved."); redirect("admin_dashboard.php?tab=events");
+                }
+                if ($saved) {
                     log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "CREATE_EVENT", "Created campus event: $title", "SUCCESS");
-                    header("Location: admin_dashboard.php?tab=events&success=Campus event published successfully.");
-                    exit();
+                    flash("success", "Campus event published successfully."); redirect("admin_dashboard.php?tab=events");
                 } else {
-                    header("Location: admin_dashboard.php?tab=events&error=" . urlencode($stmt->error));
-                    exit();
+                    flash("error", "The event could not be saved."); redirect("admin_dashboard.php?tab=events");
                 }
             }
         }
     }
 }
 
-// 5. Handle GET Actions (Delete Student, Delete Event, Delete User)
-if (isset($_GET["action"])) {
-    $get_action = $_GET["action"];
-    $target_id  = (int)($_GET["id"] ?? 0);
+// 5. Delete Student / Event / User – POST only (CSRF token checked above); a GET link can no longer delete anything
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
+    $get_action = (string) $_POST["action"];
+    $target_id  = (int)($_POST["id"] ?? 0);
 
     if ($get_action === "delete_student" && $target_id > 0) {
         $stmt = $conn->prepare("DELETE FROM students WHERE id = ?");
@@ -141,8 +140,7 @@ if (isset($_GET["action"])) {
             $stmt->bind_param("i", $target_id);
             $stmt->execute();
             log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_STUDENT", "Deleted student ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=students&success=Student record deleted.");
-            exit();
+            flash("success", "Student record deleted."); redirect("admin_dashboard.php?tab=students");
         }
     }
 
@@ -166,23 +164,20 @@ if (isset($_GET["action"])) {
             $stmt->bind_param("i", $target_id);
             $stmt->execute();
             log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_EVENT", "Deleted event ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=events&success=Event deleted successfully.");
-            exit();
+            flash("success", "Event deleted successfully."); redirect("admin_dashboard.php?tab=events");
         }
     }
 
     if ($get_action === "delete_user" && $target_id > 0) {
         if ($target_id === (int)$_SESSION["user_id"]) {
-            header("Location: admin_dashboard.php?tab=users&error=You cannot delete your own active administrator account.");
-            exit();
+            flash("error", "You cannot delete your own active administrator account."); redirect("admin_dashboard.php?tab=users");
         }
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $target_id);
             $stmt->execute();
             log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_USER", "Deleted user ID: $target_id", "SUCCESS");
-            header("Location: admin_dashboard.php?tab=users&success=User account deleted.");
-            exit();
+            flash("success", "User account deleted."); redirect("admin_dashboard.php?tab=users");
         }
     }
 }
@@ -415,9 +410,7 @@ if ($a_res) {
                 <span class="small fw-semibold"><?= htmlspecialchars($_SESSION["username"]) ?></span>
                 <span class="badge bg-danger" style="font-size: 10px;">ADMIN</span>
             </div>
-            <a href="logout.php" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-box-arrow-right"></i> Logout
-            </a>
+            <?= logout_button("btn btn-outline-danger btn-sm", "Logout") ?>
         </div>
     </div>
 
@@ -639,9 +632,7 @@ if ($a_res) {
                                     <td><?= htmlspecialchars($st['gender']) ?></td>
                                     <td><span class="badge bg-success-subtle text-success"><?= htmlspecialchars($st['status']) ?></span></td>
                                     <td class="text-center">
-                                        <a href="admin_dashboard.php?tab=students&action=delete_student&id=<?= $st['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete student record for <?= htmlspecialchars($st['name']) ?>?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                                        <form method="post" action="admin_dashboard.php?tab=students" class="d-inline" onsubmit="<?= confirm_js('Delete student record for ' . $st['name'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_student"><input type="hidden" name="id" value="<?= (int) $st['id'] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-trash"></i> Delete</button></form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -697,9 +688,7 @@ if ($a_res) {
                                     <td class="small text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i><?= htmlspecialchars($ev['location']) ?></td>
                                     <td class="small text-muted" style="max-width: 250px;"><?= htmlspecialchars(substr($ev['description'] ?? '', 0, 80)) ?>...</td>
                                     <td class="text-center">
-                                        <a href="admin_dashboard.php?tab=events&action=delete_event&id=<?= $ev['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete event <?= htmlspecialchars($ev['title']) ?> and its poster image?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                                        <form method="post" action="admin_dashboard.php?tab=events" class="d-inline" onsubmit="<?= confirm_js('Delete event ' . $ev['title'] . ' and its poster image?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="id" value="<?= (int) $ev['id'] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-trash"></i> Delete</button></form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -753,9 +742,7 @@ if ($a_res) {
                                 <td class="small text-muted"><?= htmlspecialchars($u['created_at']) ?></td>
                                 <td class="text-center">
                                     <?php if ($u['id'] != $_SESSION["user_id"]): ?>
-                                        <a href="admin_dashboard.php?tab=users&action=delete_user&id=<?= $u['id'] ?>" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Delete user <?= htmlspecialchars($u['username']) ?>?');">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </a>
+                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline" onsubmit="<?= confirm_js('Delete user ' . $u['username'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?= (int) $u['id'] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-trash"></i> Delete</button></form>
                                     <?php else: ?>
                                         <span class="badge bg-secondary-subtle text-secondary">Current Session</span>
                                     <?php endif; ?>
@@ -828,6 +815,7 @@ if ($a_res) {
 <div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="admin_dashboard.php?tab=students" class="modal-content">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="add_student">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Register New Student</h5>
@@ -887,6 +875,7 @@ if ($a_res) {
 <div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="admin_dashboard.php?tab=events" enctype="multipart/form-data" class="modal-content">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="add_event">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus text-warning me-2"></i>Publish Campus Event</h5>

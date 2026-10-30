@@ -1,10 +1,7 @@
 <?php
-session_start();
 require_once "db.php";
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view courses.");
-    exit();
-}
+require_once __DIR__ . "/includes/auth.php";
+$current_user = require_permission("portal.view");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +9,7 @@ if (!isset($_SESSION["user_id"])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enrolled Courses – Semester 3 (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=8">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>

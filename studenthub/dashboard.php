@@ -1,13 +1,10 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 require_once "student_profile.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to access your student dashboard.");
-    exit();
-}
+$current_user = require_permission("portal.view");
 
 $user_id  = $_SESSION["user_id"];
 $username = $_SESSION["username"];
@@ -42,7 +39,7 @@ if ($e_res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?= htmlspecialchars($student_name) ?> (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=8">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -68,6 +65,12 @@ if ($e_res) {
     <?php include "sidebar.php"; ?>
 
     <main id="main-content">
+        <?php if ($flash = take_flash()): ?>
+            <div class="alert-<?= $flash["type"] === "success" ? "success" : "error" ?> flash-message" role="status">
+                <i class="bi bi-<?= $flash["type"] === "success" ? "check-circle-fill" : "exclamation-triangle-fill" ?>" aria-hidden="true"></i>
+                <p><?= e($flash["message"]) ?></p>
+            </div>
+        <?php endif; ?>
         <p class="section-note"><span class="badge badge-sample"><i class="bi bi-info-circle" aria-hidden="true"></i> Sample / demo data</span> The attendance and CGPA figures below are placeholders, not actual academic results.</p>
 
         <div class="stat-grid">

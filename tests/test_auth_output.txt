@@ -1,0 +1,161 @@
+StudentHub authentication tests (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Static checks
+PASS  php -l: no syntax errors in all 31 PHP files of studenthub/ and tools/
+PASS  db.php has no fallback: no reference to user_registration and only one mysqli connection
+PASS  no page starts its own session (only includes/auth.php calls session_start)
+PASS  no GET logout link anywhere (logout is a POST form)
+PASS  every protected page calls require_permission()
+PASS  no message text is read from the URL ($_GET['error'|'success'|'message'])
+PASS  registration inserts the role as the literal 'student' (never from the form)
+
+== Registration (Practical 9 integrated)
+PASS  register.php: CSRF token, username field, no role field
+PASS  valid registration -> 303 to dashboard.php
+PASS  account + student record created together, students.user_id = users.id
+PASS  role is 'student' even though the form sent role=admin
+PASS  enrollment number follows the scheme, next free number (26CS001)
+PASS  semester derived from the admission year 2026 -> 1
+PASS  password stored only as a bcrypt hash that password_verify() accepts
+PASS  registered student is signed in: welcome message with the enrollment number
+PASS  profile shows the student's own record (through students.user_id)
+PASS  USER_REGISTER written to the audit log
+PASS  the next registration gets the following number
+PASS  other course/year -> own prefix (25DS…) and semester 3
+PASS  invalid email -> rejected ('valid email address')
+PASS  password too short -> rejected ('at least 8 characters')
+PASS  password without uppercase/number/special -> rejected ('an uppercase letter')
+PASS  password longer than 72 bytes -> rejected ('at most 72 characters')
+PASS  passwords do not match -> rejected ('do not match')
+PASS  username starting with a digit -> rejected ('Start with a letter')
+PASS  username too short -> rejected ('3–30 characters')
+PASS  name with digits / HTML -> rejected ('letters, spaces')
+PASS  course not in the list -> rejected ('course from the list')
+PASS  admission year not offered -> rejected ('admission year from the list')
+PASS  gender not in the list -> rejected ('Male, Female or Other')
+PASS  terms not accepted -> rejected ('Terms')
+PASS  duplicate email (other case, spaces) -> rejected ('already exists')
+PASS  duplicate username (other case) -> rejected ('already taken')
+PASS  no account was created by the rejected forms
+PASS  rejected input is escaped when the form is shown again
+PASS  email of a pre-existing student record (no account) -> refused, 'contact the administrator'
+PASS  ... the existing record is not linked or changed and no account is created
+PASS  registration without a valid CSRF token -> refused, nothing stored
+PASS  student INSERT forced to fail after the account INSERT -> general error message, no technical details
+PASS  ... transaction rolled back: neither the account nor the student record exists
+
+== Simultaneous registrations (5 at the same moment, same course and year)
+PASS  all 5 succeed with 5 different, consecutive enrollment numbers, each linked to its account
+
+== Login (Practical 10 integrated)
+PASS  login page: CSRF token; session cookie STUDENTHUBSESSID HttpOnly + SameSite=Strict
+PASS  wrong password -> 401 and the same generic message 'Invalid username/email or password.'
+PASS  unknown account -> 401 and the same generic message 'Invalid username/email or password.'
+PASS  unknown email -> 401 and the same generic message 'Invalid username/email or password.'
+PASS  SQL injection -> 401 and the same generic message 'Invalid username/email or password.'
+PASS  failed logins are audit-logged (LOGIN_FAILED)
+PASS  login without CSRF token -> refused
+PASS  correct username + password -> 303 to dashboard.php
+PASS  session ID regenerated at login (old ID != new ID)
+PASS  the pre-login session ID gives no access
+PASS  last_login updated and USER_LOGIN audit entry written
+PASS  login with the e-mail address works; admin goes to admin_dashboard.php
+PASS  protected pages send Cache-Control: no-store, X-Frame-Options: DENY, nosniff
+PASS  no open redirect / no reflected text: login.php?next=https://evil.example/
+PASS  no open redirect / no reflected text: login.php?status=%3Cscript%3Ealert(1)%3C/script%3E
+PASS  no open redirect / no reflected text: logout.php?next=//evil.example
+
+== Logout
+PASS  GET logout.php shows a confirmation and does not log out
+PASS  POST logout.php with a wrong token does not log out
+PASS  POST logout.php with the token -> login page 'You have been signed out.'
+PASS  after logout every protected page redirects to the login page
+PASS  the old session cookie replayed -> no access (session destroyed on the server)
+PASS  USER_LOGOUT written to the audit log
+
+== Role-based access control
+PASS  not signed in: dashboard.php -> login page (status=login_required)
+PASS  not signed in: student_dashboard.php -> login page (status=login_required)
+PASS  not signed in: profile.php -> login page (status=login_required)
+PASS  not signed in: courses.php -> login page (status=login_required)
+PASS  not signed in: attendance.php -> login page (status=login_required)
+PASS  not signed in: assignments.php -> login page (status=login_required)
+PASS  not signed in: results.php -> login page (status=login_required)
+PASS  not signed in: achievements.php -> login page (status=login_required)
+PASS  not signed in: notifications.php -> login page (status=login_required)
+PASS  not signed in: directory.php -> login page (status=login_required)
+PASS  not signed in: admin_dashboard.php -> login page (status=login_required)
+PASS  public page index.php stays public (200)
+PASS  public page login.php stays public (200)
+PASS  public page register.php stays public (200)
+PASS  public page contact.php stays public (200)
+PASS  the public contact form has a CSRF token; a POST without it is refused (403)
+PASS  student: all portal pages load (200)
+PASS  student: every POST form on the portal pages carries a CSRF token
+PASS  editor: all portal pages load (200)
+PASS  editor: every POST form on the portal pages carries a CSRF token
+PASS  admin: all portal pages load (200)
+PASS  admin: every POST form on the portal pages carries a CSRF token
+PASS  student -> admin_dashboard.php: HTTP 403 'Access Denied' page
+PASS  ... recorded as ACCESS_DENIED in the audit log
+PASS  student cannot run admin operations (add/delete via POST -> 403, nothing changed)
+PASS  editor -> admin_dashboard.php: HTTP 403 'Access Denied' page
+PASS  ... recorded as ACCESS_DENIED in the audit log
+PASS  editor cannot run admin operations (add/delete via POST -> 403, nothing changed)
+PASS  admin -> Admin Console (200) with the user list and audit log
+PASS  admin console tab 'students' loads; all its POST forms carry a CSRF token
+PASS  admin console tab 'events' loads; all its POST forms carry a CSRF token
+PASS  admin console tab 'users' loads; all its POST forms carry a CSRF token
+PASS  admin console tab 'audits' loads; all its POST forms carry a CSRF token
+
+== CSRF and admin operations
+PASS  admin POST without CSRF token -> 403 'Security check failed', nothing stored
+PASS  CSRF rejections are audit-logged
+PASS  admin add student with the token -> stored, message via the session (no text in the URL)
+PASS  the success message appears once, from the session
+PASS  a name with quotes cannot break out of the delete confirmation (JSON + HTML escaped)
+PASS  the old GET delete link no longer deletes anything
+PASS  POST delete without token -> 403, record kept
+PASS  POST delete with the token -> deleted
+PASS  admin add student with semester 12 -> refused with a message (no database error page)
+PASS  an admin cannot delete the own account
+
+== Session re-validation (account deleted / role changed while signed in)
+PASS  a role change applies at the next request (promoted to admin -> console allowed)
+PASS  ... and demotion applies immediately too (editor -> 403)
+PASS  an account deleted while signed in loses access at once (login page 'account_unavailable')
+
+== Profile: linkage and password change
+PASS  an account without a linked student record sees its own username and no enrollment number (no other person's data)
+PASS  wrong current password -> refused
+PASS  weak new password -> refused by the shared password policy
+PASS  password change without CSRF token -> 403, unchanged
+PASS  valid change -> new hash stored, session ID regenerated
+PASS  old password no longer works, new one does
+
+== Server log
+PASS  no PHP warnings, notices or fatal errors in the server log
+PASS  the forced registration failure was logged with details (shown to nobody)
+PASS  no password appears in the server log
+
+== Inactivity timeout (second server, STUDENTHUB_SESSION_TIMEOUT=2)
+PASS  requests within the timeout keep the session alive
+PASS  after 3 s idle -> login page 'Your session ended because you were inactive…'
+PASS  ... the session is gone and SESSION_TIMEOUT is audit-logged
+
+== Database unavailable (no fallback, no details for visitors)
+INFO  legacy database user_registration exists on this server: True
+PASS  unknown database: index, login and dashboard -> HTTP 503 'Service temporarily unavailable'
+PASS  unknown database: no credentials, database names, SQL or stack traces in the page
+PASS  unknown database: no fallback - no login form or data from another database is served
+PASS  unknown database: the real reason is in the server log ('No fallback database is used')
+PASS  wrong password: index, login and dashboard -> HTTP 503 'Service temporarily unavailable'
+PASS  wrong password: no credentials, database names, SQL or stack traces in the page
+PASS  wrong password: no fallback - no login form or data from another database is served
+PASS  wrong password: the real reason is in the server log ('No fallback database is used')
+PASS  wrong password: the password itself is never written to the log
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched (users and password hashes unchanged)
+
+Result: 132 passed, 0 failed, 132 checks

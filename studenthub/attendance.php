@@ -1,18 +1,16 @@
 <?php
-session_start();
 require_once "db.php";
+require_once __DIR__ . "/includes/auth.php";
 require_once "audit_logger.php";
 require_once "student_profile.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to view attendance.");
-    exit();
-}
+$current_user = require_permission("portal.view");
 
 $profile = get_student_profile($conn);
 
 $msg = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    require_valid_csrf();
     $ldate   = $_POST["ldate"] ?? "";
     $ltype   = $_POST["ltype"] ?? "";
     $lreason = trim($_POST["lreason"] ?? "");
@@ -26,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Record – CSPIT Charusat</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=7">
+    <link rel="stylesheet" href="assets/css/global.css?v=8">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
@@ -124,6 +122,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <section>
             <h2><i class="bi bi-envelope-paper" aria-hidden="true"></i> Apply for Student Leave</h2>
             <form action="attendance.php" method="POST">
+                <?= csrf_field() ?>
                 <fieldset>
                     <legend>Leave Application Form</legend>
                     <p>

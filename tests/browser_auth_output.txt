@@ -1,0 +1,17 @@
+PASS  weak password -> the server shows the policy error under the field
+PASS  entered values are kept (password fields are not)
+PASS  registration in Edge -> dashboard with welcome message and enrollment number
+PASS  sidebar shows the student's own name and enrollment number (record linked by user_id)
+PASS  database: account + linked student record
+PASS  sidebar Logout button (POST form) -> 'You have been signed out.'
+PASS  Back button after logout does not show the dashboard (no-store; server redirects to login)
+PASS  wrong password -> 'Invalid username/email or password.'
+PASS  correct login -> dashboard
+PASS  student -> admin_dashboard.php: HTTP 403 'Access Denied' page
+PASS  admin login -> Admin Console with welcome message
+PASS  student delete actions are POST forms with a CSRF token (no delete links)
+PASS  admin Logout button -> signed out
+PASS  no JavaScript errors (only the intended 401/403/422 responses)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+browser checks: 14 passed, 0 failed

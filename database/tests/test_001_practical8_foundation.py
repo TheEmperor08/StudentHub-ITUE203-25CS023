@@ -257,6 +257,11 @@ class Browser:
         self.jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
 
+    def token(self, path):
+        _, _, page = self.get(path)
+        m = re.search(r'name="csrf_token" value="([0-9a-f]{64})"', page)
+        return m.group(1) if m else ""
+
     def get(self, path, data=None):
         body = urllib.parse.urlencode(data).encode() if data is not None else None
         try:
@@ -491,7 +496,7 @@ def portal_tests(workdir):
     proc, out, log = start_portal(TEST_DB, workdir)
     try:
         b = Browser()
-        status, url, page = b.get("login.php", {"login_input": "mig001_admin", "password": admin_pw})
+        status, url, page = b.get("login.php", {"login_input": "mig001_admin", "password": admin_pw, "csrf_token": b.token("login.php")})
         check("admin login -> Admin Console", status == 200 and "admin_dashboard.php" in url, f"{status} {url}")
         problems = []
         for tab in ("overview", "students", "events", "users", "audits"):
@@ -499,11 +504,12 @@ def portal_tests(workdir):
             if status != 200 or PHP_PROBLEMS.search(page):
                 problems.append(f"{tab}:{status}")
         check("Admin Console tabs load (overview, students, events, users, audits)", not problems, str(problems))
-        status, _, page = b.get("admin_dashboard.php", {"action": "add_student", "enrollment_no": "W001", "name": "Web Added", "email": "mig001.web@example.com",
+        token = b.token("admin_dashboard.php")
+        status, _, page = b.get("admin_dashboard.php", {"csrf_token": token, "action": "add_student", "enrollment_no": "W001", "name": "Web Added", "email": "mig001.web@example.com",
                                                         "course": "Computer Science", "semester": "4", "gender": "Female"})
         check("admin 'add student' still works (row stored with semester 4, user_id NULL)",
               scalar("SELECT CONCAT(semester,'|',IFNULL(user_id,'NULL')) FROM students WHERE email='mig001.web@example.com'", TEST_DB) == "4|NULL")
-        status, _, page = b.get("admin_dashboard.php", {"action": "add_event", "title": "Web Added Event", "category": "Workshop",
+        status, _, page = b.get("admin_dashboard.php", {"csrf_token": token, "action": "add_event", "title": "Web Added Event", "category": "Workshop",
                                                         "event_date": "2027-02-01", "location": "Lab 1", "description": "added by the test"})
         new_event = scalar("SELECT id FROM events WHERE title='Web Added Event'", TEST_DB)
         check("admin 'add event' still works (capacity and time stay NULL)",
@@ -511,16 +517,16 @@ def portal_tests(workdir):
         web_student = scalar("SELECT id FROM students WHERE email='mig001.web@example.com'", TEST_DB)
         reg = PhpDriver(workdir, TEST_DB).register(web_student, new_event)
         had_registration = reg.get("ok") and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "1"
-        b.get(f"admin_dashboard.php?action=delete_event&id={new_event}")
+        b.get("admin_dashboard.php", {"csrf_token": token, "action": "delete_event", "id": new_event})
         check("admin 'delete event' still works and removes the event's registration (registered first, then deleted)",
               had_registration and scalar(f"SELECT COUNT(*) FROM events WHERE id={new_event}", TEST_DB) == "0"
               and scalar(f"SELECT COUNT(*) FROM registrations WHERE event_id={new_event}", TEST_DB) == "0", str(reg))
-        b.get(f"admin_dashboard.php?action=delete_student&id={web_student}")
+        b.get("admin_dashboard.php", {"csrf_token": token, "action": "delete_student", "id": web_student})
         check("admin 'delete student' still works", scalar(f"SELECT COUNT(*) FROM students WHERE id={web_student}", TEST_DB) == "0")
-        b.get("logout.php")
+        b.get("logout.php", {"csrf_token": token})
 
         s = Browser()
-        status, url, page = s.get("login.php", {"login_input": "mig001.student@example.com", "password": student_pw})
+        status, url, page = s.get("login.php", {"login_input": "mig001.student@example.com", "password": student_pw, "csrf_token": s.token("login.php")})
         check("student login -> dashboard", status == 200 and "dashboard.php" in url, f"{status} {url}")
         problems = []
         for p in ("dashboard.php", "student_dashboard.php", "profile.php", "courses.php", "attendance.php", "assignments.php",
@@ -531,15 +537,17 @@ def portal_tests(workdir):
         check("all student pages load with status 200 and no PHP errors", not problems, str(problems))
         status, _, page = s.get("admin_dashboard.php")
         check("a student opening the Admin Console still gets the 403 page", status == 403 or "403" in page, str(status))
-        s.get("logout.php")
+        s.get("logout.php", {"csrf_token": s.token("dashboard.php")})
 
         r = Browser()
-        status, url, page = r.get("register.php", {"name": "Reg Test", "email": "mig001.reg@example.com", "mobile": "9876543210", "gender": "Female",
-                                                   "course": "Data Science", "adm_year": "2026", "password": "RegTest#2026", "confirm_password": "RegTest#2026", "agree": "on"})
-        row = mysql("SELECT u.role, s.semester, IFNULL(s.user_id,'NULL') FROM users u JOIN students s ON s.email = u.email WHERE u.email='mig001.reg@example.com'", TEST_DB)
-        check("self-registration still creates the account and the student record (semester 3)", bool(row) and row[0][:2] == ["student", "3"], str(row))
-        if row:
-            info(f"new registrations are not linked yet (students.user_id = {row[0][2]}); register.php will set the link in Practical 9")
+        _, _, reg_page = r.get("register.php")
+        year = re.search(r'<option value="(\d{4})" selected', reg_page).group(1)
+        status, url, page = r.get("register.php", {"name": "Reg Test", "username": "mig001_reg", "email": "mig001.reg@example.com", "gender": "Female",
+                                                   "course": "Data Science", "adm_year": year, "password": "RegTest#2026", "confirm_password": "RegTest#2026",
+                                                   "agree": "1", "csrf_token": r.token("register.php")})
+        row = mysql("SELECT u.role, s.semester, s.user_id = u.id FROM users u JOIN students s ON s.email = u.email WHERE u.email='mig001.reg@example.com'", TEST_DB)
+        check("self-registration creates the account and its student record, linked through students.user_id (Practical 9)",
+              bool(row) and row[0][0] == "student" and row[0][2] == "1" and 1 <= int(row[0][1]) <= 8, str(row))
         log_text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
         check("no PHP warnings or errors in the server log", not re.search(r"PHP (Warning|Notice|Deprecated|Fatal|Parse)", log_text), log_text[-300:])
     finally:

@@ -12,8 +12,10 @@
 StudentHub is a PHP/MySQL student portal built up across 15 practicals: semantic HTML pages, responsive CSS, JavaScript interactivity, PHP forms, PDO/MySQLi database access, authentication with sessions and role-based access control, CRUD, file uploads, a Fetch-based API and an admin console with audit logging.
 
 ## 🚀 Features (main application – `studenthub/`)
-* **Authentication:** login by username or email, `password_verify()`, session ID regeneration, logout, self-registration with bcrypt hashing.
-* **Role-based access:** admins land on the Admin Console; non-admins requesting it get HTTP 403 and an audit-log entry.
+* **One authentication system** (`studenthub/includes/auth.php`, Practicals 9 + 10 integrated): login by username or email with `password_verify()` and one generic error message, session ID regeneration at login, hardened session cookie (`STUDENTHUBSESSID`, HttpOnly, SameSite=Strict, Secure on HTTPS), 30-minute inactivity timeout (override with the `STUDENTHUB_SESSION_TIMEOUT` environment variable, in seconds), account re-checked on every request, CSRF tokens on every POST form, logout only by POST.
+* **Self-registration** (`studenthub/includes/registration.php`): server-side validation of every field, password policy (8–72 characters with upper- and lower-case letters, a digit and a special character), duplicate username/email refused, role always `student`; the account and its `students` record (next enrollment number of the `YYPPnnn` scheme, linked through `students.user_id`) are created in one transaction.
+* **Role-based access:** roles admin, editor and student with explicit permissions; admins land on the Admin Console; anyone else requesting it gets the HTTP 403 page and an audit-log entry. Editors currently hold only the student-portal permission.
+* **No fallback database:** if `studenthub_db` is unreachable the portal answers HTTP 503 with a generic message and logs the reason on the server.
 * **Student pages:** dashboard, profile (with a working, verified password change), courses, attendance, assignments, results, achievements, notifications, directory and contact.
 * **Profile data from the database:** name and roll number come from the logged-in user's `students` record (`studenthub/student_profile.php`).
 * **Admin Console:** live counters, student add/search/filter/delete, CSV export, event publishing with validated poster upload, user list, audit log viewer.
@@ -31,6 +33,7 @@ StudentHub/
 ├── Practical-1 … Practical-15/
 ├── database/studenthub_demo.sql  # Safe demo schema + data (no accounts, no hashes)
 ├── tools/create_demo_user.php    # CLI: create local accounts (password prompted)
+├── tests/                    # Authentication tests (disposable database) + optional Edge browser test
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
@@ -84,8 +87,8 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 6 | Fetch API, search, filter, sort, pagination | Code present (needs a web server, not `file://`) |
 | 7 | PHP POST form → CSV with `flock` | Tested (HTTP) |
 | 8 | PDO, prepared statements, 3NF schema | Rebuilt and tested |
-| 9 | Secure registration (hashing, duplicates) | Tested |
-| 10 | Login, sessions, RBAC | Tested (timeout and remember-me not tested) |
+| 9 | Secure registration (hashing, duplicates) | Integrated into `studenthub/` and tested (`tests/test_auth.py`) |
+| 10 | Login, sessions, RBAC | Integrated into `studenthub/` and tested, including the inactivity timeout (remember-me is not part of the portal) |
 | 11 | Student CRUD, search, soft delete, CSV | Tested (access checks + prepared statements added) |
 | 12 | Event uploads with validation, RBAC | Tested |
 | 13 | Fetch/AJAX CRUD API with RBAC | Tested (role now taken from the server session) |
@@ -98,6 +101,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 * Passwords are hashed with bcrypt; no plaintext passwords or hashes are committed.
 * The main application and Practicals 8, 9, 10, 11, 13 and 14 use prepared statements (MySQLi or PDO) for queries with user input. Practical 12's event insert/update still uses `mysqli_real_escape_string()` (escaped, but not prepared) – listed as a remaining improvement.
 * Output is escaped with `htmlspecialchars()`.
+* The main portal checks a CSRF token on every POST, logs out only by POST, sends `Cache-Control: no-store`, `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` on signed-in pages, and redirects only to its own pages.
 * Known limitations are listed in `TEST_REPORT.md`.
 
 ## 👨‍🎓 Author

@@ -430,3 +430,15 @@ ul li { margin-bottom: 6px; }
     .stat-grid { grid-template-columns: minmax(0, 1fr); }
     .mobile-brand span:last-child { font-size: 0.98rem; }
 }
+
+/* Logout is a POST form (CSRF-protected); its button looks like the sidebar links */
+nav#app-nav .logout-form { margin: 0; }
+nav#app-nav ul button.nav-logout {
+    position: relative; display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 9px 12px; border: 0; border-radius: 10px; background: none; box-shadow: none; cursor: pointer;
+    color: rgba(226, 232, 255, 0.78); font: inherit; font-weight: 500; font-size: 0.92rem; text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+nav#app-nav ul button.nav-logout i { font-size: 1.05rem; width: 20px; text-align: center; color: rgba(165, 180, 252, 0.75); }
+nav#app-nav ul button.nav-logout:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.flash-message { margin: 0 0 18px; }

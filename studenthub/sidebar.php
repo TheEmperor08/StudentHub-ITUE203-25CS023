@@ -25,7 +25,6 @@ $nav_groups = [
     ],
     "Account" => [
         ["index.php",         "bi-house",            "Home Portal",   ["index.php"]],
-        ["logout.php",        "bi-box-arrow-right",  "Logout",        []],
     ],
 ];
 ?>
@@ -73,6 +72,13 @@ $nav_groups = [
             <?php endforeach; ?>
             <?php if ($group === "Account" && $is_admin): ?>
                 <li><a href="admin_dashboard.php" class="nav-admin"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>Admin Console</span></a></li>
+            <?php endif; ?>
+            <?php if ($group === "Account"): ?>
+                <?php if (isset($_SESSION["user_id"])): ?>
+                    <li><?= logout_button("nav-logout", "Logout") ?></li>
+                <?php else: ?>
+                    <li><a href="login.php"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Sign in</span></a></li>
+                <?php endif; ?>
             <?php endif; ?>
         </ul>
     <?php endforeach; ?>
