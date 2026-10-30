@@ -1,0 +1,251 @@
+/* ===== StudentHub – Practical 4 styles =====
+   Light theme by default; [data-theme="dark"] (set by theme.js / script.js) swaps the colour variables.
+   Mobile-first: min-width queries add the tablet/desktop layout. Uses system fonts (works offline). */
+
+:root {
+    --navy-900: #0b1437;
+    --navy-800: #121d4a;
+    --indigo: #4f46e5;
+    --indigo-dark: #4338ca;
+    --violet: #7c3aed;
+    --on-navy: #ffffff;
+    --on-navy-muted: #c7cbe0;
+
+    --bg: #f3f4f9;
+    --surface: #ffffff;
+    --surface-2: #f7f8fc;
+    --border: #e3e6ef;
+    --text-dark: #0f172a;
+    --text: #334155;
+    --text-muted: #5b6478;
+    --link: #4338ca;
+    --soft: #eef0ff;
+    --dot: #4f46e5;
+    --warning-soft: #fff5e1;
+    --warning-ink: #8a4b00;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px rgba(15, 23, 42, 0.06);
+    --shadow-hover: 0 18px 30px rgba(15, 23, 42, 0.12);
+    --radius: 12px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+[data-theme="dark"] {
+    --bg: #0b1220;
+    --surface: #151d33;
+    --surface-2: #1b2440;
+    --border: #2a3555;
+    --text-dark: #f1f5f9;
+    --text: #cbd5e1;
+    --text-muted: #a3adc2;
+    --link: #a5b4fc;
+    --soft: #232c4d;
+    --dot: #a5b4fc;
+    --warning-soft: #3a2a10;
+    --warning-ink: #fcd38d;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 18px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* --- Base --- */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font);
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3 { margin: 0 0 0.5em; color: var(--text-dark); line-height: 1.25; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0 0 1em; }
+a { color: var(--link); }
+img { max-width: 100%; height: auto; }
+
+:focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
+
+.container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+
+.skip-link {
+    position: absolute; top: -100px; left: 16px; z-index: 1000;
+    padding: 8px 16px; border-radius: 8px; background: var(--surface); color: var(--link); font-weight: 600;
+}
+.skip-link:focus { top: 16px; }
+
+.card {
+    margin-bottom: 24px; padding: 20px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--shadow);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sample-note {
+    display: inline-block; padding: 2px 12px; border-radius: 999px;
+    background: var(--warning-soft); color: var(--warning-ink); font-size: 0.875rem; font-weight: 600;
+}
+
+/* --- Buttons (shared transition) --- */
+button { font: inherit; cursor: pointer; }
+
+.btn-action, .slider-btn, .slider-pause, .theme-toggle, .hamburger-menu, .reset-prefs {
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-action {
+    padding: 10px 20px; border: 0; border-radius: 8px;
+    background: var(--indigo); color: var(--on-navy); font-weight: 600;
+}
+.btn-action:hover { background: var(--indigo-dark); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(67, 56, 202, 0.35); }
+
+/* --- 4. Notification banner --- */
+.notification-banner {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: var(--indigo-dark); color: var(--on-navy);
+}
+.notification-banner p { flex: 1; margin: 0; font-weight: 500; }
+.notification-banner[hidden] { display: none; }
+.close-banner {
+    flex: none; width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 50%;
+    background: transparent; color: var(--on-navy); font-size: 1.4rem; line-height: 1;
+}
+.close-banner:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* --- Header, 5. hamburger menu and 6. theme switcher --- */
+.site-header { background: var(--navy-900); color: var(--on-navy); }
+.site-header__inner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 8px 16px; padding-top: 12px; padding-bottom: 12px;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--on-navy); font-size: 1.15rem; font-weight: 700; text-decoration: none; }
+.header-actions { display: flex; gap: 8px; }
+.theme-toggle, .hamburger-menu {
+    padding: 8px 14px; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 8px;
+    background: transparent; color: var(--on-navy); font-weight: 600;
+}
+.theme-toggle:hover, .hamburger-menu:hover { background: var(--navy-800); }
+
+.site-nav { width: 100%; }
+.site-nav ul { display: none; flex-direction: column; gap: 4px; margin: 0; padding: 8px 0 0; list-style: none; }
+.site-nav ul.is-open { display: flex; }
+.site-nav a {
+    display: block; padding: 8px 12px; border-radius: 8px;
+    color: var(--on-navy-muted); font-weight: 500; text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.site-nav a:hover { background: var(--navy-800); color: var(--on-navy); }
+
+/* --- Layout --- */
+.layout { flex: 1 0 auto; display: flex; flex-direction: column; margin-top: 24px; margin-bottom: 24px; }
+
+/* --- Portal cards (hover transition) --- */
+.articles-flex { display: flex; flex-wrap: wrap; gap: 16px; }
+.articles-flex article {
+    flex: 1 1 100%; padding: 20px;
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.articles-flex article:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); border-color: var(--indigo); }
+.articles-flex article p:last-child { margin-bottom: 0; }
+
+/* --- 3. Slider --- */
+.slider { margin-bottom: 24px; }
+.slider-viewport {
+    position: relative; height: 240px; overflow: hidden;
+    border-radius: var(--radius); background: var(--navy-900); box-shadow: var(--shadow);
+}
+.slide { position: absolute; inset: 0; transition: transform 0.5s ease-in-out; }
+.slide img { width: 100%; height: 100%; object-fit: cover; }
+.slide-text {
+    position: absolute; left: 12px; right: 12px; bottom: 12px;
+    padding: 12px 16px; border-radius: 10px; background: rgba(11, 20, 55, 0.88); color: var(--on-navy);
+}
+.slide-text h3 { margin: 0 0 4px; color: var(--on-navy); }
+.slide-text p { margin: 0; }
+.slider-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+.slider-btn {
+    width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 50%;
+    background: var(--surface); color: var(--text-dark); font-size: 1.5rem; line-height: 1;
+}
+.slider-btn:hover { transform: scale(1.1); border-color: var(--indigo); }
+.slider-dots { display: flex; gap: 6px; }
+.slider-dot {
+    width: 14px; height: 14px; padding: 0; border: 2px solid var(--dot); border-radius: 50%;
+    background: transparent; transition: background-color 0.2s ease;
+}
+.slider-dot[aria-current="true"] { background: var(--dot); }
+.slider-pause, .reset-prefs {
+    padding: 6px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-dark);
+}
+.slider-pause:hover { border-color: var(--indigo); }
+
+/* --- 1. FAQ --- */
+.faq-item { margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.faq-item h3 { margin: 0; font-size: 1rem; }
+.faq-question {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;
+    padding: 14px 16px; border: 0; background: var(--surface); color: var(--text-dark);
+    font-weight: 600; text-align: left; transition: background-color 0.2s ease;
+}
+.faq-question:hover { background: var(--surface-2); }
+.faq-question::after { content: "+"; font-size: 1.4rem; font-weight: 400; transition: transform 0.3s ease; }
+.faq-question[aria-expanded="true"]::after { transform: rotate(45deg); }
+.faq-answer { padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface-2); color: var(--text); }
+
+/* --- Alerts and footer --- */
+.alerts ul { margin: 12px 0 0; padding-left: 20px; }
+.site-footer { padding: 20px 0; background: var(--navy-900); color: var(--on-navy-muted); font-size: 0.9rem; }
+.site-footer__inner { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.site-footer p { margin: 0; }
+
+/* --- 2. Modal --- */
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background: rgba(11, 20, 55, 0.6); animation: fadeIn 0.3s ease;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-content {
+    position: relative; width: 100%; max-width: 480px; padding: 32px 24px 24px;
+    border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-hover);
+}
+.close-modal {
+    position: absolute; top: 12px; right: 12px; width: 36px; height: 36px;
+    border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); color: var(--text-dark); font-size: 1.4rem; line-height: 1;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Tablet and desktop: 768px and wider --- */
+@media (min-width: 768px) {
+    h1 { font-size: 2.1rem; }
+    .container { padding: 0 24px; }
+    .hamburger-menu { display: none; }
+    .site-nav { width: auto; order: 2; }
+    .header-actions { order: 3; }
+    .site-nav ul { display: flex; flex-direction: row; padding: 0; }
+    .slider-viewport { height: 340px; }
+    .articles-flex article { flex: 1 1 0; }
+    .site-footer__inner { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+@media (min-width: 1024px) {
+    .layout { flex-direction: row; align-items: flex-start; gap: 24px; }
+    main { flex: 3 1 0; min-width: 0; }
+    .alerts { flex: 1 1 0; position: sticky; top: 24px; }
+}
+
+/* Less motion when the system asks for it: no sliding or lifting, colour transitions stay.
+   (script.js also starts the slider paused in this case.) */
+@media (prefers-reduced-motion: reduce) {
+    .slide { transition: none; }
+    .modal-overlay { animation: none; }
+    .articles-flex article:hover,
+    .btn-action:hover,
+    .slider-btn:hover { transform: none; }
+}
