@@ -1,80 +1,89 @@
 <!DOCTYPE html>
-<html lang="en" class="auth-pending">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="StudentHub campus data directory: JSON data loaded with the Fetch API, with search, filter, sorting and pagination.">
     <title>Campus Data Directory - StudentHub</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=4">
-    <style>
-        .data-controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
-        .data-controls input, .data-controls select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; flex: 1; min-width: 200px;}
-        .loading { text-align: center; font-size: 1.2rem; font-weight: 600; color: var(--primary); padding: 40px; }
-        .error-message { text-align: center; font-size: 1.2rem; font-weight: 600; color: red; padding: 40px; background: #fee2e2; border-radius: 12px;}
-        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
-        .pagination button { padding: 8px 15px; border: none; background: var(--card); color: var(--text-dark); border-radius: 8px; cursor: pointer; font-weight: 600; border: 1px solid var(--border); box-shadow: none;}
-        .pagination button:hover { background: var(--primary); color: white; }
-        .pagination button:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
-        .pagination .active { background: var(--primary); color: white; }
-        #data-table-container { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tabs button { background: #e2e8f0; color: var(--text-dark); padding: 10px 20px; box-shadow: none; border-radius: 8px 8px 0 0; }
-        .tabs button.active { background: var(--primary); color: white; }
-    </style>
-    <style>.auth-pending body { visibility: hidden; }</style>
-    <script src="assets/js/theme.js"></script>
-    <script src="assets/js/auth.js"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/file-check.js"></script>
+    <script type="module" src="assets/js/main.js"></script>
 </head>
 <body>
-
-<div class="grid-container">
-    <header>
-        <h1>Campus Data Directory</h1>
-        <p>Dynamic JSON Rendering using Fetch API (Filter, Sort, Pagination)</p>
+    <header class="site-header">
+        <div class="container">
+            <p class="brand">StudentHub</p>
+            <h1>Campus Data Directory</h1>
+            <p class="subtitle">Students, events and FAQs loaded from JSON files with the Fetch API – search, filter, sort and browse page by page.</p>
+        </div>
     </header>
 
-        <nav></nav>
-
-    <main>
-        <section>
-            <div class="tabs">
-                <button class="tab-btn active" data-type="students">Students Data</button>
-                <button class="tab-btn" data-type="events">Events Data</button>
-                <button class="tab-btn" data-type="faqs">FAQs Data</button>
-            </div>
-
-            <div class="data-controls">
-                <input type="text" id="searchInput" placeholder="🔍 Search records...">
-                
-                <select id="filterSelect">
-                    <option value="all">All Categories/Branches</option>
-                    <!-- Dynamically populated -->
-                </select>
-
-                <select id="sortSelect">
-                    <option value="default">Sort By: Default</option>
-                    <option value="name_asc">Name/Title (A-Z)</option>
-                    <option value="name_desc">Name/Title (Z-A)</option>
-                </select>
-            </div>
-
-            <div id="status-container"></div>
-            
-            <div id="data-table-container">
-                <!-- Table rendered dynamically -->
-            </div>
-
-            <div class="pagination" id="pagination-container">
-                <!-- Pagination rendered dynamically -->
-            </div>
+    <main class="container" id="main-content">
+        <!-- Shown by file-check.js when the page is opened by double-clicking (file://) -->
+        <section class="file-warning" id="file-warning" hidden>
+            <h2>Please open this page through the local server</h2>
+            <p>Browsers block <code>fetch()</code> and JavaScript modules for pages opened directly from a folder.</p>
+            <ol>
+                <li>Double-click <strong>start-server.bat</strong> in the Practical-6 folder, or run <code>python -m http.server 8606</code> in that folder.</li>
+                <li>Open <strong>http://127.0.0.1:8606/directory.html</strong>.</li>
+            </ol>
         </section>
+
+        <noscript><p class="file-warning">This page needs JavaScript to load the JSON data.</p></noscript>
+
+        <div id="app">
+            <p class="sample-note">All three datasets are <strong>sample data</strong>: the students, IDs (DEMO-001…) and CPI values are fictional.</p>
+
+            <div class="tabs" role="tablist" aria-label="Dataset">
+                <button type="button" role="tab" id="tab-students" aria-controls="data-panel" aria-selected="true" data-dataset="students">Students</button>
+                <button type="button" role="tab" id="tab-events" aria-controls="data-panel" aria-selected="false" tabindex="-1" data-dataset="events">Events</button>
+                <button type="button" role="tab" id="tab-faqs" aria-controls="data-panel" aria-selected="false" tabindex="-1" data-dataset="faqs">FAQs</button>
+            </div>
+
+            <section class="panel" id="data-panel" role="tabpanel" aria-labelledby="tab-students">
+                <div class="controls">
+                    <div class="control control-search">
+                        <label for="search-input">Search</label>
+                        <input type="search" id="search-input" autocomplete="off">
+                    </div>
+                    <div class="control">
+                        <label for="filter-select" id="filter-label">Filter</label>
+                        <select id="filter-select"></select>
+                    </div>
+                    <div class="control">
+                        <label for="sort-select">Sort by</label>
+                        <select id="sort-select"></select>
+                    </div>
+                    <div class="control">
+                        <label for="page-size-select">Rows</label>
+                        <select id="page-size-select"></select>
+                    </div>
+                </div>
+
+                <div class="status" id="status" role="status" aria-live="polite"></div>
+                <p class="results-summary" id="results-summary" aria-live="polite"></p>
+                <div class="table-area" id="table-area"></div>
+                <nav class="pagination" id="pagination" aria-label="Pagination"></nav>
+            </section>
+
+            <!-- Options for demonstrating the loading, error and cache behaviour -->
+            <details class="testing-tools">
+                <summary>Testing tools (loading, error and cache)</summary>
+                <div class="testing-body">
+                    <label><input type="checkbox" id="simulate-error"> Simulate a loading error (requests a file that does not exist)</label>
+                    <label><input type="checkbox" id="simulate-slow"> Simulate a slow network (3-second delay)</label>
+                    <button type="button" class="btn btn-secondary" id="clear-cache">Clear saved copies (localStorage)</button>
+                    <p class="hint">The last successful response of each dataset is saved in localStorage. If loading fails, that saved copy is shown with a notice; after clearing it, the error message appears instead.</p>
+                </div>
+            </details>
+            <p class="visually-hidden" id="announcer" aria-live="polite"></p>
+        </div>
     </main>
 
-    <footer>
-        <p>&copy; 2026 StudentHub. All rights reserved.</p>
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; <time datetime="2026">2026</time> StudentHub – ITUE203 Practical 6 by Shreyas (25CS023). Sample data only.</p>
+        </div>
     </footer>
-</div>
-
-<script src="assets/js/data.js"></script>
-    <script src="assets/js/nav.js"></script>
 </body>
 </html>
