@@ -1,109 +1,121 @@
-# Practical 13: StudentHub – Fetch API Student Management & Role-Based Navigation
-
-**Course:** ITUE203 - Web Development Frameworks  
-**Department:** Computer Science & Engineering, CSPIT, CHARUSAT  
-**Student:** Shreyas (25CS023)  
-**Academic Year:** 2026-27 | Semester: 3rd  
-**Due Date:** October 24, 2026  
+<div align="center">
+  <h1>🎓 Practical 13</h1>
+  <h3>AJAX Event CRUD with the JavaScript Fetch API and a PHP JSON API (MySQLi)</h3>
+</div>
 
 ---
 
-## 📌 Overview
-A single-page student manager: `index.html` + `script.js` talk to a PHP JSON API (`api.php`) using `fetch()` with `async/await`, so records are listed, added, edited and deleted without reloading the page.
-
-The **role comes only from the server-side login session** (set when you sign in through `Practical-10/login.php`). Any `role` value sent by the browser is ignored, and requests without a session receive HTTP 401.
-
----
-
-## 🔐 What each role can do
-
-| Session role | Navigation items (`get_menu`) | API: read | API: create / update | API: delete | In the page (UI) |
-|---|---|---|---|---|---|
-| Not logged in | – | 401 | 401 | 401 | "Please log in first" message with a login link |
-| `student` | 3 | ✔ | 403 | 403 | Table with "View Only"; add/edit form hidden |
-| `editor` | 5 | ✔ | ✔ | 403 | Edit links shown, but **saving is blocked in the page** (see limitations) |
-| `admin` | 9 | ✔ | ✔ | ✔ | Add, edit and delete |
-
-The role drop-down at the top is locked to the session role; it only displays it.
+### 👨‍🎓 Student Information
+- **Name:** Shreyas
+- **ID:** 25CS023
+- **Course:** ITUE203 - WEB DEVELOPMENT FRAMEWORKS
+- **Year:** 2026-27
 
 ---
 
-## 📂 Files
-- **`schema.sql`** – creates `student_db` with `students`, `menu_items` (navigation links with a minimum role) and `items` (sample resource table).
-- **`db.php`** – PDO connection; returns a JSON 500 error if the database is unavailable.
-- **`api.php`** – JSON API (`whoami`, `get_menu`, `read`, `create`, `update`, `delete`) using PDO prepared statements.
-- **`index.html`**, **`script.js`**, **`style.css`** – the single-page interface.
+### 🎯 Aim
+> List, add, edit/update and delete events stored in MySQL **asynchronously with the Fetch API**, without reloading the page. A PHP API returns **JSON** for every request, handles GET and POST correctly, validates all input before any database operation and reports errors through one central JSON error handler. The page shows loading, success and error states and offers an **AJAX search with debounce**.
 
 ---
 
-## 🚀 Setup
+### 📁 Required Source Files
+| File | Purpose |
+|---|---|
+| `db.php` | MySQLi connection to the isolated database `studenthub_prac13` (errors logged, never shown) |
+| `api.php` | JSON API: `list`, `get` (GET) and `create`, `update`, `delete` (POST); validation; prepared statements; central JSON error handling |
+| `index.html` | Front end: event table, add/edit form, search box, category filter, loading indicator, messages, delete-confirmation dialog |
+| `script.js` | Fetch API implementation: `apiRequest()` wrapper, rendering with `textContent`, debounced search, loading/success/error states |
+| `schema.sql` | Importable MySQL schema + 12 fictional seed events (mysqldump export) |
 
-1. **Databases** (run from the repository root):
-   ```bash
-   mysql -u root < Practical-11/schema.sql            # student_db with sample students (shared with Practical 11)
-   mysql -u root < Practical-13/schema.sql            # adds menu_items and items to student_db
-   mysql -u root < Practical-10/user_registration.sql # login accounts live here
-   ```
-   `Practical-13/schema.sql` on its own creates an empty `students` table, so import Practical 11's schema first if you want sample records.
-2. **Accounts** (password is prompted; none are stored in the repository):
-   ```bash
-   php tools/create_demo_user.php --db=user_registration --username=<name> --email=<email> --role=admin
-   ```
-   Use `--role=student` or `--role=editor` for the other roles.
-3. **Run** from the repository root (the login page is in `Practical-10`):
-   ```bash
-   php -S localhost:8000
-   ```
-4. Sign in at `http://localhost:8000/Practical-10/login.php`, then open `http://localhost:8000/Practical-13/index.html`.
+Helper files: `style.css`, `favicon.svg`, `router.php` (PHP built-in server rules), `start-server.bat`, `.htaccess`, `config.example.php`, `.gitignore`, `.gitattributes`.
 
 ---
 
-## 📡 API Reference (`api.php`)
+### 🚀 How to Run (Windows + XAMPP)
+1. **Start** MySQL (and Apache if you use phpMyAdmin) in the **XAMPP Control Panel**.
+2. **Import the database:** phpMyAdmin → **Import** → `Practical-13\schema.sql` → **Import**, or in the `Practical-13` folder:
+   `C:\xampp\mysql\bin\mysql.exe -u root < schema.sql`
+   This creates **studenthub_prac13** with the table `events` (12 events). Importing again resets the data.
+3. **Start the site:** double-click **`start-server.bat`**, or run in the `Practical-13` folder:
+   `C:\xampp\php\php.exe -S 127.0.0.1:8613 router.php`
+4. **Open http://127.0.0.1:8613/index.html** in Microsoft Edge (F12 → *Network* → *Fetch/XHR* shows the requests to `api.php`).
 
-| Request | Method | Body (JSON) | Allowed roles | Response |
-|---|---|---|---|---|
-| `?action=whoami` | GET | – | any logged-in user | `{"status":"success","username":"…","role":"…"}` |
-| `?action=get_menu` | GET | – | any logged-in user | menu items for the session role |
-| `?action=read&type=students` | GET | – | any logged-in user | list of students |
-| `?action=create&type=students` | POST | `name`, `email`, `course`, `gender` | editor, admin | success message; **409** if the email already exists |
-| `?action=update&type=students` | POST | `id`, `name`, `email`, `course`, `gender` | editor, admin | success message |
-| `?action=delete&type=students` | POST | `id` | admin | success message |
-
-`type=items` works the same way for the `items` table, but only through the API; the page manages students.  
-Errors: **401** not logged in, **403** role not allowed, **409** duplicate email.
+*XAMPP Apache alternative (not tested):* copy the folder to `C:\xampp\htdocs\practical13` and open http://localhost/practical13/.
+**Configuration:** `db.php` uses XAMPP's defaults (`127.0.0.1:3306`, user `root`, empty password). To change them, copy `config.example.php` to `config.local.php` (ignored by Git). No login is needed for this practical.
 
 ---
 
-## ✅ Test status
-Checked with automated HTTP requests (see `TEST_REPORT.md`): anonymous calls return 401; a student's role is read from the session; a student's create and delete are refused with 403 even when the request says `role=admin`; an admin can create and delete; a duplicate email returns a clean 409; the student menu excludes admin items.
+### 🗄️ Database (`studenthub_prac13.events`, InnoDB, utf8mb4)
+| Column | Type | Rules |
+|---|---|---|
+| `event_id` | INT UNSIGNED AUTO_INCREMENT | primary key |
+| `title` | VARCHAR(120) | required, 3–120 characters (CHECK ≥ 3); index |
+| `description` | VARCHAR(1000) | required, 10–1000 characters |
+| `category` | VARCHAR(30) | CHECK: Cultural, Hackathon, Seminar, Sports, Technical, Workshop; index |
+| `event_date`, `start_time` | DATE, TIME | valid date 2000–2100, time HH:MM; composite index |
+| `venue` | VARCHAR(120) | required, 2–120 characters |
+| `capacity` | SMALLINT UNSIGNED | CHECK 1–5000 |
+| `status` | ENUM('open','closed') | default `open` |
+| `created_at`, `updated_at` | DATETIME | `updated_at` changes on every update |
 
-**Not tested:** the page in a browser (rendering, alerts, edit form), API `update`, and the editor role (its permissions above are taken from the code).
-
-## ⚠️ Known limitations
-- An **editor** sees Edit links and the form, but `script.js` blocks saving for every non-admin, so in the page only admins can add or edit. The API itself allows editors to create and update.
-- Some navigation links are placeholders (`#faculty`, `#attendance`, `#students`, `#settings`).
-- `api.php` does not apply Practical 10's 5-minute inactivity timeout.
+Seed data: **12 fictional events (9 open, 3 closed)**.
 
 ---
 
-## 📸 Screenshots to capture for the lab report
-Not captured yet. Take them from the running site; do not show typed passwords or cookies.
+### 🔌 JSON API (`api.php`)
+| Request | Body | Success (HTTP 200) |
+|---|---|---|
+| `GET api.php?action=list[&q=text][&category=…]` | – | `{"ok":true,"count":…,"total":…,"events":[…]}` |
+| `GET api.php?action=get&id=5` | – | `{"ok":true,"event":{…}}` |
+| `POST api.php?action=create` | JSON event | `{"ok":true,"message":"Event “…” was added.","event":{…}}` |
+| `POST api.php?action=update` | JSON event + `event_id` | `{"ok":true,"message":"Event “…” was updated.","event":{…}}` |
+| `POST api.php?action=delete` | `{"event_id":5}` | `{"ok":true,"message":"Event “…” was deleted.","deleted_id":5}` |
 
-**Part 1 – Interface**
-- [ ] 1. Student list loaded after signing in as an admin.
-- [ ] 2. Adding a student: green success alert and the new row, without a page reload.
-- [ ] 3. Editing a student as admin: form filled with the record, then the success alert.
-- [ ] 4. Deleting a student: confirmation prompt, then the row disappears.
-- [ ] 5. Role-based view: the same page signed in as a **student** (View Only, 3 menu items, no form) and as an **admin** (9 menu items, form visible).
-- [ ] 6. Error feedback: adding a student whose email already exists → "A record with that email already exists."
-- [ ] 7. Not logged in (private window): "Please log in first" message with the login link.
+**Errors** are JSON too: `{"ok":false,"error":"…","errors":{"field":"message"}}` with **422** (validation), **404** (unknown event), **405** (wrong method, with `Allow` header), **415** (body not JSON), **400** (invalid JSON / id / action) or **500** (server problem – general message only, details in the PHP log). POST requests must send `Content-Type: application/json` and `X-Requested-With: fetch`, so a plain HTML form on another website cannot change data.
 
-**Part 2 – Network tab (DevTools → Network → Fetch/XHR)**
-- [ ] 8. `GET api.php?action=read` – 200 with the JSON list
-- [ ] 9. `POST api.php?action=create` – 200 with the JSON message
-- [ ] 10. `POST api.php?action=update` – 200 with the JSON message
-- [ ] 11. `POST api.php?action=delete` – 200 with the JSON message
-- [ ] 12. `GET api.php?action=get_menu` – 200 with the role's menu
-- [ ] 13. `GET api.php?action=whoami` while logged out – 401
+**Search:** `q` is matched against title, venue, category and description with `LIKE ?` (the user's `%` and `_` are searched literally). In the page the search box is **debounced** – the request is sent 350 ms after the last key press, and an older, still-running search is cancelled with an `AbortController`.
 
-**Lab report:** `PRAC_13_ITUE203_25CS023.docx` has not been created yet.
+---
+
+### 🔐 Security
+MySQLi **prepared statements** for every query (no `query()`); server-side validation of every field before any INSERT/UPDATE; JSON encoded with `JSON_HEX_TAG|AMP|APOS|QUOT`; the page inserts all data with **`textContent`** (never `innerHTML`), so HTML in a title is shown as text; Content-Security-Policy in `index.html`; `nosniff` and `no-store` on API responses; central exception handler – no SQL or connection details ever reach the browser; `schema.sql`, `README.md`, config files, tests and screenshots answer HTTP 403.
+
+---
+
+### 🧪 Testing
+With MySQL running, in the `Practical-13` folder: **`python tests\test_app.py`** – creates the disposable database `studenthub_prac13_test` from `schema.sql`, starts two PHP servers (normal; MySQL unreachable), tests the API and the source files, and removes the test database. `studenthub_prac13` is not changed.
+
+**Result: 89 of 89 automated checks passed** (PHP 8.2.12, MariaDB 10.4.32, Windows 11); `php -l` found no syntax errors in the 4 PHP files. Output: [`tests/test_output.txt`](tests/test_output.txt), test cases: [`tests/TEST_CASES.md`](tests/TEST_CASES.md).
+
+| Area | Checks |
+|---|---|
+| Required files, `php -l`, MySQLi + prepared statements, Fetch/debounce/textContent in `script.js`, page structure | 13 |
+| Database: 12 events (9/3), InnoDB, indexes, CHECK constraints | 5 |
+| GET list (JSON, fields, types, order) | 4 |
+| Search and category filter (name/venue/category, case-insensitive, `%`/`_` literal, combined, invalid category) | 9 |
+| GET one event (404 / 400 cases) | 6 |
+| POST create (valid, empty → 8 field errors, 13 invalid values, nothing stored) | 17 |
+| POST update (valid, invalid, unknown id, injected id) | 5 |
+| POST delete (valid, again → 404, invalid id) | 3 |
+| Methods, headers and JSON errors (405, 415, 400) | 8 |
+| SQL injection and XSS | 6 |
+| Protected files → 403 | 8 |
+| Server log, MySQL unreachable → JSON 500, test database removed | 5 |
+
+**Browser test in Microsoft Edge:** `tests\browser_screenshots.py` (Playwright) – **13 of 13 checks passed** ([`tests/browser_output.txt`](tests/browser_output.txt)): list loaded by fetch; add, update and delete send POST requests and change the table **without reloading the page** (a marker variable survives and the page navigates only once); delete asks for confirmation; typing `lab` key by key sends **one** debounced request; the loading indicator appears with real network throttling; a server 422 error is shown; HTML in a title is displayed as text; no JavaScript errors.
+
+---
+
+### 📸 Screenshots (`screenshots/`, 12 genuine captures, Microsoft Edge)
+`event-list.png`, `add-event-form.png`, `successful-add.png`, `edit-event-form.png`, `successful-update.png`, `delete-confirmation.png`, `successful-delete.png`, `loading-state.png` (real throttling: 2.5 s latency via the DevTools protocol), `error-state.png` (HTTP 422 from the API), `network-get-json.png`, `network-post-add.png`, `network-crud-operations.png`.
+
+The first nine come from `tests\browser_screenshots.py`. The three Network screenshots show the **real Edge DevTools**: `tests\network_screenshots.py` opens the app in a headless Edge, connects Edge's own DevTools front end to it (with a live screencast of the page) and presses the app's buttons, so every listed request is a genuine `fetch()` from `script.js` to `api.php`. Each shows the request in the Network panel (method, **200 OK**, `Content-Type: application/json`) and its real JSON response opened with *Open in Sources panel*. Both scripts change data, so `schema.sql` was re-imported afterwards.
+
+Report: `PRAC_13_ITUE203_25CS023.docx` and `PRAC_13_ITUE203_25CS023.pdf`.
+
+---
+
+### ⚠️ Limitations
+- No login (not required for this practical) – anyone who can open the page can change events.
+- No pagination; the list shows every matching event.
+- Tested with the PHP built-in server, MariaDB 10.4 and Microsoft Edge; XAMPP Apache, MySQL 8 and other browsers were not tested.

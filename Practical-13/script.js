@@ -1,388 +1,258 @@
-// Practical 13: StudentHub AJAX/Fetch CRUD & Dynamic RBAC Navigation
-const API_URL = 'api.php';
+// StudentHub – Practical 13: asynchronous CRUD with the Fetch API. Every request goes to api.php and returns JSON;
+// the page is never reloaded. Data from the server is always inserted with textContent (never innerHTML), so
+// HTML or script inside an event title is displayed as plain text.
+'use strict';
 
-const iconMap = {
-    'Student Dashboard': '📊',
-    'My Profile': '👤',
-    'Campus Events': '🎪',
-    'Faculty Portal': '🏛️',
-    'Student Attendance': '📋',
-    'Admin Console': '⚙️',
-    'Student Records (CRUD)': '👥',
-    'User Management': '🔐',
-    'System Settings': '🛠️'
-};
+const API = 'api.php';
+const $ = (id) => document.getElementById(id);
+let currentList = null;      // AbortController of the running list request (stale searches are cancelled)
+let searchTimer = null;
+let events = [];
 
-let sessionUsername = '';
+// ---------------------------------------------------------------- Fetch wrapper
+// Sends a request, parses the JSON answer and throws an Error with the server's message for any non-OK response.
+async function apiRequest(action, { method = 'GET', params = {}, body = null, signal } = {}) {
+    const url = new URL(API, window.location.href);
+    url.searchParams.set('action', action);
+    Object.entries(params).forEach(([k, v]) => { if (v !== '' && v != null) url.searchParams.set(k, v); });
+    const options = { method, signal, headers: { Accept: 'application/json' } };
+    if (body !== null) {
+        options.headers['Content-Type'] = 'application/json';
+        options.headers['X-Requested-With'] = 'fetch';
+        options.body = JSON.stringify(body);
+    }
+    let response;
+    try {
+        response = await fetch(url, options);
+    } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        throw new Error('The server could not be reached. Check that the PHP server is running.');
+    }
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error(`The server sent an invalid response (HTTP ${response.status}).`);
+    }
+    if (!response.ok || !data.ok) {
+        const error = new Error(data.error || `Request failed (HTTP ${response.status}).`);
+        error.fields = data.errors || {};
+        error.status = response.status;
+        throw error;
+    }
+    return data;
+}
 
+// ---------------------------------------------------------------- UI helpers
+function showMessage(text, type = 'success') {
+    const box = $('message');
+    box.textContent = text;
+    box.className = `message message-${type}`;
+    box.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    box.hidden = false;
+}
+
+function setLoading(on, text = 'Loading events…') {
+    $('loading-text').textContent = text;
+    $('loading').hidden = !on;
+    document.body.classList.toggle('is-loading', on);
+}
+
+function formatDate(date, time) {
+    const d = new Date(`${date}T${time}`);
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+        + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function cell(row, text, className) {
+    const td = row.insertCell();
+    td.textContent = text;
+    if (className) td.className = className;
+    return td;
+}
+
+function renderRows(list, highlightId = null) {
+    const tbody = $('event-rows');
+    tbody.replaceChildren();
+    if (list.length === 0) {
+        const td = tbody.insertRow().insertCell();
+        td.colSpan = 8;
+        td.className = 'empty';
+        td.textContent = 'No events match your search.';
+        return;
+    }
+    for (const ev of list) {
+        const tr = tbody.insertRow();
+        tr.dataset.id = ev.event_id;
+        if (ev.event_id === highlightId) tr.classList.add('highlight');
+        cell(tr, ev.event_id);
+        cell(tr, ev.title, 'title');
+        cell(tr, ev.category).classList.add('nowrap');
+        cell(tr, formatDate(ev.event_date, ev.start_time), 'nowrap');
+        cell(tr, ev.venue);
+        cell(tr, ev.capacity, 'num');
+        const badge = document.createElement('span');
+        badge.className = `badge badge-${ev.status}`;
+        badge.textContent = ev.status === 'open' ? 'Open' : 'Closed';
+        tr.insertCell().append(badge);
+        const actions = tr.insertCell();
+        actions.className = 'actions';
+        for (const [label, cls, handler] of [['Edit', 'btn-secondary', () => openForm(ev)], ['Delete', 'btn-danger', () => confirmDelete(ev)]]) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = `btn btn-small ${cls}`;
+            b.textContent = label;
+            b.setAttribute('aria-label', `${label} ${ev.title}`);
+            b.addEventListener('click', handler);
+            actions.append(b);
+        }
+    }
+}
+
+// ---------------------------------------------------------------- READ (with search)
+async function loadEvents(highlightId = null) {
+    if (currentList) currentList.abort();
+    currentList = new AbortController();
+    const q = $('search').value.trim();
+    const category = $('filter-category').value;
+    setLoading(true, q ? `Searching for “${q}”…` : 'Loading events…');
+    try {
+        const data = await apiRequest('list', { params: { q, category }, signal: currentList.signal });
+        events = data.events;
+        renderRows(events, highlightId);
+        $('summary').textContent = `Showing ${data.count} of ${data.total} events` + (q ? ` matching “${q}”` : '') + (category ? ` in ${category}` : '') + '.';
+    } catch (err) {
+        if (err.name === 'AbortError') return;     // a newer search replaced this one
+        renderRows([]);
+        $('summary').textContent = '';
+        showMessage(err.message, 'error');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// Debounce: wait until the user stops typing for 350 ms before sending the search request
+function onSearchInput() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadEvents(), 350);
+}
+
+// ---------------------------------------------------------------- CREATE / UPDATE
+function clearFieldErrors() {
+    document.querySelectorAll('[data-error-for]').forEach((p) => { p.textContent = ''; });
+    document.querySelectorAll('#event-form [aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+}
+
+function showFieldErrors(fields) {
+    for (const [name, text] of Object.entries(fields)) {
+        const p = document.querySelector(`[data-error-for="${CSS.escape(name)}"]`);
+        const input = $(name);
+        if (p) p.textContent = text;
+        if (input) input.setAttribute('aria-invalid', 'true');
+    }
+}
+
+function openForm(ev = null) {
+    const form = $('event-form');
+    form.reset();
+    clearFieldErrors();
+    $('event_id').value = ev ? ev.event_id : '';
+    $('form-title').textContent = ev ? `Edit event #${ev.event_id}` : 'Add event';
+    $('save-btn').textContent = ev ? 'Save changes' : 'Save event';
+    if (ev) {
+        for (const k of ['title', 'description', 'category', 'event_date', 'start_time', 'venue', 'capacity', 'status']) {
+            $(k).value = ev[k];
+        }
+    }
+    $('form-card').hidden = false;
+    $('title').focus();
+}
+
+function closeForm() {
+    $('form-card').hidden = true;
+    $('event-form').reset();
+    clearFieldErrors();
+}
+
+// Browser-side check before sending (the server validates again – it is the real check)
+function clientErrors(data) {
+    const e = {};
+    if (data.title.trim().length < 3) e.title = 'Title must be at least 3 characters.';
+    if (data.description.trim().length < 10) e.description = 'Description must be at least 10 characters.';
+    if (!data.category) e.category = 'Category is required.';
+    if (!data.event_date) e.event_date = 'Date is required.';
+    if (!data.start_time) e.start_time = 'Start time is required.';
+    if (data.venue.trim().length < 2) e.venue = 'Venue must be at least 2 characters.';
+    if (!/^\d+$/.test(data.capacity) || +data.capacity < 1 || +data.capacity > 5000) e.capacity = 'Capacity must be 1–5000.';
+    return e;
+}
+
+async function saveEvent(event) {
+    event.preventDefault();
+    clearFieldErrors();
+    const data = Object.fromEntries(new FormData($('event-form')).entries());
+    const isEdit = data.event_id !== '';
+    const errors = clientErrors(data);
+    if (Object.keys(errors).length) {
+        showFieldErrors(errors);
+        showMessage('Please correct the highlighted fields.', 'error');
+        return;
+    }
+    if (!isEdit) delete data.event_id;
+    const button = $('save-btn');
+    button.disabled = true;
+    setLoading(true, isEdit ? 'Saving changes…' : 'Adding event…');
+    try {
+        const result = await apiRequest(isEdit ? 'update' : 'create', { method: 'POST', body: data });
+        closeForm();
+        showMessage(result.message, 'success');
+        await loadEvents(result.event.event_id);
+    } catch (err) {
+        showFieldErrors(err.fields || {});
+        showMessage(err.message, 'error');
+    } finally {
+        button.disabled = false;
+        setLoading(false);
+    }
+}
+
+// ---------------------------------------------------------------- DELETE
+let pendingDelete = null;
+
+function confirmDelete(ev) {
+    pendingDelete = ev;
+    $('confirm-name').textContent = `“${ev.title}”`;
+    $('confirm-dialog').showModal();
+}
+
+async function deleteConfirmed() {
+    const ev = pendingDelete;
+    $('confirm-dialog').close();
+    if (!ev) return;
+    setLoading(true, 'Deleting event…');
+    try {
+        const result = await apiRequest('delete', { method: 'POST', body: { event_id: ev.event_id } });
+        const row = document.querySelector(`tr[data-id="${ev.event_id}"]`);
+        if (row) row.remove();
+        events = events.filter((e) => e.event_id !== ev.event_id);
+        showMessage(result.message, 'success');
+        await loadEvents();
+    } catch (err) {
+        showMessage(err.message, 'error');
+    } finally {
+        pendingDelete = null;
+        setLoading(false);
+    }
+}
+
+// ---------------------------------------------------------------- start
 document.addEventListener('DOMContentLoaded', () => {
-    initSession();
+    $('new-event-btn').addEventListener('click', () => openForm());
+    $('cancel-btn').addEventListener('click', closeForm);
+    $('event-form').addEventListener('submit', saveEvent);
+    $('search').addEventListener('input', onSearchInput);
+    $('filter-category').addEventListener('change', () => loadEvents());
+    $('confirm-yes').addEventListener('click', deleteConfirmed);
+    $('confirm-no').addEventListener('click', () => { pendingDelete = null; $('confirm-dialog').close(); });
+    loadEvents();
 });
-
-// -------------------------------------------------------------
-// 0. Load the real role from the server-side session (cannot be chosen in the browser)
-// -------------------------------------------------------------
-async function initSession() {
-    const roleSelector = document.getElementById('roleSelector');
-    try {
-        const res = await fetch(`${API_URL}?action=whoami`);
-        const result = await res.json();
-        if (!res.ok || result.status !== 'success') {
-            showAlert(escapeHtml(result.message || 'Please log in first.') + ' <a href="../Practical-10/login.php">Go to login</a>', 'error', 0);
-            return;
-        }
-        sessionUsername = result.username;
-        if (roleSelector) {
-            roleSelector.value = result.role;
-            roleSelector.disabled = true;
-        }
-        handleRoleChange();
-    } catch (err) {
-        showAlert('Could not reach the API: ' + escapeHtml(err.message), 'error', 0);
-    }
-}
-
-// -------------------------------------------------------------
-// 1. Role Change Handler (Visibility & Permissions Enforced)
-// -------------------------------------------------------------
-function handleRoleChange() {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-    const roleBadge = document.getElementById('roleBadge');
-    const userNamePill = document.getElementById('userNamePill');
-    const formCard = document.getElementById('formCard');
-    const statusAlert = document.getElementById('statusAlert');
-
-    // Hide any old status alert banner when role changes
-    if (statusAlert) {
-        statusAlert.style.display = 'none';
-    }
-
-    // Update Top Bar Badges and User Profile
-    if (roleBadge && userNamePill) {
-        if (role === 'admin') {
-            roleBadge.className = 'badge badge-admin';
-            roleBadge.innerText = '👑 ADMIN PORTAL';
-            userNamePill.innerText = `👤 ${sessionUsername} (Admin)`;
-        } else if (role === 'editor') {
-            roleBadge.className = 'badge badge-editor';
-            roleBadge.innerText = '👨‍🏫 FACULTY PORTAL';
-            userNamePill.innerText = `👤 ${sessionUsername} (Faculty)`;
-        } else {
-            roleBadge.className = 'badge badge-student';
-            roleBadge.innerText = '👨‍🎓 STUDENT PORTAL';
-            userNamePill.innerText = `👤 ${sessionUsername} (Student)`;
-        }
-    }
-
-    // Role-Based UI Display: Only Admins can see the "Add New Student" form
-    if (formCard) {
-        if (role === 'admin') {
-            formCard.style.display = 'block';
-        } else {
-            // Students and Faculty cannot register students - form is hidden
-            formCard.style.display = 'none';
-        }
-    }
-
-    loadMenu();
-    loadData();
-}
-
-// -------------------------------------------------------------
-// 2. Dynamic RBAC Navigation Menu (Fetch GET)
-// -------------------------------------------------------------
-async function loadMenu() {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-    const menuUl = document.getElementById('dynamicMenu');
-    const moduleCount = document.getElementById('moduleCount');
-
-    try {
-        const res = await fetch(`${API_URL}?action=get_menu&role=${encodeURIComponent(role)}`);
-        const result = await res.json();
-
-        menuUl.innerHTML = '';
-
-        if (result.status === 'success' && Array.isArray(result.data)) {
-            if (moduleCount) {
-                moduleCount.innerText = `${result.data.length} Modules Active`;
-            }
-
-            result.data.forEach(item => {
-                const li = document.createElement('li');
-                const a = document.createElement('a');
-                a.href = item.link;
-
-                const icon = iconMap[item.title] || '🔗';
-                a.innerHTML = `<span style="font-size:14px;">${icon}</span> <span>${item.title}</span>`;
-
-                if (item.title === 'Student Records (CRUD)') {
-                    a.classList.add('active-link');
-                }
-
-                li.appendChild(a);
-                menuUl.appendChild(li);
-            });
-            console.log(`[RBAC] Loaded ${result.data.length} modules for: ${role}`);
-        } else {
-            showAlert('Failed to load navigation menu.', 'error');
-        }
-    } catch (err) {
-        console.error('Menu Fetch Error:', err);
-        showAlert('Network error while loading RBAC menu.', 'error');
-    }
-}
-
-// -------------------------------------------------------------
-// 3. Read Student Records (Fetch GET with Role Awareness)
-// -------------------------------------------------------------
-async function loadData() {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-    const tbody = document.getElementById('itemsTableBody');
-
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#718096; font-style:italic;">⏳ Loading student records from database...</td></tr>`;
-
-    try {
-        const res = await fetch(`${API_URL}?action=read&type=students&role=${encodeURIComponent(role)}`);
-        const result = await res.json();
-
-        tbody.innerHTML = '';
-
-        if (result.status === 'success' && Array.isArray(result.data)) {
-            if (result.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#718096;">No student records found.</td></tr>`;
-                return;
-            }
-
-            result.data.forEach(row => {
-                const tr = document.createElement('tr');
-                const statusClass = (row.status || 'Active').toLowerCase() === 'active' ? 'badge-status-active' : 'badge-status-inactive';
-
-                // Render Actions column based on Role
-                let actionHtml = '';
-                if (role === 'user') {
-                    // Students see View Only badge (no edit/delete)
-                    actionHtml = `<span class="badge-restricted">View Only</span>`;
-                } else if (role === 'editor') {
-                    // Faculty can Edit details
-                    actionHtml = `
-                        <a href="javascript:void(0)" onclick="editStudent(${row.id}, '${escapeJs(row.name)}', '${escapeJs(row.email)}', '${escapeJs(row.course)}', '${escapeJs(row.gender)}')">Edit</a>
-                    `;
-                } else {
-                    // Admin has full Edit & Delete permissions
-                    actionHtml = `
-                        <a href="javascript:void(0)" onclick="editStudent(${row.id}, '${escapeJs(row.name)}', '${escapeJs(row.email)}', '${escapeJs(row.course)}', '${escapeJs(row.gender)}')">Edit</a>
-                        |
-                        <a href="javascript:void(0)" class="btn-delete" onclick="deleteStudent(${row.id})">Delete</a>
-                    `;
-                }
-
-                tr.innerHTML = `
-                    <td>${row.id}</td>
-                    <td><strong>${escapeHtml(row.name)}</strong></td>
-                    <td>${escapeHtml(row.email)}</td>
-                    <td>${escapeHtml(row.course)}</td>
-                    <td>${escapeHtml(row.gender)}</td>
-                    <td><span class="${statusClass}">${escapeHtml(row.status || 'Active')}</span></td>
-                    <td class="action-links">${actionHtml}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-            console.log(`[CRUD] Asynchronously rendered ${result.data.length} student records for role: ${role}.`);
-        } else {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to load records: ${result.message || ''}</td></tr>`;
-            showAlert(result.message || 'Error loading records', 'error');
-        }
-    } catch (err) {
-        console.error('Fetch read error:', err);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Error connecting to API. Check console.</td></tr>`;
-        showAlert('Network error while fetching student list.', 'error');
-    }
-}
-
-// -------------------------------------------------------------
-// 4. Create or Update Student (Fetch POST without page reload)
-// -------------------------------------------------------------
-async function handleFormSubmit(event) {
-    event.preventDefault(); // Prevent standard browser page reload
-
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-
-    if (role !== 'admin') {
-        showAlert('⚠️ Access Denied: Only Administrators can create records.', 'error');
-        return;
-    }
-
-    const id = document.getElementById('recordId').value;
-    const name = document.getElementById('recordName').value.trim();
-    const email = document.getElementById('recordEmail').value.trim();
-    const course = document.getElementById('recordCourse').value;
-    const gender = document.getElementById('recordGender').value;
-    const submitBtn = document.getElementById('submitBtn');
-
-    if (!name || !email || !course || !gender) {
-        showAlert('Please fill in all student details.', 'error');
-        return;
-    }
-
-    const action = id ? 'update' : 'create';
-    const payload = { id, name, email, course, gender, role };
-
-    submitBtn.disabled = true;
-    showAlert(id ? '⏳ Updating student details via Fetch API...' : '⏳ Adding new student via Fetch API...', 'loading');
-
-    try {
-        const res = await fetch(`${API_URL}?action=${action}&type=students&role=${encodeURIComponent(role)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await res.json();
-        submitBtn.disabled = false;
-
-        if (result.status === 'success') {
-            showAlert(`✅ ${result.message}`, 'success');
-            resetForm();
-            loadData();
-        } else {
-            showAlert(`⚠️ ${result.message || 'Operation failed'}`, 'error');
-        }
-    } catch (err) {
-        submitBtn.disabled = false;
-        console.error('Save error:', err);
-        showAlert('Network error while saving student record.', 'error');
-    }
-}
-
-// -------------------------------------------------------------
-// 5. Populate Form for Editing Student
-// -------------------------------------------------------------
-function editStudent(id, name, email, course, gender) {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-
-    if (role === 'user') {
-        showAlert('⚠️ Access Denied: Students do not have editing permissions.', 'error');
-        return;
-    }
-
-    const formCard = document.getElementById('formCard');
-    if (formCard) formCard.style.display = 'block';
-
-    document.getElementById('recordId').value = id;
-    document.getElementById('recordName').value = name;
-    document.getElementById('recordEmail').value = email;
-    document.getElementById('recordCourse').value = course;
-    document.getElementById('recordGender').value = gender;
-
-    document.getElementById('formTitle').innerText = 'Edit Student Details';
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = false;
-    submitBtn.innerText = 'Save Changes';
-    submitBtn.className = 'btn btn-success';
-    document.getElementById('cancelBtn').style.display = 'inline-block';
-
-    document.getElementById('recordName').focus();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// -------------------------------------------------------------
-// 6. Delete Student Record (Fetch POST with Role Checking)
-// -------------------------------------------------------------
-async function deleteStudent(id) {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-
-    if (role !== 'admin') {
-        showAlert('⚠️ Access Denied: Only Administrators can delete student records.', 'error');
-        return;
-    }
-
-    if (!confirm('Are you sure you want to delete this student record?')) {
-        return;
-    }
-
-    showAlert(`⏳ Deleting student #${id} via Fetch API...`, 'loading');
-
-    try {
-        const res = await fetch(`${API_URL}?action=delete&type=students&role=${encodeURIComponent(role)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, role })
-        });
-
-        const result = await res.json();
-
-        if (result.status === 'success') {
-            showAlert(`✅ ${result.message}`, 'success');
-            loadData();
-        } else {
-            showAlert(`⚠️ ${result.message || 'Deletion failed'}`, 'error');
-        }
-    } catch (err) {
-        console.error('Delete error:', err);
-        showAlert('Network error while deleting student record.', 'error');
-    }
-}
-
-// -------------------------------------------------------------
-// 7. Reset Form State
-// -------------------------------------------------------------
-function resetForm() {
-    const roleSelector = document.getElementById('roleSelector');
-    const role = roleSelector ? roleSelector.value : 'admin';
-
-    document.getElementById('recordId').value = '';
-    document.getElementById('crudForm').reset();
-    document.getElementById('formTitle').innerText = 'Add New Student';
-    const submitBtn = document.getElementById('submitBtn');
-
-    submitBtn.disabled = false;
-    submitBtn.innerText = '+ Add Student';
-    submitBtn.className = 'btn btn-success';
-    document.getElementById('cancelBtn').style.display = 'none';
-
-    // If role is not admin, hide form card after cancel
-    const formCard = document.getElementById('formCard');
-    if (formCard && role !== 'admin') {
-        formCard.style.display = 'none';
-    }
-}
-
-// -------------------------------------------------------------
-// 8. Live Notification Alerts (Only shown on form action/error)
-// -------------------------------------------------------------
-let alertTimer = null;
-function showAlert(message, type = 'info', autoCloseMs = 5000) {
-    const alertBox = document.getElementById('statusAlert');
-    if (!alertBox) return;
-
-    if (alertTimer) {
-        clearTimeout(alertTimer);
-    }
-
-    alertBox.className = `alert-${type}`;
-    alertBox.innerHTML = message;
-    alertBox.style.display = 'flex';
-
-    if (autoCloseMs && type !== 'loading') {
-        alertTimer = setTimeout(() => {
-            alertBox.style.display = 'none';
-        }, autoCloseMs);
-    }
-}
-
-// Security / Utility helpers
-function escapeHtml(str) {
-    if (typeof str !== 'string') return str;
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function escapeJs(str) {
-    if (typeof str !== 'string') return str;
-    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-}

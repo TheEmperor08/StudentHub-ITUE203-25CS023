@@ -1,0 +1,119 @@
+StudentHub Practical 13 tests  (PHP: C:\xampp\php\php.exe, MySQL: C:\xampp\mysql\bin\mysql.exe)
+
+== Required files and static checks
+PASS  required file Practical-13/db.php exists
+PASS  required file Practical-13/api.php exists
+PASS  required file Practical-13/index.html exists
+PASS  required file Practical-13/script.js exists
+PASS  required file Practical-13/schema.sql exists
+PASS  php -l: no syntax errors in all 4 PHP files
+PASS  db.php uses MySQLi (new mysqli), not PDO
+PASS  api.php: prepared statements only (no query()/multi_query)
+PASS  script.js uses fetch() with GET and POST and JSON
+PASS  script.js never uses innerHTML / document.write / eval (data inserted with textContent)
+PASS  script.js debounces the search (setTimeout 350 ms, clearTimeout) and cancels stale requests (AbortController)
+PASS  index.html loads script.js, has the table, form, search, loading indicator and confirm dialog
+PASS  the event form does not submit to the server by itself (no action attribute, handled by Fetch)
+
+== Database (schema.sql imported into studenthub_prac13_test)
+PASS  12 seed events: 9 open, 3 closed
+PASS  table is InnoDB
+PASS  indexes on date, category and title
+PASS  CHECK constraint chk_events_category enforced
+PASS  CHECK constraint chk_events_capacity enforced
+
+== GET list
+PASS  GET list -> 200, Content-Type application/json, valid JSON {ok:true}
+PASS  list returns all 12 events with count/total
+PASS  event fields and types (ids/capacity are numbers, time HH:MM)
+PASS  events sorted by date and time
+
+== Search (used by the debounced search box) and category filter
+PASS  q='workshop' -> 2 event(s)
+PASS  q='LAB' -> 3 event(s)
+PASS  q='Robotics' -> 1 event(s)
+PASS  q='zzzz' -> 0 event(s)
+PASS  q='%' -> 0 event(s)
+PASS  q='_' -> 0 event(s)
+PASS  category=Sports -> only Sports events
+PASS  search + category combined
+PASS  unknown category is ignored (all events)
+
+== GET one event
+PASS  get id=3 -> 200 with the event
+PASS  get {'id': '9999'} -> 404 JSON error
+PASS  get without id -> 400 JSON error
+PASS  get {'id': '1 OR 1=1'} -> 400 JSON error
+PASS  get {'id': '-1'} -> 400 JSON error
+PASS  get {'id': 'abc'} -> 400 JSON error
+
+== POST create
+PASS  valid create -> 200 {ok:true, message, event}
+PASS  row inserted, spaces in the title cleaned, capacity stored as number
+PASS  empty create -> 422 with an error for all 8 fields
+PASS  invalid title 'AB' -> 422 with an error for title
+PASS  invalid title 'xxxxxxxxxxxxxxxxxxxx' -> 422 with an error for title
+PASS  invalid description 'short' -> 422 with an error for description
+PASS  invalid category 'Music' -> 422 with an error for category
+PASS  invalid event_date '2026-02-30' -> 422 with an error for event_date
+PASS  invalid event_date '2150-01-01' -> 422 with an error for event_date
+PASS  invalid start_time '25:00' -> 422 with an error for start_time
+PASS  invalid venue 'X' -> 422 with an error for venue
+PASS  invalid capacity '0' -> 422 with an error for capacity
+PASS  invalid capacity '5001' -> 422 with an error for capacity
+PASS  invalid capacity '12abc' -> 422 with an error for capacity
+PASS  invalid status 'pending' -> 422 with an error for status
+PASS  invalid title "['array']" -> 422 with an error for title
+PASS  no invalid event was stored
+
+== POST update
+PASS  valid update -> 200 {ok:true}, row changed
+PASS  update returns the saved event
+PASS  invalid update -> 422, row unchanged
+PASS  update of an unknown event -> 404
+PASS  update with event_id '1 OR 1=1' -> 400, nothing changed
+
+== POST delete
+PASS  delete -> 200 {ok:true, deleted_id}, row removed
+PASS  deleting it again -> 404 'not found'
+PASS  delete with an invalid id -> 400, nothing deleted
+
+== Methods, headers and JSON errors
+PASS  GET on create -> 405 JSON with Allow: POST
+PASS  POST on list -> 405 with Allow: GET
+PASS  form-encoded POST (like a cross-site HTML form) -> 415, nothing stored
+PASS  JSON POST without X-Requested-With -> 400
+PASS  invalid JSON body -> 400 'not valid JSON'
+PASS  JSON array instead of object -> 400
+PASS  oversized body -> 400
+PASS  unknown action -> 400 JSON
+
+== SQL injection and XSS
+PASS  search "' OR '1'='1" -> 0 results, 200
+PASS  UNION injection in search -> 0 results, no error
+PASS  SQL metacharacters stored literally, table intact
+PASS  HTML is stored as text and returned unchanged in JSON
+PASS  JSON escapes < > & ' " (\u003C…) so it can never be read as HTML
+PASS  API responses have X-Content-Type-Options: nosniff and Cache-Control: no-store
+
+== Protected files
+PASS  /schema.sql -> 403
+PASS  /README.md -> 403
+PASS  /config.example.php -> 403
+PASS  /router.php -> 403
+PASS  /tests/test_app.py -> 403
+PASS  /.gitignore -> 403
+PASS  /db.php -> 403
+PASS  /start-server.bat -> 403
+
+== Server log
+PASS  no PHP warnings, notices or errors logged
+
+== MySQL unreachable (centralized JSON error handling)
+PASS  list -> 500 JSON {ok:false, error} with a general message
+PASS  no SQL / connection details in the response
+PASS  the real error is in the PHP log
+PASS  test database removed
+(studenthub_prac13 was not used by the tests; it holds 12 events)
+
+Result: 89 passed, 0 failed, 89 checks

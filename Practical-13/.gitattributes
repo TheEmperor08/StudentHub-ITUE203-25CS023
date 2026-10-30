@@ -1,0 +1,5 @@
+# Windows batch files need CRLF line endings; images and documents are binary
+*.bat text eol=crlf
+*.png binary
+*.docx binary
+*.pdf binary
