@@ -1,21 +1,12 @@
 <?php
-session_start();
-$_SESSION = [];
+// StudentHub – Practical 12: secure logout. Only a POST with the CSRF token logs out (another site cannot log the
+// administrator out); the session data, the cookie and the server-side session are all removed.
+declare(strict_types=1);
+require_once __DIR__ . '/includes/functions.php';
 
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(
-        session_name(),
-        '',
-        time() - 42000,
-        $params["path"],
-        $params["domain"],
-        $params["secure"],
-        $params["httponly"]
-    );
+start_app();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_is_valid($_POST['csrf_token'] ?? null)) {
+    redirect(current_admin() ? 'index.php' : 'login.php');
 }
-
-session_destroy();
-header("Location: login.php?message=You have been logged out successfully.");
-exit();
-?>
+end_session();
+redirect('login.php?status=logged_out');

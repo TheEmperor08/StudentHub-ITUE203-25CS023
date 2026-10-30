@@ -1,0 +1,195 @@
+StudentHub Practical 12 tests  (PHP: C:\xampp\php\php.exe, MySQL: C:\xampp\mysql\bin\mysql.exe)
+
+== Static checks
+PASS  php -l: no syntax errors in all 15 PHP files
+PASS  no ->query() / mysqli_query() / multi_query (prepared statements only)
+PASS  SQL goes through prepare() + execute()
+PASS  upload validation uses finfo, getimagesize, is_uploaded_file, move_uploaded_file and random_bytes
+PASS  move_uploaded_file / unlink only in includes/upload.php (and the clean-up tool)
+PASS  uploads/.htaccess: Require all denied, php engine off, script handlers removed
+PASS  tools/set_admin_password.php sets a password_hash() hash (test database)
+
+== Database (studenthub_prac12.sql imported into studenthub_prac12_test)
+PASS  12 seed events: 8 open, 4 closed
+PASS  6 categories, every event has a valid category (foreign key)
+PASS  1 administrator, password stored as a bcrypt hash
+PASS  all tables are InnoDB
+PASS  indexes on category, status, date and a UNIQUE poster_filename
+PASS  every seed poster name has the random format and the file exists
+PASS  unknown category refused by the foreign key
+PASS  CHECK refuses a poster name like ../db.php
+PASS  UNIQUE refuses two events sharing one poster file
+PASS  CHECK refuses a plaintext admin password
+
+== Administrator authentication and access control
+PASS  not logged in: GET index.php -> 401 'Access denied', no event data
+PASS  not logged in: GET add.php -> 401 'Access denied', no event data
+PASS  not logged in: GET edit.php -> 401 'Access denied', no event data
+PASS  not logged in: GET view.php -> 401 'Access denied', no event data
+PASS  not logged in: GET delete.php -> 401 'Access denied', no event data
+PASS  not logged in: GET poster.php -> 401 'Access denied', no event data
+PASS  not logged in: POST add.php / delete.php -> 401, nothing changed
+PASS  login page 200 with CSRF token; cookie HttpOnly + SameSite=Strict
+PASS  failed login (wrong password) -> 401 'Invalid email or password.'
+PASS  failed login (unknown email) -> 401 'Invalid email or password.'
+PASS  failed login (SQL injection ' OR '1'='1) -> 401 'Invalid email or password.'
+PASS  failed login (empty fields) -> 401 'Invalid email or password.'
+PASS  login without CSRF token refused
+PASS  valid login -> 303 to index.php with welcome message
+PASS  session ID regenerated at login
+PASS  the pre-login session ID gives no access
+PASS  last_login_at stored
+PASS  protected pages send Cache-Control: no-store and a CSP
+
+== Event list and poster delivery
+PASS  index.php lists all 12 events
+PASS  table shows poster, event, category, date & time, venue, status
+PASS  12 poster thumbnails delivered through poster.php
+PASS  Open and Closed status badges shown
+PASS  poster.php returns the exact image bytes with an image Content-Type and nosniff
+PASS  view.php shows the event details and the full-size poster
+
+== Path traversal and upload-folder protection
+PASS  poster.php?file='../db.php' -> 404, nothing revealed
+PASS  poster.php?file='..%2Fdb.php' -> 404, nothing revealed
+PASS  poster.php?file='..\\db.php' -> 404, nothing revealed
+PASS  poster.php?file='%2e%2e%2fdb.php' -> 404, nothing revealed
+PASS  poster.php?file='C:\\Users\\HP\\Desktop\\Stu hub\\StudentHub-u' -> 404, nothing revealed
+PASS  poster.php?file='C:/Windows/win.ini' -> 404, nothing revealed
+PASS  poster.php?file='x.php' -> 404, nothing revealed
+PASS  poster.php?file='AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.jpg' -> 404, nothing revealed
+PASS  poster.php?file='1a023e38c1e411c26656d6a75e9ede04.jpg/../' -> 404, nothing revealed
+PASS  poster.php?file='' -> 404, nothing revealed
+PASS  direct request /uploads/1a023e38c1e411c26656d6a75e9ede04.jpg -> 403
+PASS  direct request /uploads/.htaccess -> 403
+PASS  direct request /uploads/ -> 403
+PASS  direct request /uploads/shell.php -> 403
+PASS  direct request /Uploads/x.php -> 403
+PASS  direct request /uploads%2Fx.php -> 403
+PASS  PHP code inside the upload folder is never executed (sent as raw bytes with an image type)
+
+== Create event with poster upload
+PASS  valid JPG poster -> 303, success message, 1 new event
+PASS  JPG: stored under a random name '<32 hex>.jpg', identical bytes, original name not used
+PASS  valid PNG poster -> 303, success message, 1 new event
+PASS  PNG: stored under a random name '<32 hex>.png', identical bytes, original name not used
+PASS  valid WEBP poster -> 303, success message, 1 new event
+PASS  WEBP: stored under a random name '<32 hex>.webp', identical bytes, original name not used
+PASS  three uploads got three different random names
+PASS  upload named '../../db.php.jpg' is stored under a random name inside the upload folder
+PASS  after adding, the list highlights the new event
+
+== Event validation
+PASS  empty form -> 422 with an error for title, description, category, date, time, venue and poster
+PASS  tampered values: unknown category, 30 Feb, 25:00, status 'pending', 2-letter title -> all refused
+PASS  valid poster + invalid fields -> 422 and 'poster must be chosen again'
+PASS  no event and no file were stored by the rejected forms
+
+== Poster validation (rejected files)
+PASS  valid PNG renamed to .gif -> rejected ('Invalid file type')
+PASS  PHP script poster.php -> rejected ('Invalid file type')
+PASS  PHP script disguised as poster.jpg -> rejected ('Invalid file type')
+PASS  SVG image poster.svg -> rejected ('Invalid file type')
+PASS  SVG disguised as poster.png -> rejected ('not a JPEG, PNG or WebP')
+PASS  Windows executable as poster.jpg -> rejected ('not a JPEG, PNG or WebP')
+PASS  MIME mismatch: PNG content named .jpg -> rejected ('does not match its content')
+PASS  MIME mismatch: JPEG content named .webp -> rejected ('does not match its content')
+PASS  corrupted JPEG (valid header, garbage body) -> rejected ('not a valid image or is damaged')
+PASS  truncated PNG (header only, no image data) -> rejected ('not a valid image or is damaged')
+PASS  truncated PNG (cut in half) -> rejected ('not a valid image or is damaged')
+PASS  PNG with a damaged chunk (wrong CRC) -> rejected ('not a valid image or is damaged')
+PASS  truncated JPEG (cut in half, no end marker) -> rejected ('not a valid image or is damaged')
+PASS  truncated WebP (cut in half) -> rejected ('not a valid image or is damaged')
+PASS  JPEG with embedded PHP code (polyglot) -> rejected ('contains embedded code')
+PASS  oversized poster (2 MB + 1 byte) -> rejected ('maximum size is 2 MB')
+PASS  image wider than 6000 px -> rejected ('between 1 and 6000 pixels')
+PASS  empty file -> rejected
+PASS  poster of exactly 2 MB (2 097 152 bytes) is accepted
+
+== Failed INSERT leaves no abandoned file
+PASS  INSERT forced to fail after the poster was stored -> 503 general message, no SQL details
+PASS  the stored poster was removed again (no abandoned file, no event)
+
+== Update event and poster replacement
+PASS  edit form filled from MySQL with the current poster shown
+PASS  update without a new file -> success, 'existing poster was kept'
+PASS  fields changed in MySQL, poster name and file unchanged
+PASS  valid replacement poster -> success, 'poster was replaced'
+PASS  new random .webp name stored, new file present, old file deleted after the update
+PASS  invalid replacement -> 422, 'current poster was kept', nothing changed
+PASS  oversized replacement -> 422, old poster kept
+PASS  valid replacement + invalid title -> 422, no file stored, old poster kept
+PASS  UPDATE forced to fail after the new poster was stored -> 503, new file removed, old poster kept
+PASS  edit of an unknown ID -> redirect with 'not found'
+
+== Delete event
+PASS  GET delete.php shows a confirmation ('Are you sure…'), nothing deleted
+PASS  POST without / with a wrong CSRF token -> not deleted
+PASS  confirmed delete -> 'was deleted together with its poster file'
+PASS  event row removed and only its poster file deleted
+PASS  deleting it again -> 'not found, nothing deleted'
+PASS  event_id '1 OR 1=1' / '../db.php' -> nothing deleted
+
+== Category and Open/Closed filters
+PASS  category=Workshop -> only Workshop events (2)
+PASS  status=open -> 12 events, all Open
+PASS  status=closed -> 4 events, all Closed
+PASS  category=Sports + status=closed combined
+PASS  filters stay selected in the form
+PASS  unknown category/status values are ignored (all events listed)
+PASS  SQL injection in the filters is ignored (all events listed)
+PASS  a filter with no matches can show 'No events match'
+
+== XSS, SQL injection and CSRF
+PASS  title/description/venue with HTML are stored as text
+PASS  HTML is escaped in the list, view, edit and delete pages
+PASS  SQL metacharacters stored literally, table intact
+PASS  view.php?id=1 OR 1=1 -> not found
+PASS  add without CSRF token -> refused with an error, no event, no file
+PASS  add with another session's token -> refused
+PASS  edit without CSRF token -> refused, unchanged
+
+== Protected files
+PASS  /db.php -> 403
+PASS  /includes/upload.php -> 403
+PASS  /includes/functions.php -> 403
+PASS  /tools/set_admin_password.php -> 403
+PASS  /tests/test_app.py -> 403
+PASS  /studenthub_prac12.sql -> 403
+PASS  /README.md -> 403
+PASS  /config.example.php -> 403
+PASS  /.gitignore -> 403
+PASS  /.htaccess -> 403
+PASS  /start-server.bat -> 403
+
+== Logout
+PASS  GET logout.php does not log out
+PASS  POST logout.php with a wrong token does not log out
+PASS  POST logout.php with token -> 'You have been logged out successfully.'
+PASS  after logout index.php -> 401
+PASS  the old session cookie replayed -> 401 (session destroyed on the server)
+
+== Server log
+PASS  no PHP warnings, notices or fatal errors logged
+PASS  the two forced failures were logged with details (not shown to the user)
+
+== Session timeout and server upload limits (second server: 2-second timeout, post_max_size=1M, upload_max_filesize=512K)
+PASS  POST larger than post_max_size -> 'too large for the server', not a CSRF error
+PASS  file above upload_max_filesize (UPLOAD_ERR_INI_SIZE) -> 'The poster is too large' message
+PASS  within the timeout the session stays valid
+PASS  after 3 s idle -> session ended, login page 'session expired'
+PASS  and the session is gone
+
+== Abandoned-file clean-up tool
+PASS  list mode reports only the abandoned old poster, deletes nothing
+PASS  --delete removes it; recent files, other files and every used poster are kept
+PASS  the CLI tools refuse to run in a web request (PHP_SAPI check present)
+
+== MySQL unreachable
+PASS  login -> 503 'The event database is not available right now', no technical details
+PASS  the real error is written to the PHP log
+PASS  the real uploads folder was not changed by the tests
+PASS  test database and temporary upload folder removed
+(studenthub_prac12 was not used by the tests; it holds 12 events)
+
+Result: 153 passed, 0 failed, 153 checks

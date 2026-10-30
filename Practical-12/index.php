@@ -1,244 +1,121 @@
 <?php
-session_start();
-require_once 'db.php';
-require_once 'upload.php';
+// StudentHub – Practical 12: event list (READ) with poster thumbnails, category and Open/Closed status filters.
+// Administrators only. GET requests only; every change is a POST on add.php, edit.php or delete.php.
+declare(strict_types=1);
+require_once __DIR__ . '/includes/functions.php';
 
-// Access Control: Check login
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php?error=Please login to access the Event Management Dashboard.");
-    exit();
+require_admin();
+$db = get_db();
+$categories = categories($db);
+$category = is_string($_GET['category'] ?? null) && in_array($_GET['category'], $categories, true) ? $_GET['category'] : '';
+$status = is_string($_GET['status'] ?? null) && isset(STATUSES[$_GET['status']]) ? $_GET['status'] : '';
+
+// WHERE clause from fixed pieces with ? placeholders; the values were checked against the allowed lists above
+$where = [];
+$types = '';
+$params = [];
+if ($category !== '') {
+    $where[] = 'category = ?';
+    $types .= 's';
+    $params[] = $category;
 }
-
-// Access Control: Check Admin Role (Unauthorized user access restriction)
-if (($_SESSION["role"] ?? "") !== "admin") {
-    http_response_code(403);
-    ?>
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>403 - Unauthorized Access</title>
-        <link rel="stylesheet" href="style.css">
-    </head>
-    <body>
-    <div class="container auth-container" style="text-align:center;">
-        <div style="font-size:48px; margin-bottom:10px;">🚫</div>
-        <h2 style="color:#c53030; border:none; margin-bottom:8px;">Unauthorized Access</h2>
-        <p style="color:#4a5568; font-size:15px; margin-bottom:15px;">
-            Access Denied: <strong>Admins only</strong>. You do not have permission to manage campus events.
-        </p>
-        <p style="font-size:13px; color:#718096; background:#edf2f7; padding:8px; border-radius:6px; display:inline-block;">
-            Current User: <strong><?php echo htmlspecialchars($_SESSION["username"] ?? "Unknown"); ?></strong> | Role: <span class="badge badge-student">STUDENT</span>
-        </p>
-        <div style="margin-top:20px;">
-            <a href="logout.php" class="btn btn-secondary">Logout & Switch Account</a>
-        </div>
-    </div>
-    </body>
-    </html>
-    <?php
-    exit();
+if ($status !== '') {
+    $where[] = 'status = ?';
+    $types .= 's';
+    $params[] = $status;
 }
-
-$error = "";
-
-// ---------- CREATE EVENT ----------
-if (isset($_POST['add'])) {
-    $title    = mysqli_real_escape_string($conn, trim($_POST['title'] ?? ''));
-    $date     = mysqli_real_escape_string($conn, trim($_POST['event_date'] ?? ''));
-    $location = mysqli_real_escape_string($conn, trim($_POST['location'] ?? ''));
-    $category = mysqli_real_escape_string($conn, trim($_POST['category'] ?? ''));
-
-    if ($title === '' || $date === '' || $location === '' || $category === '') {
-        $error = "All text fields are required.";
-    } else {
-        list($poster, $upload_error) = upload_poster($_FILES['poster'] ?? null);
-
-        if ($upload_error) {
-            $error = $upload_error;
-        } else {
-            $poster_sql = $poster ? "'$poster'" : "NULL";
-            $insert_query = "INSERT INTO events (title, event_date, location, category, poster)
-                             VALUES ('$title', '$date', '$location', '$category', $poster_sql)";
-            if (mysqli_query($conn, $insert_query)) {
-                header("Location: index.php?msg=" . urlencode("Event added successfully with poster!"));
-                exit();
-            } else {
-                $error = "Database Error: " . mysqli_error($conn);
-            }
-        }
-    }
+$stmt = $db->prepare('SELECT event_id, event_title, category, event_date, event_time, venue, poster_filename, status FROM events'
+    . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY event_date, event_time, event_id');
+if ($types !== '') {
+    $stmt->bind_param($types, ...$params);
 }
+$stmt->execute();
+$events = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// ---------- DELETE EVENT ----------
-if (isset($_GET['delete'])) {
-    $id  = (int)$_GET['delete'];
-    $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT poster FROM events WHERE id = $id"));
+$count = $db->prepare("SELECT COUNT(*), COALESCE(SUM(status = 'open'), 0) FROM events");
+$count->execute();
+[$total, $open] = array_map('intval', $count->get_result()->fetch_row());
 
-    if (mysqli_query($conn, "DELETE FROM events WHERE id = $id")) {
-        if ($row && $row['poster'] && file_exists("uploads/" . $row['poster'])) {
-            unlink("uploads/" . $row['poster']); // Remove poster file from uploads folder
-        }
-        header("Location: index.php?msg=" . urlencode("Event and poster deleted successfully!"));
-        exit();
-    } else {
-        $error = "Delete Error: " . mysqli_error($conn);
-    }
-}
-
-// ---------- READ (Search & Filter) ----------
-$search = mysqli_real_escape_string($conn, trim($_GET['search'] ?? ''));
-$cat    = mysqli_real_escape_string($conn, trim($_GET['category'] ?? ''));
-
-$sql = "SELECT * FROM events WHERE 1=1";
-if ($search !== '') {
-    $sql .= " AND (title LIKE '%$search%' OR location LIKE '%$search%')";
-}
-if ($cat !== '') {
-    $sql .= " AND category = '$cat'";
-}
-$sql .= " ORDER BY id DESC";
-$result = mysqli_query($conn, $sql);
+$flash = take_flash();
+$highlight = (int) ($flash['event_id'] ?? 0);
+page_start('Event management', 'index.php');
+render_flash($flash);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Management - Admin Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="container">
-    <div class="top-bar">
-        <div>
-            <h1>Event Management System</h1>
-            <p style="margin:4px 0 0 0; color:#718096; font-size:13.5px;">
-                CSPIT Campus Events with Secure Poster Upload & Validation (Practical 12)
-            </p>
-        </div>
-        <div class="user-badge">
-            <span class="badge badge-admin">ADMIN PORTAL</span>
-            <span style="font-size:13.5px; color:#4a5568;">👤 <?php echo htmlspecialchars($_SESSION["username"]); ?></span>
-            <a href="logout.php" class="btn btn-danger" style="padding:6px 14px; font-size:13px;">Logout</a>
-        </div>
-    </div>
-
-    <!-- Feedback Notifications (Success & Error Messages) -->
-    <?php if (isset($_GET['msg'])): ?>
-        <div class="alert-success">
-            ✅ <?php echo htmlspecialchars($_GET['msg']); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($error): ?>
-        <div class="alert-error">
-            ⚠️ <?php echo htmlspecialchars($error); ?>
-        </div>
-    <?php endif; ?>
-
-    <!-- Add New Event Form -->
-    <div class="card">
-        <h2>Add New Event with Poster Upload</h2>
-        <form method="POST" enctype="multipart/form-data">
-            <div class="form-grid">
-                <div>
-                    <input type="text" name="title" placeholder="Event Title (e.g. Odoo Hackathon)" required>
-                </div>
-                <div>
-                    <input type="date" name="event_date" required>
-                </div>
-                <div>
-                    <input type="text" name="location" placeholder="Location (e.g. CSPIT A7)" required>
-                </div>
-                <div>
-                    <select name="category" required>
-                        <option value="">Select Category</option>
-                        <option value="Hackathon">Hackathon</option>
-                        <option value="Workshop">Workshop</option>
-                        <option value="Conference">Conference</option>
-                        <option value="Seminar">Seminar</option>
-                        <option value="Sports">Sports</option>
-                        <option value="Music">Music</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:13.5px; font-weight:600; color:#4a5568;">Event Poster (Max 2MB, JPG/PNG/WEBP):</label>
-                    <input type="file" name="poster" accept=".jpg,.jpeg,.png,.webp">
-                </div>
-                <button type="submit" name="add" class="btn btn-success">+ Add Event</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Search & Filter Controls -->
-    <div class="card" style="padding:18px 20px 10px 20px;">
-        <h2>Search & Filter Events</h2>
-        <form method="GET" class="form-inline">
-            <input type="text" name="search" placeholder="Search by title or location..." value="<?php echo htmlspecialchars($search); ?>">
-            <select name="category">
-                <option value="">All Categories</option>
-                <?php foreach (['Hackathon', 'Workshop', 'Conference', 'Seminar', 'Sports', 'Music'] as $c): ?>
-                    <option value="<?php echo $c; ?>" <?php if ($cat === $c) echo 'selected'; ?>><?php echo $c; ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit">Filter Events</button>
-            <a href="index.php" class="btn btn-secondary">Reset</a>
-        </form>
-    </div>
-
-    <!-- Events List Table -->
-    <h2>Event Records & Posters</h2>
-    <table>
-        <thead>
-            <tr>
-                <th style="width:50px;">ID</th>
-                <th style="width:90px;">Poster</th>
-                <th>Event Title</th>
-                <th style="width:110px;">Date</th>
-                <th>Location</th>
-                <th style="width:120px;">Category</th>
-                <th style="width:130px;">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ($result && mysqli_num_rows($result) > 0): ?>
-                <?php while ($row = mysqli_fetch_assoc($result)): ?>
-                    <tr>
-                        <td><strong>#<?php echo $row['id']; ?></strong></td>
-                        <td>
-                            <?php if ($row['poster'] && file_exists("uploads/" . $row['poster'])): ?>
-                                <img src="uploads/<?php echo htmlspecialchars($row['poster']); ?>" class="poster-thumb" alt="Poster">
-                            <?php else: ?>
-                                <span class="no-poster">No Poster</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><strong><?php echo htmlspecialchars($row['title']); ?></strong></td>
-                        <td><?php echo htmlspecialchars($row['event_date']); ?></td>
-                        <td><?php echo htmlspecialchars($row['location']); ?></td>
-                        <td>
-                            <span class="badge" style="background:#e2e8f0; color:#4a5568;">
-                                <?php echo htmlspecialchars($row['category']); ?>
-                            </span>
-                        </td>
-                        <td class="action-links">
-                            <a href="edit.php?id=<?php echo $row['id']; ?>">Edit</a> |
-                            <a href="index.php?delete=<?php echo $row['id']; ?>" class="delete-link" onclick="return confirm('Are you sure you want to delete this event and poster?');">Delete</a>
-                        </td>
-                    </tr>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="7" style="text-align:center; padding:25px; color:#718096;">
-                        No events found matching your criteria.
-                    </td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+<div class="row g-3 mb-3">
+  <div class="col-sm-4"><div class="card stat-card shadow-sm"><div class="card-body"><div class="text-secondary small">All events</div><div class="fs-4 fw-semibold"><?= $total ?></div></div></div></div>
+  <div class="col-sm-4"><div class="card stat-card shadow-sm"><div class="card-body"><div class="text-secondary small">Open</div><div class="fs-4 fw-semibold text-success"><?= $open ?></div></div></div></div>
+  <div class="col-sm-4"><div class="card stat-card shadow-sm"><div class="card-body"><div class="text-secondary small">Closed</div><div class="fs-4 fw-semibold text-secondary"><?= $total - $open ?></div></div></div></div>
 </div>
-</body>
-</html>
+
+<form class="card shadow-sm mb-3" method="get" action="index.php" aria-label="Filter events">
+  <div class="card-body row g-2 align-items-end">
+    <div class="col-sm-5 col-md-4">
+      <label class="form-label fw-semibold" for="category">Category</label>
+      <select class="form-select" id="category" name="category">
+        <option value="">All categories</option>
+<?php foreach ($categories as $c): ?>
+        <option value="<?= e($c) ?>"<?= $c === $category ? ' selected' : '' ?>><?= e($c) ?></option>
+<?php endforeach; ?>
+      </select>
+    </div>
+    <div class="col-sm-4 col-md-3">
+      <label class="form-label fw-semibold" for="status">Status</label>
+      <select class="form-select" id="status" name="status">
+        <option value="">Open and closed</option>
+<?php foreach (STATUSES as $key => $label): ?>
+        <option value="<?= $key ?>"<?= $key === $status ? ' selected' : '' ?>><?= $label ?></option>
+<?php endforeach; ?>
+      </select>
+    </div>
+    <div class="col-sm-3 col-md-5 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a class="btn btn-outline-secondary" href="index.php">Reset</a>
+      <a class="btn btn-success ms-auto" href="add.php">+ Add event</a>
+    </div>
+  </div>
+</form>
+
+<p class="text-secondary mb-2" id="result-summary">
+  Showing <strong><?= count($events) ?></strong> of <?= $total ?> event<?= $total === 1 ? '' : 's' ?><?php
+  if ($category !== ''): ?> in category <strong><?= e($category) ?></strong><?php endif;
+  if ($status !== ''): ?> with status <strong><?= e(STATUSES[$status]) ?></strong><?php endif; ?>.
+</p>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 event-table">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Poster</th>
+          <th scope="col">Event</th>
+          <th scope="col">Category</th>
+          <th scope="col">Date &amp; time</th>
+          <th scope="col">Venue</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+<?php if (!$events): ?>
+        <tr><td colspan="7" class="text-center text-secondary py-4">No events match the selected filters. <a href="index.php">Show all events</a></td></tr>
+<?php endif; ?>
+<?php foreach ($events as $event): $id = (int) $event['event_id']; ?>
+        <tr class="<?= $id === $highlight ? 'table-warning' : '' ?>" data-event-id="<?= $id ?>">
+          <td><a href="view.php?id=<?= $id ?>"><img class="poster-thumb" src="<?= e(poster_url($event['poster_filename'])) ?>" alt="Poster: <?= e($event['event_title']) ?>"></a></td>
+          <td class="fw-semibold"><a class="link-body-emphasis text-decoration-none" href="view.php?id=<?= $id ?>"><?= e($event['event_title']) ?></a></td>
+          <td><span class="badge text-bg-light border"><?= e($event['category']) ?></span></td>
+          <td class="text-nowrap"><?= e(format_date($event['event_date'])) ?><br><span class="text-secondary small"><?= e(format_time($event['event_time'])) ?></span></td>
+          <td><?= e($event['venue']) ?></td>
+          <td><?= status_badge($event['status']) ?></td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-primary" href="view.php?id=<?= $id ?>">View</a>
+            <a class="btn btn-sm btn-outline-secondary" href="edit.php?id=<?= $id ?>">Edit</a>
+            <a class="btn btn-sm btn-outline-danger" href="delete.php?id=<?= $id ?>">Delete</a>
+          </td>
+        </tr>
+<?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php page_end(); ?>

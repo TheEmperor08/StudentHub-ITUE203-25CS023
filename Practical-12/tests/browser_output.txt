@@ -1,0 +1,20 @@
+StudentHub Practical 12 – browser test (tests/browser_screenshots.py) in Microsoft Edge (headless, Playwright),
+run against studenthub_prac12 on http://127.0.0.1:8612 on 2026-10-30.
+
+PASS  guest: index.php -> HTTP 401 'Access denied', no event data
+PASS  login -> event list with welcome message
+PASS  list: 12 events, every poster thumbnail loaded
+PASS  added: success message and the new event highlighted with its poster
+PASS  view page shows the uploaded poster under a random name
+PASS  updated: message 'poster was replaced', new details and new poster in the list
+PASS  event-poster.svg: rejected by the server ('Invalid file type'), form kept
+PASS  sports-meet-poster-large.jpg: rejected by the server ('maximum size is 2 MB'), form kept
+PASS  delete page asks for confirmation
+PASS  deleted: message 'deleted together with its poster file', event gone
+PASS  filter Hackathon + Open -> only open Hackathon events
+PASS  logout -> 'logged out successfully', event list refused afterwards
+PASS  no JavaScript errors (only the intended HTTP 401/422 responses)
+http://127.0.0.1:8612/add.php :: Failed to load resource: the server responded with a status of 422 (Unknown Status Code)
+http://127.0.0.1:8612/add.php :: Failed to load resource: the server responded with a status of 422 (Unknown Status Code)
+http://127.0.0.1:8612/index.php :: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+browser checks: 13 passed, 0 failed

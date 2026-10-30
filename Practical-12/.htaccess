@@ -1,0 +1,7 @@
+# Apache (XAMPP): keep configuration files, includes, tools, tests, the SQL dump and documents out of the browser
+<FilesMatch "^(config\.local\.php|config\.example\.php|router\.php)$|\.(sql|md|docx|pdf|bat|txt|py)$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 403 (?i)/(includes|tools|tests|screenshots)(/|$)
+DirectoryIndex login.php
+Options -Indexes

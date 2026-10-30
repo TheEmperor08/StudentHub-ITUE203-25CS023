@@ -1,0 +1,18 @@
+# Practical 12: local database settings may contain a password - never commit them
+config.local.php
+
+# The root .gitignore ignores Practical-12/uploads/*. Re-include only the upload-folder protection and the
+# 12 fictional seed posters referenced by studenthub_prac12.sql - posters uploaded while testing stay ignored.
+!uploads/.htaccess
+!uploads/166c180d722b0fa14692e2c975319c4e.webp
+!uploads/189f38346771ce306b070701ed32a6d7.png
+!uploads/1a023e38c1e411c26656d6a75e9ede04.jpg
+!uploads/24aea1675b4723e44b23c7521aef17c9.webp
+!uploads/281eb187b837277bbffdf72095b33ba1.jpg
+!uploads/6cf39e54487c9daae01912c9926572de.jpg
+!uploads/78911d469726744f9fbf4b7ff95bb7e2.jpg
+!uploads/92f36efd81e5c457f14928495b861af1.webp
+!uploads/942775d2f289ce18f77706a6c271c1cd.png
+!uploads/b86f00edf3e60cab8d84782859f1bd6e.webp
+!uploads/f171c291e8a806104aa02c753fe78da4.png
+!uploads/fa6bfa70286a08f7959899224060da27.png

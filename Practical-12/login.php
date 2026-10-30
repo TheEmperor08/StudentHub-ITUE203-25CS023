@@ -1,93 +1,76 @@
 <?php
-session_start();
-require_once "db.php";
+// StudentHub – Practical 12: administrator login. GET shows the form; POST checks the CSRF token, looks the email up
+// in the admins table with a prepared statement and verifies the password with password_verify(). After a
+// successful login the session ID is regenerated (protection against session fixation).
+declare(strict_types=1);
+require_once __DIR__ . '/includes/functions.php';
 
-// If already logged in as Admin, redirect to index.php
-if (isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "") === "admin") {
-    header("Location: index.php");
-    exit();
+start_app();
+if (current_admin() !== null) {
+    redirect('index.php');
 }
 
-$error = $_GET["error"] ?? "";
-$message = $_GET["message"] ?? "";
+const LOGIN_MESSAGES = [
+    'invalid'    => ['danger', 'Invalid email or password.'],
+    'csrf'       => ['danger', 'The login form expired. Please try again.'],
+    'logged_out' => ['success', 'You have been logged out successfully.'],
+    'timeout'    => ['warning', 'Your session expired after 30 minutes of inactivity. Please log in again.'],
+];
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
+$email = '';
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST["email"] ?? "");
-    $password = $_POST["password"] ?? "";
-
-    if ($email === "" || $password === "") {
-        $error = "Please enter both email and password.";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = strtolower(trim((string) (is_string($_POST['email'] ?? null) ? $_POST['email'] : '')));
+    $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    if (!csrf_is_valid($_POST['csrf_token'] ?? null)) {
+        $status = 'csrf';
     } else {
-        $stmt = mysqli_prepare($conn, "SELECT id, username, email, password, role FROM users WHERE email = ?");
-        mysqli_stmt_bind_param($stmt, "s", $email);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-
-        if ($user = mysqli_fetch_assoc($result)) {
-            if (password_verify($password, $user["password"])) {
-                session_regenerate_id(true);
-                $_SESSION["user_id"] = $user["id"];
-                $_SESSION["username"] = $user["username"];
-                $_SESSION["role"] = $user["role"];
-
-                if ($user["role"] === "admin") {
-                    header("Location: index.php?msg=Admin login successful! Welcome to Event Dashboard.");
-                    exit();
-                } else {
-                    // Non-admin user logged in - access restricted
-                    header("Location: index.php");
-                    exit();
-                }
-            } else {
-                $error = "Invalid email or password.";
-            }
-        } else {
-            $error = "Invalid email or password.";
+        $stmt = get_db()->prepare('SELECT admin_id, full_name, email, password_hash FROM admins WHERE email = ?');
+        $stmt->bind_param('s', $email);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        // An unknown email is checked against a dummy hash, so both failures take about the same time
+        $hash = $row['password_hash'] ?? '$2y$10$qAzAl/cRo1Zi1CMFWjkd6uXqfnlXMCb8ADDDWVXGEfMWXNVeKN7Pa';
+        $verified = password_verify($password, $hash);          // always runs, also for an unknown email
+        if ($verified && $row !== null && $email !== '' && $password !== '') {
+            session_regenerate_id(true);
+            $_SESSION = [
+                'admin'         => ['id' => (int) $row['admin_id'], 'name' => $row['full_name'], 'email' => $row['email']],
+                'last_activity' => time(),
+                'csrf_token'    => bin2hex(random_bytes(32)),       // new token for the new session
+            ];
+            $update = get_db()->prepare('UPDATE admins SET last_login_at = NOW() WHERE admin_id = ?');
+            $update->bind_param('i', $_SESSION['admin']['id']);
+            $update->execute();
+            flash('success', 'Welcome, ' . $row['full_name'] . '. You are logged in as administrator.');
+            redirect('index.php');
         }
-        mysqli_stmt_close($stmt);
+        $status = 'invalid';
     }
+    http_response_code(401);
 }
+
+page_start('Administrator login');
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - Event Management</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="container auth-container">
-    <h1 style="text-align:center; font-size:22px; margin-top:0;">Event Management Portal</h1>
-    <p style="text-align:center; color:#718096; font-size:13.5px; margin-top:-5px; margin-bottom:20px;">
-        Practical 12 - Admin Authentication
-    </p>
-
-    <?php if ($error): ?>
-        <div class="alert-error">
-            <?php echo htmlspecialchars($error); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($message): ?>
-        <div class="alert-success">
-            <?php echo htmlspecialchars($message); ?>
-        </div>
-    <?php endif; ?>
-
-    <form method="POST" action="login.php">
-        <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" placeholder="Enter your email" required>
-        </div>
-
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="Enter your password" required>
-        </div>
-
-        <button type="submit" style="width:100%; margin-top:10px;">Sign In to Dashboard &rarr;</button>
+<div class="card shadow-sm mx-auto login-card">
+  <div class="card-body p-4">
+    <p class="text-secondary">Sign in with an administrator account to manage events.</p>
+<?php if (isset(LOGIN_MESSAGES[$status])): [$kind, $text] = LOGIN_MESSAGES[$status]; ?>
+    <div class="alert alert-<?= $kind ?>" role="<?= $kind === 'success' ? 'status' : 'alert' ?>"><?= e($text) ?></div>
+<?php endif; ?>
+    <form method="post" action="login.php">
+      <?= csrf_field() ?>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="email">Email</label>
+        <input class="form-control" type="email" id="email" name="email" required maxlength="254" autocomplete="username" value="<?= e($email) ?>">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="password">Password</label>
+        <input class="form-control" type="password" id="password" name="password" required maxlength="72" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Log in</button>
     </form>
+    <p class="small text-secondary mt-3 mb-0">Demo account: <code>admin.demo@example.com</code> – set its password with <code>tools\set_admin_password.php</code> (see README).</p>
+  </div>
 </div>
-</body>
-</html>
+<?php page_end(); ?>
