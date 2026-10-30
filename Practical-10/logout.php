@@ -1,43 +1,16 @@
 <?php
-session_start();
-require_once "db.php";
+// StudentHub – Practical 10: secure logout. Only a POST with the session's CSRF token logs out (so another
+// website cannot log the user out). The session data is cleared, the session cookie is expired and the
+// session is destroyed on the server; the browser is then sent to the login page.
+declare(strict_types=1);
 
-// Clear remember token from database if user is logged in
-if (isset($_SESSION["user_id"])) {
-    $stmt = $conn->prepare("UPDATE users SET remember_token_hash = NULL, remember_token_expiry = NULL WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("i", $_SESSION["user_id"]);
-        $stmt->execute();
-        $stmt->close();
-    }
+require __DIR__ . '/includes/auth.php';
+
+start_secure_session();
+send_security_headers();
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || !csrf_is_valid($_POST['csrf_token'] ?? null)) {
+    redirect(current_user() !== null ? 'dashboard.php' : 'login.php');
 }
-
-// 1. Remove all session variables
-$_SESSION = [];
-
-// 2. Delete session cookie
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(
-        session_name(),
-        '',
-        time() - 42000,
-        $params["path"],
-        $params["domain"],
-        $params["secure"],
-        $params["httponly"]
-    );
-}
-
-// 3. Clear remember-me cookie
-if (isset($_COOKIE["remember_token"])) {
-    setcookie("remember_token", "", time() - 42000, "/");
-}
-
-// 4. Destroy session
-session_destroy();
-
-// Redirect to login with confirmation message
-header("Location: login.php?message=You have been logged out successfully.");
-exit;
-?>
+end_session();
+redirect('login.php?status=logged_out');

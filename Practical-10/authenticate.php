@@ -1,104 +1,55 @@
 <?php
-session_start();
-require_once "db.php";
+// StudentHub – Practical 10: checks the login form. The user is looked up by email with a MySQLi prepared
+// statement and the password is checked with password_verify(). On success the session ID is regenerated and
+// the user's ID, name and role (taken from the database, never from the browser) are stored in the session.
+declare(strict_types=1);
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    header("Location: login.php");
-    exit;
+require __DIR__ . '/includes/auth.php';
+
+start_secure_session();
+send_security_headers();
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    redirect('login.php');
+}
+if (!csrf_is_valid($_POST['csrf_token'] ?? null)) {
+    redirect('login.php?status=expired');
 }
 
-$email = trim($_POST["email"] ?? "");
-$password = $_POST["password"] ?? "";
-$remember_me = isset($_POST["remember_me"]);
-
-// Backend validation
-if ($email === "" || $password === "") {
-    header("Location: login.php?error=All fields are required.");
-    exit;
+$email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
+$password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+// Same generic message for every failure, so the page never reveals whether an email address is registered
+if ($email === '' || $password === '' || strlen($email) > 254 || strlen($password) > 72) {
+    redirect('login.php?status=invalid');
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header("Location: login.php?error=Invalid email address.");
-    exit;
-}
-
-// Find user by email using Prepared Statements
-$stmt = $conn->prepare("SELECT id, username, email, password, role FROM users WHERE email = ?");
-if (!$stmt) {
-    header("Location: login.php?error=Internal database error.");
-    exit;
-}
-
-$stmt->bind_param("s", $email);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows !== 1) {
+try {
+    $stmt = get_db()->prepare('SELECT user_id, name, email, password_hash, role FROM users WHERE email = ? LIMIT 1');
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $conn->close();
-    header("Location: login.php?error=Invalid email or password.");
-    exit;
-}
-
-$user = $result->fetch_assoc();
-
-// Verify password using password_verify()
-if (!password_verify($password, $user["password"])) {
-    $stmt->close();
-    $conn->close();
-    header("Location: login.php?error=Invalid email or password.");
-    exit;
-}
-
-// Regenerate session ID after successful authentication (Fixation Protection)
-session_regenerate_id(true);
-
-// Store authenticated user state in session
-$_SESSION["user_id"] = $user["id"];
-$_SESSION["username"] = $user["username"];
-$_SESSION["email"] = $user["email"];
-$_SESSION["role"] = $user["role"];
-$_SESSION["last_activity"] = time();
-
-// Intermediate Extension: Update last_login timestamp
-$upd = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-if ($upd) {
-    $upd->bind_param("i", $user["id"]);
-    $upd->execute();
-    $upd->close();
-}
-
-// Advanced Extension: Secure Remember-Me Token Handling
-if ($remember_me) {
-    $token = bin2hex(random_bytes(32));
-    $token_hash = hash("sha256", $token);
-    $expiry_time = time() + (30 * 24 * 60 * 60); // 30 days
-    $expiry_datetime = date("Y-m-d H:i:s", $expiry_time);
-
-    $rem_stmt = $conn->prepare("UPDATE users SET remember_token_hash = ?, remember_token_expiry = ? WHERE id = ?");
-    if ($rem_stmt) {
-        $rem_stmt->bind_param("ssi", $token_hash, $expiry_datetime, $user["id"]);
-        $rem_stmt->execute();
-        $rem_stmt->close();
+} catch (RuntimeException $exception) {          // includes mysqli_sql_exception; connection errors are logged in db.php
+    if ($exception instanceof mysqli_sql_exception) {
+        error_log('Practical 10 login query failed: [' . $exception->getCode() . '] ' . $exception->getMessage());
     }
-
-    setcookie(
-        "remember_token",
-        $token,
-        [
-            "expires" => $expiry_time,
-            "path" => "/",
-            "secure" => false, // Set to true if served over HTTPS
-            "httponly" => true,
-            "samesite" => "Lax"
-        ]
-    );
+    redirect('login.php?status=unavailable');
 }
 
-$stmt->close();
-$conn->close();
+// For an unknown email a dummy hash is checked, so both failures take about the same time
+$hash = $row['password_hash'] ?? '$2y$10$0000000000000000000000.000000000000000000000000000000';
+if (!password_verify($password, $hash) || $row === null) {
+    redirect('login.php?status=invalid');
+}
 
-// Redirect to common dashboard
-header("Location: dashboard.php");
-exit;
-?>
+// Successful login: new session ID (the old one is deleted), so an ID known before login is useless
+$oldId = session_id();
+session_regenerate_id(true);
+$_SESSION['user'] = ['id' => (int) $row['user_id'], 'name' => $row['name'], 'email' => $row['email'], 'role' => $row['role']];
+$_SESSION['last_activity'] = time();
+$_SESSION['login_time'] = time();
+// Evidence for the dashboard: short SHA-256 fingerprints of the old and new ID (not the IDs themselves)
+$_SESSION['id_check'] = ['before' => substr(hash('sha256', $oldId), 0, 12), 'after' => substr(hash('sha256', session_id()), 0, 12)];
+$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+redirect(ROLE_DASHBOARDS[$row['role']]);

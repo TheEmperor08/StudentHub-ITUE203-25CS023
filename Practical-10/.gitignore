@@ -1,0 +1,2 @@
+# Practical 10: local database settings may contain a password - never commit them
+config.local.php

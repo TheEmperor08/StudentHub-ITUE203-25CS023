@@ -1,95 +1,47 @@
 <?php
-session_start();
-require_once "db.php";
+// StudentHub – Practical 10: login form (email and password). The form is sent to authenticate.php.
+declare(strict_types=1);
 
-// If already logged in, redirect to dashboard
-if (isset($_SESSION["user_id"])) {
-    header("Location: dashboard.php");
-    exit;
+require __DIR__ . '/includes/auth.php';
+
+start_secure_session();
+send_security_headers();
+
+// Already logged in (and not timed out): go straight to the dashboard
+if (current_user() !== null && !session_has_expired()) {
+    redirect('dashboard.php');
 }
 
-// Auto-login via Remember-Me token if cookie is set
-if (!isset($_SESSION["user_id"]) && isset($_COOKIE["remember_token"])) {
-    $token = $_COOKIE["remember_token"];
-    $token_hash = hash("sha256", $token);
+// Fixed messages selected by a code, so no text from the address is ever shown in the page
+$timeout = session_timeout_seconds();
+$timeoutText = $timeout % 60 === 0 ? ($timeout / 60) . ' minute' . ($timeout === 60 ? '' : 's') : $timeout . ' seconds';
+$messages = [
+    'invalid'        => ['error', 'Invalid email or password.'],
+    'login_required' => ['info', 'Please log in to continue.'],
+    'logged_out'     => ['success', 'You have been logged out successfully.'],
+    'timeout'        => ['warning', "Your session expired after $timeoutText of inactivity. Please log in again."],
+    'expired'        => ['warning', 'The login form expired. Please try again.'],
+    'unavailable'    => ['error', 'Login is not available right now. Please try again later.'],
+];
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
+$message = $messages[$status] ?? null;
 
-    $stmt = $conn->prepare("SELECT id, username, email, role FROM users WHERE remember_token_hash = ? AND remember_token_expiry > NOW()");
-    if ($stmt) {
-        $stmt->bind_param("s", $token_hash);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($user = $result->fetch_assoc()) {
-            session_regenerate_id(true);
-            $_SESSION["user_id"] = $user["id"];
-            $_SESSION["username"] = $user["username"];
-            $_SESSION["email"] = $user["email"];
-            $_SESSION["role"] = $user["role"];
-            $_SESSION["last_activity"] = time();
-
-            // Update last_login
-            $upd = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-            $upd->bind_param("i", $user["id"]);
-            $upd->execute();
-            $upd->close();
-
-            $stmt->close();
-            $conn->close();
-            header("Location: dashboard.php");
-            exit;
-        }
-        $stmt->close();
-    }
-}
+page_start('Log in');
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Login</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="container">
-    <h2>Secure Login</h2>
-
-    <?php
-    if (isset($_GET["error"])) {
-        echo "<p class='error'>" . htmlspecialchars($_GET["error"]) . "</p>";
-    }
-    if (isset($_GET["message"])) {
-        echo "<p class='success'>" . htmlspecialchars($_GET["message"]) . "</p>";
-    }
-    ?>
-
-    <form action="authenticate.php" method="POST">
-        <label for="email">Email:</label>
-        <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="e.g. student01@example.com"
-            required
-        >
-
-        <label for="password">Password:</label>
-        <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Enter your password"
-            required
-        >
-
-        <div class="remember-row">
-            <label class="remember-label">
-                <input type="checkbox" name="remember_me" value="1">
-                <span>Remember Me</span>
-            </label>
-        </div>
-
-        <button type="submit">Login</button>
+<section class="card login-card" aria-labelledby="login-title">
+    <h2 id="login-title">Log in to StudentHub</h2>
+    <p class="hint">Use the email address and password of your account.</p>
+<?php if ($message): ?>
+    <div class="alert alert-<?= e($message[0]) ?>" role="<?= $message[0] === 'error' ? 'alert' : 'status' ?>"><?= e($message[1]) ?></div>
+<?php endif; ?>
+    <form action="authenticate.php" method="post" class="login-form">
+        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" required maxlength="254" autocomplete="username" autofocus>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required maxlength="72" autocomplete="current-password">
+        <button type="submit">Log in</button>
     </form>
-</div>
-</body>
-</html>
+</section>
+<?php
+page_end();

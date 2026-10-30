@@ -1,34 +1,17 @@
 <?php
-// timeout.php - Session Timeout Validation Handler
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// StudentHub – Practical 10: session timeout. Protected pages send the browser here when the session has been
+// inactive for longer than the configured limit (session_timeout in db.php, 300 seconds by default).
+// The expired session is destroyed and the user is redirected to the login page with a timeout message.
+declare(strict_types=1);
 
-$timeout = 300; // 5 minutes inactivity timeout (can be changed to 30 for testing)
+require __DIR__ . '/includes/auth.php';
 
-if (isset($_SESSION["user_id"])) {
-    if (isset($_SESSION["last_activity"]) && (time() - $_SESSION["last_activity"] > $timeout)) {
-        // Clear session variables
-        $_SESSION = [];
-        // Expire session cookie
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params["path"],
-                $params["domain"],
-                $params["secure"],
-                $params["httponly"]
-            );
-        }
-        // Destroy session
-        session_destroy();
-        header("Location: login.php?error=Session expired. Please login again.");
-        exit;
-    }
-    // Update last activity time
-    $_SESSION["last_activity"] = time();
+start_secure_session();
+send_security_headers();
+
+// A session that is still active is not ended here (only logout.php does that)
+if (current_user() !== null && !session_has_expired()) {
+    redirect('dashboard.php');
 }
-?>
+end_session();
+redirect('login.php?status=timeout');
