@@ -2,7 +2,7 @@ StudentHub authentication tests (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\
 INFO  source: database/studenthub_demo.sql
 
 == Static checks
-PASS  php -l: no syntax errors in all 34 PHP files of studenthub/ and tools/
+PASS  php -l: no syntax errors in all 36 PHP files of studenthub/ and tools/
 PASS  db.php has no fallback: no reference to user_registration and only one mysqli connection
 PASS  no page starts its own session (only includes/auth.php calls session_start)
 PASS  no GET logout link anywhere (logout is a POST form)

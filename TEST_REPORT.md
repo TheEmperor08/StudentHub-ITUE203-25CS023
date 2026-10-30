@@ -142,3 +142,20 @@ Covered by `test_events.py`: listing, columns and the placeholder for an older p
 Note: Windows security software blocks reading an uploaded file that contains a well-known web-shell signature; the portal then rejects it with "could not be read as an image" instead of the content-type message – it is rejected either way.
 
 Not covered / limitations: registrations cannot be marked `attended` from the interface; there is no waiting list; the Campus Events page shows all upcoming events on one page.
+
+---
+
+## 10. Practical 13 integrated into `studenthub/` – Fetch API and JSON API (31 October 2026)
+No schema change. Tests ran against disposable databases; a second test server pointed at a database that does not exist.
+
+| Suite | Result | Output |
+|---|---|---|
+| `tests/test_api.py` – HTTP tests of `api/events.php` and `events_live.php` | **72 / 72 passed** | `tests/test_api_output.txt` |
+| `tests/browser_api.py` – Microsoft Edge + screenshots | **16 / 16 passed** | `tests/browser_api_output.txt`, `evidence/practical-13-integration/` |
+| Regression: `test_events` 94 / 94, `test_students` 170 / 170, `test_auth` 132 / 132, `test_001` 88 / 88; Edge `browser_events` 16 / 16, `browser_students` 16 / 16, `browser_inactive_login` 13 / 13, `browser_auth` 14 / 14 | all passed | outputs in `tests/` and `database/tests/` |
+
+Covered by `test_api.py`: 401 JSON (never a redirect) without a session and for a student whose record was deactivated; list response shape and exact event fields (posters only as `poster.php?event=` URLs); role flags; search/category/status/upcoming/past filters and combinations; `%`, `_` and SQL-injection strings as text; HTML in titles escaped in the JSON (`\u003C`); get / 404 for unknown and malformed ids; 405 with `Allow` for the wrong method; 400 for an unknown action, malformed JSON, a JSON array and a body over 20 kB; 403 for a missing, wrong or modified `X-CSRF-Token` (audit-logged); 415 for a form-encoded POST; create 201, eight invalid bodies → 422 with `errors` per field, update 200 / 404 / 422, delete 200 / 404 and 409 for an event with registrations; register 201, duplicate / full / closed / past → 409, unknown event → 404, cancel 200 / 409, missing token 403, unlinked account and admin 403; 6 simultaneous API registrations for 3 seats → three 201 and three 409; capacity below seats taken → 422; students and editors 403 for create/update/delete (ACCESS_DENIED logged); the page per role; database unavailable → HTTP 503 JSON with a general message only; no PHP warnings or API errors in the log.
+
+The Edge test delays the API answers in its own network layer to make the loading state visible for screenshot 01; the answers themselves are the real ones. It also counts page navigations: create, update and delete happened without a page reload. A bug found by the browser test was fixed: the page's `display: flex` rules overrode the `hidden` attribute, so the loading indicator stayed visible after loading.
+
+Limitations: posters are uploaded only in the Admin Console (the API handles JSON, not files); the Event Finder lists at most 100 events per request.

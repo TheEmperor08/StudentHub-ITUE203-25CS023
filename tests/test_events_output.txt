@@ -2,7 +2,7 @@ StudentHub event management tests - Practical 12 (PHP C:\xampp\php\php.exe, MySQ
 INFO  source: database/studenthub_demo.sql
 
 == Static checks
-PASS  php -l: no syntax errors in all 34 PHP files of studenthub/ and tools/
+PASS  php -l: no syntax errors in all 36 PHP files of studenthub/ and tools/
 PASS  event_management.php: no ->query() with values (prepared statements only)
 PASS  the original upload file name is never used for storage (random 32-hex names)
 PASS  studenthub/uploads/.htaccess denies HTTP access and disables PHP (Apache)

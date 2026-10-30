@@ -1,0 +1,96 @@
+StudentHub events API tests - Practical 13 (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Static checks
+PASS  php -l: api/*.php, events_live.php have no syntax errors
+PASS  the API uses the portal's connection and helpers (no own mysqli/PDO connection, no ->query())
+PASS  events-live.js inserts server data with textContent only (no innerHTML) and sends X-CSRF-Token
+PASS  debounced search (setTimeout 300 ms after the last key press)
+
+== Authentication (JSON 401, never a redirect)
+PASS  not signed in: list -> 401 JSON {ok: false} (application/json, no redirect)
+PASS  not signed in: create -> 401, nothing stored
+
+== GET list / get
+PASS  list -> 200 {ok, count, events, filters, can_manage, can_register} with nosniff and no-store
+PASS  each event has exactly the documented fields (no file names, no internal columns)
+PASS  a student sees can_register=true, can_manage=false
+PASS  posters are only exposed as poster.php URLs (or null)
+PASS  an administrator sees can_manage=true, can_register=false; default list = all dates
+PASS  search 'work' -> exactly the 0 matching event(s)
+PASS  category Workshop -> exactly the 3 matching event(s)
+PASS  status closed -> exactly the 0 matching event(s)
+PASS  upcoming -> exactly the 1 matching event(s)
+PASS  past -> exactly the 4 matching event(s)
+PASS  search + category + upcoming -> exactly the 1 matching event(s)
+PASS  search "' OR '1'='1" is treated as text
+PASS  search '%' is treated as text
+PASS  search '_' is treated as text
+PASS  search '" OR 1=1 --' is treated as text
+PASS  an injected category is ignored (unknown value), no SQL error
+PASS  HTML in a title is returned as data and escaped in the JSON text (\u003C), never as markup
+PASS  get -> 200 with one event
+PASS  get with an unknown or malformed id (999999, 0, abc, '1 OR 1=1') -> 404 JSON
+
+== Methods, content type, CSRF and request format
+PASS  POST to a GET action -> 405 with Allow: GET
+PASS  GET to a POST action -> 405 with Allow: POST
+PASS  unknown action -> 400 JSON
+PASS  create without, with a wrong or a modified X-CSRF-Token -> 403, nothing stored, audit-logged
+PASS  a form-encoded POST (as a cross-site form would send) -> 415
+PASS  malformed JSON, a JSON array and a body over 20 kB -> 400
+
+== Create / update / delete (administrators)
+PASS  create -> 201 {ok, event, message}; stored; CREATE_EVENT audit entry
+PASS  empty title -> 422 with errors.title
+PASS  unknown category -> 422 with errors.category
+PASS  impossible date -> 422 with errors.event_date
+PASS  capacity 0 -> 422 with errors.capacity
+PASS  capacity as text -> 422 with errors.capacity
+PASS  status 'maybe' -> 422 with errors.status
+PASS  title as a JSON array -> 422 with errors.title
+PASS  time 25:61 -> 422 with errors.event_time
+PASS  nothing was stored by the invalid requests
+PASS  update -> 200; new values stored; capacity null = no limit
+PASS  update of an unknown id -> 404
+PASS  update with an invalid date -> 422
+
+== Register / cancel (students) and conflicts
+PASS  register -> 201 {ok, message, event} with my_registration='registered'
+PASS  registering again -> 409 'already registered'
+PASS  a full event (capacity 1) -> 409 'The event is full.'
+PASS  a closed event -> 409 'closed'
+PASS  a past event -> 409 'already taken place'
+PASS  an unknown event -> 404 'not found'
+PASS  an event id as text -> 404 'not found'
+PASS  cancel -> 200, row kept as 'cancelled', seat freed
+PASS  cancelling again -> 409
+PASS  register without X-CSRF-Token -> 403
+PASS  an unlinked student account and an administrator cannot register (403)
+PASS  the list shows each student's own registration state
+PASS  6 simultaneous API registrations for 3 seats -> exactly three 201 and three 409 (no overbooking)
+PASS  capacity below the seats taken -> 422
+PASS  deleting an event with registrations -> 409, event and registrations kept
+PASS  deleting an event without registrations -> 200, removed, DELETE_EVENT audit entry
+PASS  deleting it again -> 404
+
+== Roles
+PASS  student: create / update / delete -> 403, nothing changed, ACCESS_DENIED logged
+PASS  editor: create / update / delete -> 403, nothing changed, ACCESS_DENIED logged
+PASS  a student whose record was deactivated loses API access at the next request (401, generic message)
+
+== Event Finder page
+PASS  student: events_live.php (200) has the CSRF meta tag, the script, the filters and no New-event button
+PASS  admin: the page offers New event and the edit dialog
+PASS  editor: can view and search, but neither manage nor register
+PASS  not signed in: the page redirects to the login page
+PASS  no PHP warnings and no unexpected API errors in the server log
+
+== Database unavailable
+PASS  the API answers HTTP 503 in JSON with a general message only (no database name, SQL or stack trace)
+
+== Clean-up
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched
+
+Result: 72 passed, 0 failed, 72 checks

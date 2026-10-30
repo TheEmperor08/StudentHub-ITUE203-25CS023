@@ -9,7 +9,7 @@ $current_user = require_permission("portal.view");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enrolled Courses – Semester 3 (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=9">
+    <link rel="stylesheet" href="assets/css/global.css?v=10">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>

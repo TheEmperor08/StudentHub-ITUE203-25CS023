@@ -20,6 +20,7 @@ $nav_groups = [
     ],
     "Campus" => [
         ["notifications.php", "bi-megaphone",        "Notices",       ["notifications.php"]],
+        ["events_live.php",   "bi-lightning-charge", "Event Finder",  ["events_live.php"]],
         ["directory.php",     "bi-people",           "Directory",     ["directory.php"]],
         ["contact.php",       "bi-life-preserver",   "Help & Contact", ["contact.php"]],
     ],

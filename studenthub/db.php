@@ -22,6 +22,18 @@ $db_name = getenv('DB_NAME') ?: 'studenthub_db';
 // General error page for visitors (used when the database cannot be reached and for unexpected errors)
 function studenthub_fail(int $status, string $title, string $message): void
 {
+    if (defined('STUDENTHUB_API')) {                 // JSON API (api/*.php): the same general message, as JSON
+        if (!headers_sent()) {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            if ($status === 503) {
+                header('Retry-After: 60');
+            }
+        }
+        echo json_encode(['ok' => false, 'error' => $message]);
+        return;
+    }
     if (!headers_sent()) {
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');

@@ -2,7 +2,7 @@ StudentHub student management tests - Practical 11 (PHP C:\xampp\php\php.exe, My
 INFO  source: database/studenthub_demo.sql
 
 == Static checks
-PASS  php -l: no syntax errors in all 34 PHP files of studenthub/ and tools/
+PASS  php -l: no syntax errors in all 36 PHP files of studenthub/ and tools/
 PASS  no page or include deletes student records (no DELETE FROM students anywhere)
 PASS  student_management.php: queries with values are prepared statements (->query() only with fixed SQL)
 PASS  admin_dashboard.php: no hard-delete action for students any more
