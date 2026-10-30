@@ -18,7 +18,7 @@ $categories   = event_categories($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title>Event Finder – StudentHub</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=10">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/events-live.js?v=1" defer></script>
 </head>

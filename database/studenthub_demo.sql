@@ -1,6 +1,7 @@
 -- StudentHub demo database (safe to publish)
 -- Schema of the working studenthub_db (including migrations 001 - Practical 8 foundation -, 002 - unique enrollment
--- numbers -, 003 - Practical 12 event management - and 004 - Practical 14 admin dashboard) plus fictional demo rows.
+-- numbers -, 003 - Practical 12 event management -, 004 - Practical 14 admin dashboard - and 005 - Practical 7
+-- contact inquiries) plus fictional demo rows.
 -- Contains NO user accounts, password hashes, audit logs or real student records. All student rows except the owner
 -- are fictional (example.com).
 -- Safe to re-run: tables use IF NOT EXISTS and rows use INSERT IGNORE (nothing is dropped).
@@ -12,6 +13,7 @@
 --                    mysql -u root studenthub_db < database/migrations/002_unique_enrollment_no.sql
 --                    mysql -u root studenthub_db < database/migrations/003_event_management.sql
 --                    mysql -u root studenthub_db < database/migrations/004_admin_dashboard.sql
+--                    mysql -u root studenthub_db < database/migrations/005_inquiries.sql
 --                    (a database made by an earlier version of this file: apply only the migrations it is missing)
 -- Accounts:          php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
 -- Details:           database/README.md
@@ -27,7 +29,7 @@ BEGIN NOT ATOMIC
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created before migration 001. Apply database/migrations/001_practical8_foundation.sql instead.';
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schema_migrations') THEN
-        IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '004') THEN
+        IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '005') THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created by an earlier version of this file. Apply the missing migrations in database/migrations/ instead.';
         END IF;
     END IF;
@@ -151,6 +153,25 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   CONSTRAINT `fk_audit_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- inquiries: Help & Contact form (migration 005); deleting an account keeps its inquiries (user_id -> NULL)
+CREATE TABLE IF NOT EXISTS `inquiries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `enrollment_no` varchar(20) DEFAULT NULL,
+  `topic` enum('General','Academics','Events','Portal access','Other') NOT NULL DEFAULT 'General',
+  `message` text NOT NULL,
+  `status` enum('new','resolved') NOT NULL DEFAULT 'new',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `resolved_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_inquiries_status` (`status`,`created_at`),
+  KEY `idx_inquiries_user` (`user_id`),
+  CONSTRAINT `fk_inquiries_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `chk_inquiries_message` CHECK (char_length(`message`) between 10 and 2000)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `schema_migrations` (
   `version` varchar(20) NOT NULL,
   `description` varchar(200) NOT NULL,
@@ -186,9 +207,10 @@ INSERT IGNORE INTO `menu_items` (`id`, `title`, `link`, `min_role`, `icon`) VALU
 (9, 'Event Finder (Fetch API)',  'events_live.php',                 'student', 'bi-lightning-charge'),
 (10,'Security Audit Logs',       'admin_dashboard.php?tab=audits',  'admin', 'bi-journal-text');
 
--- This structure already includes migrations 001 to 004
+-- This structure already includes migrations 001 to 005
 INSERT IGNORE INTO `schema_migrations` (`version`, `description`) VALUES
 ('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK'),
 ('002', 'Practical 11 student management: UNIQUE students.enrollment_no'),
 ('003', 'Practical 12 event management: event_categories + FK, events.status, events.updated_at, UNIQUE events.poster'),
-('004', 'Practical 14 admin dashboard: menu roles student/editor/admin + integrated links, users.status, role check');
+('004', 'Practical 14 admin dashboard: menu roles student/editor/admin + integrated links, users.status, role check'),
+('005', 'Practical 7 contact inquiries: inquiries table (FK users ON DELETE SET NULL)');

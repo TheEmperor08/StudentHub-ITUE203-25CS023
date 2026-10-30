@@ -1,0 +1,54 @@
+StudentHub tests of Practicals 5-7 in the portal (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Practical 5: real-time registration validation
+PASS  register.php loads the validation script (and keeps server-side validation: novalidate form)
+PASS  the script checks every field with regular expressions / rules matching the server (name, username, email, password policy, confirm, gender, course, year, terms)
+PASS  password strength meter, real-time checks (input/blur) and submit blocking are implemented
+PASS  bypassing the browser checks does not help: the server refuses the weak password (422, nothing stored)
+
+== Practical 6: Campus Data Explorer (JSON + Fetch)
+PASS  data_explorer.php (signed in) has the tabs, search, filter, sort, status, table and pagination containers and loads data.js
+PASS  not signed in: redirected to the login page
+PASS  the sidebar links to the Data Explorer
+PASS  data/students.json, events.json and faqs.json are served and contain JSON arrays (15 records each)
+PASS  data.js fetches the JSON, handles errors, escapes every value and paginates (5 per page)
+
+== Practical 7: stored contact inquiries
+PASS  contact.php is public, has a CSRF token, a topic list and a hidden honeypot field
+PASS  a valid inquiry from a visitor -> 303 back to the form, stored (e-mail lower case, enrollment upper case, status new, no account)
+PASS  the success message (from the session) names the reference number, once
+PASS  SUBMIT_INQUIRY audit entry without the message text
+PASS  empty name -> 422 'Please enter your name.'
+PASS  name with digits -> 422 'letters, spaces'
+PASS  invalid e-mail -> 422 'valid email address'
+PASS  wrong enrollment format -> 422 'enrollment number format'
+PASS  unknown topic -> 422 'topic from the list'
+PASS  message under 10 characters -> 422 '10–2000 characters'
+PASS  message over 2000 characters -> 422 '10–2000 characters'
+PASS  field sent as an array -> 422 'not allowed'
+PASS  honeypot field filled in (bot) -> 422 'could not be accepted'
+PASS  rejected input is shown again HTML-escaped with the general error message
+PASS  nothing was stored by the rejected forms
+PASS  without the CSRF token -> 403, nothing stored
+PASS  a signed-in student finds name, e-mail and enrollment number filled in from the linked record
+PASS  the student's inquiry is linked to the account (user_id)
+PASS  8 simultaneous inquiries -> all 8 stored with different reference numbers (the database replaces Practical 7's file lock)
+
+== Inquiries in the Admin Console
+PASS  the Inquiries tab lists all stored inquiries, newest first, with a 'new' badge count on the tab
+PASS  message text is HTML-escaped in the console
+PASS  every POST form in the tab carries a CSRF token
+PASS  GET with action=resolve_inquiry and a POST without token change nothing (403)
+PASS  mark as resolved -> status resolved, time stored, RESOLVE_INQUIRY audit entry
+PASS  resolving it again -> error message
+PASS  filter 'Resolved' shows only the resolved inquiry
+PASS  student: Inquiries tab and resolve action -> 403
+PASS  editor: Inquiries tab and resolve action -> 403
+PASS  no PHP warnings, notices or fatal errors in the server log
+
+== Clean-up
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched
+
+Result: 40 passed, 0 failed, 40 checks

@@ -24,6 +24,7 @@ const STUDENTHUB_PERMISSIONS = [
     'events.manage'   => ['admin'],
     'users.manage'    => ['admin'],
     'audit.view'      => ['admin'],
+    'inquiries.manage' => ['admin'],                       // stored Help & Contact inquiries (Practical 7)
 ];
 
 function e($value): string

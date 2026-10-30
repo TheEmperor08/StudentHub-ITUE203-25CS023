@@ -178,3 +178,28 @@ Covered by `test_dashboard.py`: the five counters and their breakdowns equal the
 The sidebar printed its link values without escaping; this was harmless while they were fixed in the code, but they now come from `menu_items`, so they are escaped.
 
 Limitations: there is no form to edit `menu_items` (rows are changed in the database or by migrations); the "last active administrator" protection is a defence in depth – it cannot be reached through the interface because an administrator cannot disable or delete their own account.
+
+---
+
+## 12. Practicals 5–7 checked and integrated into `studenthub/` (31 October 2026)
+Audit of Practicals 1–7 against the integrated portal:
+
+| Practical | Requirement (from its README / report) | Found in the portal before | Action |
+|---|---|---|---|
+| 1 | Planning: roles, sitemap, wireframes | documents only (`Practical-1/`) | none – planning documents, nothing to integrate |
+| 2 | Semantic HTML pages | all portal pages use semantic HTML5 (header/nav/main/section/footer) | none |
+| 3 | Grid / Flexbox / responsive layout | `assets/css/global.css` grid shell, responsive breakpoints, mobile drawer | none |
+| 4 | DOM: FAQ, modal, slider, banner, hamburger, theme | home page `index.php` + `assets/js/script.js`, `theme.js` | none |
+| 5 | Registration form with JavaScript regex validation, error messages, password strength checker, real-time validation, Canvas CAPTCHA | server-side validation only (no client-side checks) | **integrated**: real-time regex validation, messages, strength meter and submit blocking on `register.php`; the CAPTCHA was **not** integrated (a client-side canvas CAPTCHA gives no real protection on a live form; the standalone `Practical-5/` keeps it) |
+| 6 | JSON files rendered with Fetch: search, filter, sort, pagination, loading/error states | `assets/js/data.js` and `data/*.json` existed but **no page used them** | **integrated**: Campus Data Explorer `data_explorer.php`; `data.js` now escapes every value and the artificial 800 ms delay was removed |
+| 7 | Inquiry form: POST, server validation and sanitising, stored with locking, success/error messages | form existed but inquiries were **not stored** (only an audit line when signed in) | **integrated**: validated inquiries stored in the `inquiries` table (migration 005), reference number, honeypot, Admin Console Inquiries tab |
+
+| Suite | Result | Output |
+|---|---|---|
+| `tests/test_forms.py` – HTTP tests of Practicals 5, 6 and 7 in the portal | **40 / 40 passed** | `tests/test_forms_output.txt` |
+| `tests/browser_forms.py` – Microsoft Edge + screenshots | **14 / 14 passed** | `tests/browser_forms_output.txt`, `evidence/practical-05-07-integration/` |
+| `database/tests/test_005_inquiries.py` – migration 005 (fixture / real dump) / `--verify-live` | **14 / 14**, **14 / 14**, **4 / 4 passed** | `database/tests/test_005_output.txt`, `test_005_verify_live_output.txt` |
+| Live checks of migrations 001–004 after 005 | 24 / 24, 4 / 4, 5 / 5, 5 / 5 | `database/tests/*_verify_live_output.txt` |
+| Regression: `test_dashboard` 36 / 36, `test_api` 72 / 72, `test_events` 94 / 94, `test_students` 170 / 170, `test_auth` 132 / 132, `test_001` 88 / 88, `test_002` 22 / 22, `test_003` 27 / 27, `test_004` 18 / 18; Edge `browser_auth` 14 / 14 (its weak-password check now expects the browser to stop the form – the server refusal is tested over HTTP), `browser_students` 16 / 16, `browser_inactive_login` 13 / 13, `browser_events` 16 / 16, `browser_api` 16 / 16, `browser_dashboard` 15 / 15 | all passed | outputs in `tests/` and `database/tests/` |
+
+Covered: the registration page loads the validation script with rules matching the server; a request that bypasses the browser is still refused by the server; the Data Explorer page, its sidebar link, the three JSON files and the escaping in `data.js`; the inquiry form (public, CSRF, topics, honeypot), a stored visitor inquiry with normalised e-mail/enrollment, the reference number shown once, an audit entry without the message text, nine invalid cases (incl. array parameters and the honeypot) with escaped redisplay, CSRF refusal, prefilled fields and account link for a signed-in student, 8 simultaneous inquiries all stored with distinct ids, the Inquiries tab (newest first, new-count badge, escaped messages, CSRF forms, resolve with audit entry, resolve twice, filter), students and editors refused (403). In Edge: live messages and the strength meter while typing, submit blocked with focus on the first field, the meter reaching "Strong"; the Data Explorer loading state (JSON response delayed by the test's network layer), 5 rows per page, search + filter, events sorted Z–A; server validation of the contact form, success with the reference number, the admin list and resolving.

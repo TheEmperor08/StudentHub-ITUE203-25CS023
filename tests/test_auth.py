@@ -15,7 +15,8 @@ import argparse, concurrent.futures, hashlib, html, http.cookiejar, os, pathlib,
 import urllib.error, urllib.parse, urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-APP = ROOT / "studenthub"
+# STUDENTHUB_APP_DIR runs every suite against another copy of the application (e.g. the Practical-15 snapshot)
+APP = pathlib.Path(os.environ["STUDENTHUB_APP_DIR"]) if os.environ.get("STUDENTHUB_APP_DIR") else ROOT / "studenthub"
 DEMO = ROOT / "database" / "studenthub_demo.sql"
 PHP = r"C:\xampp\php\php.exe" if os.path.exists(r"C:\xampp\php\php.exe") else "php"
 MYSQL = r"C:\xampp\mysql\bin\mysql.exe" if os.path.exists(r"C:\xampp\mysql\bin\mysql.exe") else "mysql"

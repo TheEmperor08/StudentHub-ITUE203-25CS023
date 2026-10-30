@@ -1,0 +1,28 @@
+StudentHub migration 005 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: fixture + migrations 001-004
+
+== Migration 005 on the source
+PASS  migration 005 runs without errors
+PASS  the only structural change is the new inquiries table (columns, keys, FK, CHECK)
+PASS  fk_inquiries_user -> users.id ON DELETE SET NULL
+PASS  every row of every existing table is unchanged
+PASS  running it again changes nothing
+
+== Behaviour
+PASS  a message under 10 characters is refused (chk_inquiries_message)
+PASS  deleting an account keeps its inquiry (user_id becomes NULL)
+PASS  an inquiry for a missing account is refused (fk_inquiries_user)
+
+== Rollback
+PASS  rollback removes the table and the record; structure as before
+PASS  migration 005 can be applied again
+
+== Preconditions
+PASS  a different inquiries table -> stopped with a message, nothing changed
+
+== Fresh install
+PASS  studenthub_demo.sql records 001-005
+PASS  fresh-install structure is identical to a database upgraded with the migrations
+PASS  all disposable databases removed
+
+Result: 14 passed, 0 failed, 14 checks

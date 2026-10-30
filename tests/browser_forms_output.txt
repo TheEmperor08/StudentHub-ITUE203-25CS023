@@ -1,0 +1,18 @@
+PASS  real-time validation: messages appear under name, username, e-mail and password while typing (nothing sent)
+PASS  password strength meter shows 'Very weak' for 'abc'
+PASS  submitting with broken rules is blocked in the browser: every rule is listed, focus on the first field, no request sent
+PASS  the meter grows with the password (Abcdef12 -> Fair, Campus#Portal2026 -> Strong) and the errors disappear
+PASS  Data Explorer: loading state while students.json is fetched
+PASS  students rendered from JSON: 5 rows per page with pagination
+PASS  search 'pa' + branch filter CSE -> only matching CSE students
+PASS  events tab sorted Z–A
+PASS  server validation of the inquiry: messages under e-mail, enrollment number and message, values kept, nothing stored
+PASS  valid inquiry -> stored, success message with the reference number
+PASS  admin: both inquiries listed (the student's linked to the account), tab shows 2 new
+PASS  mark as resolved -> message, status Resolved
+PASS  no JavaScript errors (only the intended 422 response of the refused inquiry)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-05-07-integration/ (11 PNG files)
+browser checks: 14 passed, 0 failed

@@ -116,3 +116,11 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 @media (max-width: 560px) {
     .form-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Practical 5: real-time validation – password strength meter */
+.strength { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 0.82rem; color: var(--text-muted); min-height: 1.2em; }
+.strength-bar { flex: 0 0 120px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.strength-bar span { display: block; height: 100%; width: 0; background: var(--danger); transition: width 0.2s ease; }
+.strength[data-level="fair"] .strength-bar span { background: var(--warning); }
+.strength[data-level="good"] .strength-bar span, .strength[data-level="strong"] .strength-bar span { background: var(--success); }
+.field-error[hidden] { display: none; }

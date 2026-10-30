@@ -475,3 +475,21 @@ input[type="time"] { width: 100%; padding: 10px 12px; border: 1px solid var(--bo
 .dialog-note { font-size: 0.85rem; color: var(--text-muted); }
 .dialog-actions { display: flex; gap: 10px; }
 @media (max-width: 900px) { .live-toolbar { grid-template-columns: 1fr 1fr; } .dialog-grid { grid-template-columns: 1fr; } }
+
+/* Help & Contact (Practical 7): field messages and the honeypot field (hidden from people, visible to simple bots) */
+fieldset .field-error { display: block; margin-top: 4px; font-size: 0.82rem; color: var(--danger); }
+.hp-field { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Campus Data Explorer (Practical 6) */
+.explorer-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.explorer-tabs .tab-btn { background: var(--surface-2); color: var(--text-dark); box-shadow: none; border: 1px solid var(--border); }
+.explorer-tabs .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.explorer-toolbar { grid-template-columns: minmax(200px, 2fr) repeat(2, minmax(160px, 1fr)); }
+#status-container .loading, #status-container .error-message { padding: 14px; border-radius: 10px; margin-bottom: 12px; }
+#status-container .loading { background: var(--surface-2); color: var(--text-muted); }
+#status-container .error-message { background: var(--danger-soft); color: var(--danger); }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.pagination-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pagination-bar button { padding: 6px 12px; background: var(--surface-2); color: var(--text-dark); box-shadow: none; border: 1px solid var(--border); }
+.pagination-bar button.active { background: var(--primary); color: #fff; }

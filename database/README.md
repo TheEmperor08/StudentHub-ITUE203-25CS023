@@ -16,6 +16,8 @@ into this database step by step; the practical folders keep their own historical
 | `tests/test_003_event_management.py` | Tests of migration 003 (disposable databases only) + read-only live check |
 | `migrations/004_admin_dashboard.sql` / `.down.sql` | Practical 14: menu roles `student`/`editor`/`admin` + integrated links, `users.status`, `chk_users_role` (and rollback) |
 | `tests/test_004_admin_dashboard.py` | Tests of migration 004 (disposable databases only) + read-only live check |
+| `migrations/005_inquiries.sql` / `.down.sql` | Practical 7: `inquiries` table for the Help & Contact form (and rollback) |
+| `tests/test_005_inquiries.py` | Tests of migration 005 (disposable databases only) + read-only live check |
 | `tests/fixtures/studenthub_v1_fixture.sql` | The pre-migration structure with fictional rows, used by the tests |
 
 ## Tables and relationships (after migrations 001 and 002)
@@ -161,6 +163,14 @@ through the interface. Applied to the live database on 31 Oct 2026 after a verif
    `chk_users_role CHECK (role IN ('admin','editor','student'))`.
 4. Verification, then the row `004`. Idempotent. The rollback removes `users.status` and the check and maps `student` back to `user`;
    the corrected links stay (they point at existing pages). Applied to the live database on 31 Oct 2026 after a verified backup.
+
+## Migration 005 – contact inquiries (Practical 7)
+
+`inquiries (id, user_id → users.id ON DELETE SET NULL, name, email, enrollment_no, topic ENUM, message TEXT CHECK 10–2000 characters,
+status new/resolved, created_at, resolved_at)`. Practical 7 kept inquiries in a JSON file protected by `flock()`; in the portal the database
+provides the same safety for simultaneous submissions (tested with 8 parallel requests). Preconditions: migration 004 recorded, no different
+`inquiries` table. Nothing else changes; the rollback drops the table (and its inquiries). Applied to the live database on 31 Oct 2026
+after a verified backup.
 
 ## Rollback
 

@@ -12,7 +12,7 @@ $profile = get_student_profile($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Results – <?= htmlspecialchars($profile['name']) ?> (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=10">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>

@@ -23,7 +23,10 @@ StudentHub is a PHP/MySQL student portal built up across 15 practicals: semantic
 * **Event registration** (Practicals 8 + 12; *Campus Events* page `notifications.php`): students with a linked student record register and cancel; `register_student_for_event()` runs in one transaction and refuses duplicates, full, closed and past events and inactive students (6 simultaneous requests for 3 seats → exactly 3 succeed).
 * **Event Finder – Fetch API** (Practical 13 integrated; `events_live.php` + `assets/js/events-live.js`, JSON API `api/events.php`): events are listed, searched (debounced, 300 ms) and filtered without reloading the page; administrators create, edit and delete events in a dialog and students register or cancel – all through `fetch()`. Loading, success, empty and error states; every value inserted with `textContent`. The API uses the portal's own connection, session and event/registration rules and answers JSON with fitting status codes (200, 201, 400, 401, 403, 404, 405, 409, 415, 422, 500, 503); POST requests need `Content-Type: application/json` and the session's CSRF token in `X-CSRF-Token`.
 * **Admin dashboard** (Practical 14 integrated; `admin_dashboard.php`, `includes/dashboard.php`, `includes/navigation.php`): five live counters (students active/inactive, events upcoming/open, registrations active/cancelled/attended, accounts per role and disabled, audit entries and security blocks in 7 days) counted on every page load; latest event registrations, newest accounts and recent activity; **role-based navigation** from `menu_items` (student < editor < admin – an editor never sees an admin link; links to missing pages are hidden; menu values are HTML-escaped); **account status** – administrators disable or enable accounts (a disabled account cannot sign in and loses its open sessions; the own account and the last active administrator are protected); audit log with action / status / user filters; one consistent HTTP 403 page with an audit entry.
-* **Admin Console:** student records, campus events, user accounts and the audit log (above), plus the dashboard overview.
+* **Real-time registration validation** (Practical 5 integrated; `assets/js/register-validation.js` on `register.php`): every field is checked with regular expressions while typing (the same rules and messages as the server), a password strength meter, and the form is not sent while a rule is broken; the server still validates everything.
+* **Campus Data Explorer** (Practical 6 integrated; `data_explorer.php` + `assets/js/data.js`): the sample JSON datasets in `data/` (students, events, FAQs) are loaded with the Fetch API and rendered with search, filter, sorting, pagination and loading / error states (values HTML-escaped).
+* **Stored contact inquiries** (Practical 7 integrated; `contact.php`, `includes/inquiries.php`, table `inquiries`): the Help & Contact form is validated and sanitised on the server, valid inquiries are stored with a reference number (signed-in users are linked to their account), a honeypot field stops simple bots; administrators read them and mark them as resolved in the Admin Console (*Inquiries* tab).
+* **Admin Console:** student records, campus events, user accounts, inquiries and the audit log (above), plus the dashboard overview.
 * **Design:** one indigo design system (`assets/css/global.css` + `assets/css/bootstrap-theme.css`), grouped sidebar with icons, mobile drawer with hamburger button, light/dark theme, skip link, visible keyboard focus, reduced-motion support.
 
 > ⚠️ **Sample data:** CGPA, SGPA, attendance and timetable figures in the student pages are **placeholders labelled "Sample / demo data"**, not real academic results.
@@ -43,6 +46,7 @@ StudentHub/
 ├── evidence/practical-12-integration/  # Genuine Edge screenshots of the integrated event management
 ├── evidence/practical-13-integration/  # Genuine Edge screenshots of the Event Finder (Fetch API)
 ├── evidence/practical-14-integration/  # Genuine Edge screenshots of the admin dashboard
+├── evidence/practical-05-07-integration/  # Genuine Edge screenshots of Practicals 5-7 in the portal
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
@@ -92,9 +96,9 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 2 | Static semantic HTML pages (12) | Code present |
 | 3 | Grid / Flexbox / Bootstrap layout | Code present |
 | 4 | DOM: FAQ, modal, slider, banner, hamburger, theme | Code present |
-| 5 | Registration validation with regex | Code present |
-| 6 | Fetch API, search, filter, sort, pagination | Code present (needs a web server, not `file://`) |
-| 7 | PHP POST form → CSV with `flock` | Tested (HTTP) |
+| 5 | Registration validation with regex | Integrated into `studenthub/register.php` (real-time validation + strength meter) and tested (`tests/test_forms.py`, `tests/browser_forms.py`); the standalone CAPTCHA was not carried over (see TEST_REPORT §12) |
+| 6 | Fetch API, search, filter, sort, pagination | Integrated into `studenthub/` (Campus Data Explorer) and tested (`tests/test_forms.py`, `tests/browser_forms.py`) |
+| 7 | PHP POST form → CSV with `flock` | Integrated into `studenthub/` (Help & Contact stores validated inquiries in the database; Admin Console Inquiries tab) and tested (`tests/test_forms.py`, `tests/browser_forms.py`) |
 | 8 | PDO, prepared statements, 3NF schema | Rebuilt and tested |
 | 9 | Secure registration (hashing, duplicates) | Integrated into `studenthub/` and tested (`tests/test_auth.py`) |
 | 10 | Login, sessions, RBAC | Integrated into `studenthub/` and tested, including the inactivity timeout (remember-me is not part of the portal) |

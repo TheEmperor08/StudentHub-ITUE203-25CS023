@@ -1,5 +1,5 @@
-PASS  weak password -> the server shows the policy error under the field
-PASS  entered values are kept (password fields are not)
+PASS  weak password -> stopped in the browser with the policy message under the field (Practical 5)
+PASS  the form was not sent: the entered values are still in the fields
 PASS  registration in Edge -> dashboard with welcome message and enrollment number
 PASS  sidebar shows the student's own name and enrollment number (record linked by user_id)
 PASS  database: account + linked student record

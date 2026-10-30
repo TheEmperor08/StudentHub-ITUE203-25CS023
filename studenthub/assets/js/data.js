@@ -1,4 +1,8 @@
+// StudentHub – Campus Data Explorer (Practical 6 integrated into the portal: data_explorer.php). Loads the JSON files in
+// data/ with the Fetch API and renders them with search, filter, sorting, pagination and loading / error states.
+// Every value from the JSON files is HTML-escaped before it is inserted.
 document.addEventListener('DOMContentLoaded', () => {
+    const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     let currentData = [];
     let filteredData = [];
     let currentType = 'students';
@@ -37,9 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchData(type) {
         showLoading();
         try {
-            // Simulate network delay for demonstration
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
             const response = await fetch(`data/${type}.json`);
             if (!response.ok) throw new Error('Failed to fetch data');
             
@@ -65,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         options.forEach(opt => {
             if (opt) {
-                filterSelect.innerHTML += `<option value="${opt}">${opt}</option>`;
+                filterSelect.innerHTML += `<option value="${esc(opt)}">${esc(opt)}</option>`;
             }
         });
     }
@@ -125,12 +126,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
         // Generate Table HTML
-        let html = '<table><thead><tr>';
+        let html = '<div class="table-wrap"><table class="data-table"><thead><tr>';
         
         // Dynamic Headers
         const keys = Object.keys(paginatedData[0]);
         keys.forEach(key => {
-            html += `<th>${key.toUpperCase()}</th>`;
+            html += `<th scope="col">${esc(key.toUpperCase())}</th>`;
         });
         html += '</tr></thead><tbody>';
 
@@ -138,15 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
         paginatedData.forEach(item => {
             html += '<tr>';
             keys.forEach(key => {
-                let val = item[key];
+                let val = esc(item[key]);
                 // Styling specific columns
-                if (key === 'cpi' && val >= 9) val = `<mark>${val}</mark>`;
+                if (key === 'cpi' && item[key] >= 9) val = `<mark>${val}</mark>`;
                 html += `<td>${val}</td>`;
             });
             html += '</tr>';
         });
         
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         tableContainer.innerHTML = html;
 
         renderPagination(totalPages);
@@ -193,6 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function showError(msg) {
         tableContainer.innerHTML = '';
         paginationContainer.innerHTML = '';
-        statusContainer.innerHTML = `<div class="error-message">⚠️ ${msg}</div>`;
+        statusContainer.innerHTML = `<div class="error-message" role="alert">⚠️ ${esc(msg)}</div>`;
     }
 });

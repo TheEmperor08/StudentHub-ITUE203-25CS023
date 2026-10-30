@@ -35,7 +35,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             shot = lambda name: SHOTS and page.screenshot(path=str(SHOTS / name), full_page=True)
 
-            # weak password: refused by the server (the form has novalidate, so the browser sends it)
+            # weak password: the real-time validation (Practical 5) keeps the form from being sent
             page.goto(BASE + "register.php")
             page.fill("#name", "Diya Mehta")
             page.fill("#username", "diya_mehta")
@@ -46,8 +46,10 @@ def main():
             page.fill("#confirm_password", "weakpass")
             page.check("#agree")
             page.click("button[type=submit]")
-            check("weak password -> the server shows the policy error under the field", "an uppercase letter" in page.inner_text("#password-error"))
-            check("entered values are kept (password fields are not)", page.input_value("#username") == "diya_mehta" and page.input_value("#password") == "")
+            # Practical 5: the browser checks the policy first and does not send the form (the server refusal is tested over HTTP)
+            check("weak password -> stopped in the browser with the policy message under the field (Practical 5)",
+                  "an uppercase letter" in page.inner_text("#password-error") and page.url == BASE + "register.php" and T.scalar("SELECT COUNT(*) FROM users WHERE username='diya_mehta'") == "0")
+            check("the form was not sent: the entered values are still in the fields", page.input_value("#username") == "diya_mehta")
             shot("register-weak-password.png")
 
             # successful registration

@@ -5,6 +5,7 @@ require_once __DIR__ . "/includes/student_management.php";
 require_once __DIR__ . "/includes/event_management.php";
 require_once __DIR__ . "/includes/dashboard.php";
 require_once __DIR__ . "/includes/navigation.php";
+require_once __DIR__ . "/includes/inquiries.php";
 require_once "audit_logger.php";
 
 // 1-2. Signed in, not timed out, account still exists, role holds 'admin.console' – otherwise login page or HTTP 403
@@ -164,6 +165,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
     $get_action = is_string($_POST["action"]) ? $_POST["action"] : "";
     $target_id  = (int)($_POST["id"] ?? 0);
 
+    // Help & Contact inquiries (Practical 7): mark as resolved – admins only (inquiries.manage)
+    if ($get_action === "resolve_inquiry") {
+        require_permission("inquiries.manage");
+        if ($target_id > 0 && resolve_inquiry($conn, $target_id)) {
+            log_audit($conn, $current_user["id"], $current_user["username"], "RESOLVE_INQUIRY", "Inquiry #$target_id marked as resolved", "SUCCESS");
+            flash("success", "Inquiry #$target_id was marked as resolved.");
+        } else {
+            flash("error", "That inquiry was not found or is already resolved.");
+        }
+        redirect("admin_dashboard.php?tab=inquiries");
+    }
+
     // User accounts (Practical 14): disable / enable and delete – admins only (users.manage). The own account and the last
     // active administrator are protected; a disabled account cannot sign in and loses its open sessions.
     if (in_array($get_action, ["disable_user", "enable_user", "delete_user"], true)) {
@@ -270,6 +283,11 @@ $event_filtered = $event_filters["q"] !== "" || $event_filters["category"] !== "
 
 // 10. Users List
 $users_list = $conn->query("SELECT id, username, email, role, status, last_login, created_at FROM users ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
+
+// 10b. Stored Help & Contact inquiries (Practical 7), newest first; filter new / resolved
+$inquiry_status = in_array($_GET["inq_status"] ?? "", ["new", "resolved"], true) ? $_GET["inq_status"] : "";
+$inquiries      = list_inquiries($conn, $inquiry_status, 100);
+$inquiry_counts = inquiry_counts($conn);
 
 // 11. Audit log with filters (action, status, user) – the newest 100 matching entries
 $audit_action_list = audit_actions($conn);
@@ -509,6 +527,9 @@ $recent_activity   = audit_list($conn, ["action" => "", "status" => "", "user" =
         </li>
         <li class="nav-item">
             <button class="nav-link <?= ($current_tab === 'users') ? 'active' : '' ?>" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button"><i class="bi bi-person-gear me-1"></i> User Accounts</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link <?= ($current_tab === 'inquiries') ? 'active' : '' ?>" id="inquiries-tab" data-bs-toggle="tab" data-bs-target="#inquiries" type="button"><i class="bi bi-envelope-paper me-1"></i> Inquiries<?= $inquiry_counts["new"] ? ' <span class="badge bg-danger">' . $inquiry_counts["new"] . '</span>' : "" ?></button>
         </li>
         <li class="nav-item">
             <button class="nav-link <?= ($current_tab === 'audits') ? 'active' : '' ?>" id="audits-tab" data-bs-toggle="tab" data-bs-target="#audits" type="button"><i class="bi bi-shield-check me-1"></i> Security Audit Trail</button>
@@ -1154,6 +1175,50 @@ $recent_activity   = audit_list($conn, ["action" => "", "status" => "", "user" =
                                     <?php else: ?>
                                         <form method="post" action="admin_dashboard.php?tab=users" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $u["status"] === "active" ? "disable_user" : "enable_user" ?>"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-<?= $u["status"] === "active" ? "warning" : "success" ?> btn-sm py-0 px-2" aria-label="<?= $u["status"] === "active" ? "Disable" : "Enable" ?> <?= e($u["username"]) ?>"><i class="bi bi-<?= $u["status"] === "active" ? "person-lock" : "person-check" ?>"></i> <?= $u["status"] === "active" ? "Disable" : "Enable" ?></button></form>
                                         <form method="post" action="admin_dashboard.php?tab=users" class="d-inline" onsubmit="<?= confirm_js('Delete user ' . $u['username'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Delete <?= e($u["username"]) ?>"><i class="bi bi-trash"></i> Delete</button></form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4b. INQUIRIES TAB (Practical 7: stored Help & Contact inquiries) -->
+        <div class="tab-pane fade <?= ($current_tab === 'inquiries') ? 'show active' : '' ?>" id="inquiries" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h5 class="fw-bold mb-1">Help &amp; Contact Inquiries</h5>
+                    <p class="text-muted small mb-0">Inquiries sent with the Help &amp; Contact form (validated on the server and stored in the database) – <?= $inquiry_counts["new"] ?> new, <?= $inquiry_counts["total"] ?> in total.</p>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Filter inquiries">
+                    <?php foreach (["" => "All", "new" => "New", "resolved" => "Resolved"] as $value => $label): ?>
+                        <a class="btn btn-outline-secondary<?= $inquiry_status === $value ? " active" : "" ?>" href="admin_dashboard.php?tab=inquiries<?= $value !== "" ? "&amp;inq_status=" . $value : "" ?>"><?= $label ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle" id="inquiry-table">
+                    <thead>
+                        <tr><th scope="col">#</th><th scope="col">Received</th><th scope="col">From</th><th scope="col">Topic</th><th scope="col">Message</th><th scope="col">Status</th><th scope="col" class="text-center">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!$inquiries): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-3">No inquiries<?= $inquiry_status !== "" ? " with this status" : " yet" ?>.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach ($inquiries as $inq): ?>
+                            <tr<?= $inq["status"] === "resolved" ? ' class="student-inactive"' : "" ?>>
+                                <td class="fw-bold text-muted">#<?= (int) $inq["id"] ?></td>
+                                <td class="small text-muted"><?= e($inq["created_at"]) ?></td>
+                                <td class="small"><strong><?= e($inq["name"]) ?></strong><br><?= e($inq["email"]) ?><?= $inq["enrollment_no"] ? " · " . e($inq["enrollment_no"]) : "" ?><?= $inq["username"] ? '<br><span class="badge bg-light text-dark border">account: ' . e($inq["username"]) . "</span>" : "" ?></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary"><?= e($inq["topic"]) ?></span></td>
+                                <td class="small" style="max-width: 360px; white-space: pre-wrap;"><?= e($inq["message"]) ?></td>
+                                <td><span class="badge <?= $inq["status"] === "new" ? "bg-warning-subtle text-warning-emphasis" : "bg-success-subtle text-success" ?>"><?= $inq["status"] === "new" ? "New" : "Resolved" ?></span></td>
+                                <td class="text-center">
+                                    <?php if ($inq["status"] === "new"): ?>
+                                        <form method="post" action="admin_dashboard.php?tab=inquiries" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="resolve_inquiry"><input type="hidden" name="id" value="<?= (int) $inq["id"] ?>"><button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" aria-label="Mark inquiry <?= (int) $inq["id"] ?> as resolved"><i class="bi bi-check2"></i> Resolved</button></form>
+                                    <?php else: ?>
+                                        <span class="small text-muted"><?= e($inq["resolved_at"]) ?></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

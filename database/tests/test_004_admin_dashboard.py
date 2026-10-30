@@ -129,6 +129,10 @@ def verify_live(baseline):
     data_before, users_before = fp(TEST_DB, ("students", "registrations", "event_categories")), users_core(TEST_DB)
     rc, err = run_file(M004, TEST_DB)
     assert rc == 0, err
+    for m in LATER:                                  # later migrations that the live database has as well
+        if m.name[:3] in versions(LIVE_DB):
+            rc, err = run_file(m, TEST_DB)
+            assert rc == 0, f"{m.name}: {err}"
     d = diff_structure(structure(TEST_DB), structure(LIVE_DB))
     check("live structure is identical to the baseline upgraded with 004", not d, "; ".join(d[:3]))
     check("live menu equals the migrated baseline menu", mysql("SELECT * FROM menu_items ORDER BY id", LIVE_DB) == mysql("SELECT * FROM menu_items ORDER BY id", TEST_DB))

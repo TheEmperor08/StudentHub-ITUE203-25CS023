@@ -39,7 +39,7 @@ if ($e_res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?= htmlspecialchars($student_name) ?> (CSPIT)</title>
-    <link rel="stylesheet" href="assets/css/global.css?v=10">
+    <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
 </head>
 <body>
