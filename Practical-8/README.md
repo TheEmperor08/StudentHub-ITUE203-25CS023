@@ -34,6 +34,7 @@ Open the **XAMPP Control Panel** and click **Start** next to **Apache** and **My
 `schema.sql` only creates and fills `studenthub_prac8`; no other database is changed. Importing it again resets the three tables to the sample data.
 
 *Messages you may see:* with the server-level Import tab, phpMyAdmin 5.2.1 also shows *"Error: #1046 No database selected"* after the SET, USE and procedure statements. These come from phpMyAdmin's own extra queries when no database is selected in its interface: each statement itself succeeded, and the same file imported with the MySQL client or from the database's Import tab shows no such message. To re-import without them, click **studenthub_prac8** in the left panel first and use its **Import** tab. *"Note: #1007 … database exists"* on a re-import is expected.
+
 *Command line alternative:* `C:\xampp\mysql\bin\mysql.exe -u root < schema.sql`
 
 **3. Open the connection test page**
@@ -101,7 +102,6 @@ Practical-8/
 ├── screenshots/            # connection test, error page and phpMyAdmin screenshots (6 PNG files)
 └── tests/test_db.php, tests/test_page.py
 ```
-The earlier version of this practical (`insert.php`, `students.php` and the `practical8_db` database) was replaced by this design; the old database is no longer used and was not changed.
 
 ---
 
