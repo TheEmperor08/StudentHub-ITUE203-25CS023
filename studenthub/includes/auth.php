@@ -189,27 +189,38 @@ function account_is_deactivated(string $role, ?string $student_status): bool
     return $role === 'student' && $student_status !== null && strcasecmp(trim($student_status), 'Inactive') === 0;
 }
 
-// Re-reads the account on every request: a deleted account loses access at once, a role change applies immediately and
-// a deactivated student is signed out. Returns [user or null, reason]; reason is 'account_unavailable' or 'access_disabled'.
+// Why an account may not sign in or keep a session (null = allowed): an account disabled by an administrator (users.status,
+// Practical 14, any role) or a student account whose linked student record is inactive (Practical 11)
+function account_block_reason(array $row): ?string
+{
+    if (($row['account_status'] ?? 'active') === 'disabled') {
+        return 'the account is disabled';
+    }
+    return account_is_deactivated((string) $row['role'], $row['student_status'] ?? null) ? 'the linked student record is inactive' : null;
+}
+
+// Re-reads the account on every request: a deleted account loses access at once, a role change applies immediately and a
+// disabled account or deactivated student is signed out. Returns [user or null, reason ('account_unavailable' or
+// 'access_disabled'), detail for the audit log].
 function refresh_user_from_database(array $user): array
 {
     global $conn;
-    $stmt = $conn->prepare('SELECT u.id, u.username, u.email, u.role, s.status AS student_status
+    $stmt = $conn->prepare('SELECT u.id, u.username, u.email, u.role, u.status AS account_status, s.status AS student_status
                             FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE u.id = ?');
     $stmt->bind_param('i', $user['id']);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     if (!$row || !in_array($row['role'], STUDENTHUB_ROLES, true)) {
-        return [null, 'account_unavailable'];
+        return [null, 'account_unavailable', ''];
     }
-    if (account_is_deactivated($row['role'], $row['student_status'])) {
-        return [null, 'access_disabled'];
+    if (($block = account_block_reason($row)) !== null) {
+        return [null, 'access_disabled', $block];
     }
     $_SESSION['username'] = $row['username'];
     $_SESSION['email']    = $row['email'];
     $_SESSION['role']     = $row['role'];
-    return [['id' => (int) $row['id'], 'username' => $row['username'], 'email' => $row['email'], 'role' => $row['role']], ''];
+    return [['id' => (int) $row['id'], 'username' => $row['username'], 'email' => $row['email'], 'role' => $row['role']], '', ''];
 }
 
 // Returns [user or null, reason]: reason is '' (valid or no session), 'timeout', 'account_unavailable' or 'access_disabled'
@@ -225,11 +236,11 @@ function validate_session(): array
         reset_session();
         return [null, 'timeout'];
     }
-    [$fresh, $reason] = refresh_user_from_database($user);
+    [$fresh, $reason, $detail] = refresh_user_from_database($user);
     if ($fresh === null) {
         if ($reason === 'access_disabled') {
             global $conn;
-            log_audit($conn, $user['id'], $user['username'], 'SESSION_REVOKED', 'Session ended: the linked student record is inactive.', 'SECURITY_BLOCK');
+            log_audit($conn, $user['id'], $user['username'], 'SESSION_REVOKED', "Session ended: $detail.", 'SECURITY_BLOCK');
         }
         reset_session();                                 // session data deleted on the server, new empty session ID
         return [null, $reason];

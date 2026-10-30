@@ -22,7 +22,8 @@ StudentHub is a PHP/MySQL student portal built up across 15 practicals: semantic
 * **Event management** (Practical 12 integrated; Admin Console → *Campus Events*, logic in `studenthub/includes/event_management.php`): list with search and category / open-closed / upcoming-past filters; add and edit with server-side validation (title, category from `event_categories`, date, time, location, capacity 1–65535 or no limit, open/closed, description); **secure poster upload** – JPEG, PNG or WebP only, at most 2 MB, MIME type of the content must match the extension, real image structure, no embedded PHP, random 32-hex file name, stored in `studenthub/uploads/` (denied over HTTP on Apache, PHP disabled) and delivered only by `poster.php` to signed-in users; the capacity can never be set below the seats taken; events with registrations cannot be deleted (close them instead); registrations view per event; older poster references whose file is missing show a placeholder.
 * **Event registration** (Practicals 8 + 12; *Campus Events* page `notifications.php`): students with a linked student record register and cancel; `register_student_for_event()` runs in one transaction and refuses duplicates, full, closed and past events and inactive students (6 simultaneous requests for 3 seats → exactly 3 succeed).
 * **Event Finder – Fetch API** (Practical 13 integrated; `events_live.php` + `assets/js/events-live.js`, JSON API `api/events.php`): events are listed, searched (debounced, 300 ms) and filtered without reloading the page; administrators create, edit and delete events in a dialog and students register or cancel – all through `fetch()`. Loading, success, empty and error states; every value inserted with `textContent`. The API uses the portal's own connection, session and event/registration rules and answers JSON with fitting status codes (200, 201, 400, 401, 403, 404, 405, 409, 415, 422, 500, 503); POST requests need `Content-Type: application/json` and the session's CSRF token in `X-CSRF-Token`.
-* **Admin Console:** live counters, student records and campus events (above), user list, audit log viewer.
+* **Admin dashboard** (Practical 14 integrated; `admin_dashboard.php`, `includes/dashboard.php`, `includes/navigation.php`): five live counters (students active/inactive, events upcoming/open, registrations active/cancelled/attended, accounts per role and disabled, audit entries and security blocks in 7 days) counted on every page load; latest event registrations, newest accounts and recent activity; **role-based navigation** from `menu_items` (student < editor < admin – an editor never sees an admin link; links to missing pages are hidden; menu values are HTML-escaped); **account status** – administrators disable or enable accounts (a disabled account cannot sign in and loses its open sessions; the own account and the last active administrator are protected); audit log with action / status / user filters; one consistent HTTP 403 page with an audit entry.
+* **Admin Console:** student records, campus events, user accounts and the audit log (above), plus the dashboard overview.
 * **Design:** one indigo design system (`assets/css/global.css` + `assets/css/bootstrap-theme.css`), grouped sidebar with icons, mobile drawer with hamburger button, light/dark theme, skip link, visible keyboard focus, reduced-motion support.
 
 > ⚠️ **Sample data:** CGPA, SGPA, attendance and timetable figures in the student pages are **placeholders labelled "Sample / demo data"**, not real academic results.
@@ -41,6 +42,7 @@ StudentHub/
 ├── evidence/practical-11-integration/  # Genuine Edge screenshots of the integrated student management (fictional records)
 ├── evidence/practical-12-integration/  # Genuine Edge screenshots of the integrated event management
 ├── evidence/practical-13-integration/  # Genuine Edge screenshots of the Event Finder (Fetch API)
+├── evidence/practical-14-integration/  # Genuine Edge screenshots of the admin dashboard
 ├── README.md
 └── TEST_REPORT.md            # Tests actually executed, with results and limitations
 ```
@@ -99,7 +101,7 @@ Status reflects what was **actually tested** (see `TEST_REPORT.md`). "Code prese
 | 11 | Student CRUD, search, soft delete, CSV | Integrated into `studenthub/` (Admin Console → Student Records) and tested (`tests/test_students.py`, Edge screenshots in `evidence/practical-11-integration/`) |
 | 12 | Event uploads with validation, RBAC | Integrated into `studenthub/` (Admin Console → Campus Events, Campus Events page) and tested (`tests/test_events.py`, Edge screenshots in `evidence/practical-12-integration/`) |
 | 13 | Fetch/AJAX CRUD API with RBAC | Integrated into `studenthub/` (Event Finder + `api/events.php`) and tested (`tests/test_api.py`, Edge screenshots in `evidence/practical-13-integration/`) |
-| 14 | Admin dashboard, audit logging, 403 | Tested |
+| 14 | Admin dashboard, audit logging, 403 | Integrated into `studenthub/` (Admin Console overview, role-based navigation, account status, audit filters) and tested (`tests/test_dashboard.py`, Edge screenshots in `evidence/practical-14-integration/`) |
 | 15 | Integrated portal (copy of `studenthub/`) | Tested via the main application suite |
 
 ---

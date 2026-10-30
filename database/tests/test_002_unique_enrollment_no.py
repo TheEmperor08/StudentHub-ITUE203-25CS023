@@ -143,10 +143,6 @@ def verify_live(baseline):
     print(f"\n== READ-ONLY verification of the live database {LIVE_DB} against the dump taken before migration 002")
     prepare(TEST_DB, baseline)
     data_before = data_fingerprint(TEST_DB)
-    global TEST_BASE
-    TEST_BASE = PRE_DB                               # an untouched copy of the baseline for the events comparison
-    T.create_disposable(PRE_DB)
-    T.load_source(PRE_DB, baseline)
     rc, err = run_file(MIGRATION_002, TEST_DB)
     assert rc == 0, err
     for later in LATER:                              # later migrations that the live database has as well
@@ -158,13 +154,9 @@ def verify_live(baseline):
     check("live structure is identical to the baseline upgraded with 002 in a disposable copy", not d, "; ".join(d[:4]))
     check("live database records migration 002", "002" in versions(LIVE_DB), str(versions(LIVE_DB)))
     live = data_fingerprint(LIVE_DB)
-    # events: compare the columns that existed before the later migrations (003 adds status and updated_at)
-    original_events = "SELECT id, title, event_date, IFNULL(event_time,''), location, IFNULL(capacity,''), IFNULL(description,''), category, IFNULL(poster,'') FROM events ORDER BY id"
-    for fp, db in ((live, LIVE_DB), (data_before, None)):
-        rows = mysql(original_events, db or TEST_BASE)
-        fp["events"] = (len(rows), hashlib.sha256("\n".join("\t".join(r) for r in rows).encode()).hexdigest())
+    data_before = data_fingerprint(TEST_DB)            # the baseline after 002 and the later migrations the live database has
     same = [t for t in ("users", "students", "events", "registrations", "menu_items") if live.get(t) == data_before.get(t)]
-    check("live users (with password hashes), students, events, registrations and menu items are unchanged", len(same) == 5,
+    check("live users (with password hashes), students, events, registrations and menu items equal the migrated baseline", len(same) == 5,
           str({t: (data_before.get(t), live.get(t)) for t in ("users", "students", "events", "registrations", "menu_items") if t not in same}))
     info("live rows: " + ", ".join(f"{t} {live[t][0]}" for t in sorted(live)))
     T.drop_disposable(TEST_DB)

@@ -1,0 +1,30 @@
+StudentHub migration 004 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: fixture + migrations 001-003
+
+== Migration 004 on the source
+PASS  migration 004 runs without errors
+PASS  structural changes: users.status (+ shifted users columns), chk_users_role and menu_items.min_role only
+PASS  menu_items.min_role is ENUM('student','editor','admin') NOT NULL DEFAULT 'student'
+PASS  menu rows: 'user' -> 'student', standalone/anchor links -> the integrated pages, every other row unchanged
+PASS  no menu link points outside the portal any more
+PASS  users: every account active; ids, names, e-mails, password hashes, roles unchanged
+PASS  students, events, registrations, categories and the audit log unchanged
+PASS  an invalid role is refused (chk_users_role)
+PASS  an invalid status is refused or not stored
+PASS  running it again changes nothing (idempotent)
+
+== Rollback (004_admin_dashboard.down.sql)
+PASS  rollback restores the previous structure and keeps every account
+PASS  rollback maps 'student' back to 'user' in the menu
+PASS  migration 004 can be applied again after the rollback
+
+== Preconditions
+PASS  an account with an unknown role -> stopped with a message, nothing changed
+
+== Fresh install
+PASS  studenthub_demo.sql records 001-004 (+ later)
+PASS  fresh-install structure is identical to a database upgraded with the migrations
+PASS  the demo menu uses only student/editor/admin and integrated links
+PASS  all disposable databases removed
+
+Result: 18 passed, 0 failed, 18 checks

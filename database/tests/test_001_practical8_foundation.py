@@ -612,8 +612,9 @@ def verify_live(baseline):
     d = diff_structure(reference, live)
     check("live structure is identical to the baseline migrated in the test copy", not d, "; ".join(d[:4]))
     fp_live = fingerprints(LIVE_DB, before)
-    check("every original row and value of the live database is unchanged (incl. password hashes)", fp_live == fp_before,
-          str({t: (fp_before[t][0], fp_live[t][0]) for t in ORIGINAL_TABLES}))
+    fp_expected = fingerprints(TEST_DB, before)        # the baseline after the same migrations (e.g. 004 corrects the menu)
+    check("every original row and value of the live database equals the migrated baseline (incl. password hashes)", fp_live == fp_expected,
+          str({t: (fp_expected[t][0], fp_live[t][0]) for t in ORIGINAL_TABLES if fp_live[t] != fp_expected[t]}))
     check(f"live links equal the verified e-mail matches ({len(expected)})", actual_links(LIVE_DB) == expected, f"{actual_links(LIVE_DB)} vs {expected}")
     check("live registrations table is empty, event capacity/time NULL", scalar("SELECT COUNT(*) FROM registrations", LIVE_DB) == "0"
           and scalar("SELECT COUNT(*) FROM events WHERE capacity IS NOT NULL OR event_time IS NOT NULL", LIVE_DB) == "0")

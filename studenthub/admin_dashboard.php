@@ -3,6 +3,8 @@ require_once "db.php";
 require_once __DIR__ . "/includes/auth.php";
 require_once __DIR__ . "/includes/student_management.php";
 require_once __DIR__ . "/includes/event_management.php";
+require_once __DIR__ . "/includes/dashboard.php";
+require_once __DIR__ . "/includes/navigation.php";
 require_once "audit_logger.php";
 
 // 1-2. Signed in, not timed out, account still exists, role holds 'admin.console' – otherwise login page or HTTP 403
@@ -156,51 +158,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// 5. Delete User – POST only (CSRF token checked above); a GET link can no longer delete anything.
+// 5. User accounts – POST only (CSRF token checked above); a GET link can no longer change anything.
 //    Student records are deactivated instead (soft delete) and events are deleted only without registrations (see above).
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
     $get_action = is_string($_POST["action"]) ? $_POST["action"] : "";
     $target_id  = (int)($_POST["id"] ?? 0);
 
-    if ($get_action === "delete_user" && $target_id > 0) {
-        if ($target_id === (int)$_SESSION["user_id"]) {
-            flash("error", "You cannot delete your own active administrator account."); redirect("admin_dashboard.php?tab=users");
+    // User accounts (Practical 14): disable / enable and delete – admins only (users.manage). The own account and the last
+    // active administrator are protected; a disabled account cannot sign in and loses its open sessions.
+    if (in_array($get_action, ["disable_user", "enable_user", "delete_user"], true)) {
+        require_permission("users.manage");
+        $account = $target_id > 0 ? find_account($conn, $target_id) : null;
+        if ($account === null) {
+            flash("error", "That account was not found."); redirect("admin_dashboard.php?tab=users");
         }
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-        if ($stmt) {
+        if ($get_action === "delete_user") {
+            if ($target_id === $current_user["id"]) {
+                flash("error", "You cannot delete your own active administrator account."); redirect("admin_dashboard.php?tab=users");
+            }
+            if ($account["role"] === "admin" && $account["status"] === "active" && active_admin_count($conn) <= 1) {
+                flash("error", "The last active administrator cannot be deleted."); redirect("admin_dashboard.php?tab=users");
+            }
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmt->bind_param("i", $target_id);
             $stmt->execute();
-            log_audit($conn, $_SESSION["user_id"], $_SESSION["username"], "DELETE_USER", "Deleted user ID: $target_id", "SUCCESS");
-            flash("success", "User account deleted."); redirect("admin_dashboard.php?tab=users");
+            log_audit($conn, $current_user["id"], $current_user["username"], "DELETE_USER", "Deleted user ID $target_id ({$account["username"]}, {$account["role"]})", "SUCCESS");
+            flash("success", "User account “{$account["username"]}” deleted."); redirect("admin_dashboard.php?tab=users");
         }
+        $new_status = $get_action === "disable_user" ? "disabled" : "active";
+        $problem = set_account_status($conn, $target_id, $new_status, $current_user["id"]);
+        if ($problem !== null) {
+            flash("error", $problem);
+        } else {
+            log_audit($conn, $current_user["id"], $current_user["username"], $new_status === "disabled" ? "USER_DISABLED" : "USER_ENABLED",
+                ($new_status === "disabled" ? "Disabled" : "Enabled") . " account ID $target_id ({$account["username"]}, {$account["role"]})", "SUCCESS");
+            flash("success", $new_status === "disabled" ? "Account “{$account["username"]}” was disabled. It can no longer sign in and its open sessions end."
+                                                        : "Account “{$account["username"]}” was enabled again.");
+        }
+        redirect("admin_dashboard.php?tab=users");
     }
 }
 
-// 6. Dynamic Metrics Counters
-$total_users = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM users");
-if ($res) { $total_users = (int)$res->fetch_assoc()["cnt"]; }
+// 6. Live statistics and latest registrations (counted from the database on every page load – Practical 14)
+$stats           = dashboard_stats($conn);
+$latest_regs     = latest_registrations($conn, 5);
+$newest_accounts = newest_accounts($conn, 5);
 
-$total_students = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM students");
-if ($res) { $total_students = (int)$res->fetch_assoc()["cnt"]; }
-
-$total_events = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM events");
-if ($res) { $total_events = (int)$res->fetch_assoc()["cnt"]; }
-
-$total_audits = 0;
-$res = $conn->query("SELECT COUNT(*) as cnt FROM audit_logs");
-if ($res) { $total_audits = (int)$res->fetch_assoc()["cnt"]; }
-
-// 7. Dynamic Menu Items
-$menu_items = [];
-$m_res = $conn->query("SELECT title, link, icon FROM menu_items WHERE min_role IN ('user', 'editor', 'admin') ORDER BY id ASC");
-if ($m_res) {
-    while ($m = $m_res->fetch_assoc()) {
-        $menu_items[] = $m;
-    }
-}
+// 7. Role-based navigation from menu_items (only the rows up to this role; links to missing pages are hidden)
+$menu_items = menu_for_role($conn, $current_user["role"]);
 
 // 8. Student Records tab: add/edit form and deactivation confirmation (GET only shows them; nothing is changed)
 $student_view = is_string($_GET["view"] ?? null) ? $_GET["view"] : "";
@@ -264,18 +269,13 @@ $events_list    = event_list($conn, $event_filters, EVENTS_PER_PAGE, ($event_pag
 $event_filtered = $event_filters["q"] !== "" || $event_filters["category"] !== "" || $event_filters["status"] !== "" || $event_filters["when"] !== "";
 
 // 10. Users List
-$users_list = [];
-$u_res = $conn->query("SELECT id, username, email, role, last_login, created_at FROM users ORDER BY id DESC");
-if ($u_res) {
-    while ($u = $u_res->fetch_assoc()) { $users_list[] = $u; }
-}
+$users_list = $conn->query("SELECT id, username, email, role, status, last_login, created_at FROM users ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
 
-// 11. Recent Audit Logs
-$audit_list = [];
-$a_res = $conn->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 50");
-if ($a_res) {
-    while ($a = $a_res->fetch_assoc()) { $audit_list[] = $a; }
-}
+// 11. Audit log with filters (action, status, user) – the newest 100 matching entries
+$audit_action_list = audit_actions($conn);
+$audit_filters     = audit_filters($_GET, $audit_action_list);
+$audit_list        = audit_list($conn, $audit_filters, 100);
+$recent_activity   = audit_list($conn, ["action" => "", "status" => "", "user" => ""], 6);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -458,59 +458,33 @@ if ($a_res) {
         </div>
     <?php endif; ?>
 
-    <!-- Dynamic Metric Stat Cards (Practicals 11 & 14) -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">TOTAL USERS</span>
-                    <h2 class="fw-bold mb-0 text-primary"><?= $total_users ?></h2>
-                </div>
-                <div class="stat-icon bg-primary-subtle text-primary">
-                    <i class="bi bi-people-fill"></i>
-                </div>
+    <!-- Live statistics (Practical 14): counted from the database on every page load -->
+    <div class="row g-3 mb-4" id="dashboard-stats">
+        <?php foreach ([
+            ["Students", $stats["students"]["total"], $stats["students"]["active"] . " active · " . $stats["students"]["inactive"] . " inactive", "bi-mortarboard-fill", "success", "students"],
+            ["Events", $stats["events"]["total"], $stats["events"]["upcoming"] . " upcoming · " . $stats["events"]["open_upcoming"] . " open", "bi-calendar-event-fill", "warning", "events"],
+            ["Registrations", $stats["registrations"]["registered"], "active · " . $stats["registrations"]["cancelled"] . " cancelled · " . $stats["registrations"]["attended"] . " attended", "bi-ticket-perforated-fill", "info", "events"],
+            ["User accounts", $stats["users"]["total"], $stats["users"]["admins"] . " admin · " . $stats["users"]["editors"] . " editor · " . $stats["users"]["students"] . " student · " . $stats["users"]["disabled"] . " disabled", "bi-people-fill", "primary", "users"],
+            ["Audit log", $stats["audit"]["total"], $stats["audit"]["blocked_week"] . " security blocks in 7 days", "bi-shield-shaded", "danger", "audits"],
+        ] as [$label, $value, $note, $icon, $color, $tab]): ?>
+            <div class="col-6 col-lg">
+                <a class="stat-card h-100 text-decoration-none" href="admin_dashboard.php?tab=<?= $tab ?>" data-stat="<?= e(strtolower(strtok($label, " "))) ?>">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase"><?= e($label) ?></span>
+                        <h2 class="fw-bold mb-0 text-<?= $color ?>"><?= (int) $value ?></h2>
+                        <span class="small text-muted"><?= e($note) ?></span>
+                    </div>
+                    <div class="stat-icon bg-<?= $color ?>-subtle text-<?= $color ?>"><i class="bi <?= $icon ?>"></i></div>
+                </a>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">STUDENT RECORDS</span>
-                    <h2 class="fw-bold mb-0 text-success"><?= $total_students ?></h2>
-                </div>
-                <div class="stat-icon bg-success-subtle text-success">
-                    <i class="bi bi-mortarboard-fill"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">CAMPUS EVENTS</span>
-                    <h2 class="fw-bold mb-0 text-warning"><?= $total_events ?></h2>
-                </div>
-                <div class="stat-icon bg-warning-subtle text-warning">
-                    <i class="bi bi-calendar-event-fill"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div>
-                    <span class="text-muted small fw-bold">AUDIT LOGS</span>
-                    <h2 class="fw-bold mb-0 text-danger"><?= $total_audits ?></h2>
-                </div>
-                <div class="stat-icon bg-danger-subtle text-danger">
-                    <i class="bi bi-shield-shaded"></i>
-                </div>
-            </div>
-        </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Dynamic RBAC Navigation Bar (Practical 14) -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body p-3">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span class="small fw-bold text-muted text-uppercase"><i class="bi bi-compass me-1"></i> RBAC Dynamic Directory:</span>
+                <span class="small fw-bold text-muted text-uppercase"><i class="bi bi-compass me-1"></i> Navigation for your role (<?= e($current_user["role"]) ?>):</span>
                 <div class="d-flex flex-wrap gap-2">
                     <?php foreach ($menu_items as $item): ?>
                         <a href="<?= htmlspecialchars($item['link']) ?>" class="btn btn-sm btn-light border d-flex align-items-center gap-1 text-secondary" style="font-size: 12.5px;">
@@ -542,32 +516,40 @@ if ($a_res) {
     </ul>
 
     <div class="tab-content" id="adminTabsContent">
-        <!-- 1. OVERVIEW TAB -->
+        <!-- 1. OVERVIEW TAB (Practical 14: latest registrations, newest accounts, recent activity) -->
         <div class="tab-pane fade <?= ($current_tab === 'overview') ? 'show active' : '' ?>" id="overview" role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-7">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-activity text-primary me-2"></i>Recent System Activity</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Status</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-ticket-perforated text-primary me-2"></i>Latest event registrations</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle" id="latest-registrations">
+                            <thead><tr><th scope="col">Student</th><th scope="col">Event</th><th scope="col">Status</th><th scope="col">Registered</th></tr></thead>
                             <tbody>
-                                <?php foreach (array_slice($audit_list, 0, 6) as $a): ?>
+                                <?php if (!$latest_regs): ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-3">No event registrations yet.</td></tr>
+                                <?php endif; ?>
+                                <?php foreach ($latest_regs as $reg): ?>
                                     <tr>
-                                        <td class="fw-semibold"><?= htmlspecialchars($a['username']) ?></td>
-                                        <td><code><?= htmlspecialchars($a['action']) ?></code></td>
-                                        <td>
-                                            <span class="badge bg-<?= ($a['status'] === 'SUCCESS') ? 'success' : 'danger' ?>-subtle text-<?= ($a['status'] === 'SUCCESS') ? 'success' : 'danger' ?>">
-                                                <?= htmlspecialchars($a['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td class="small text-muted"><?= htmlspecialchars(substr($a['created_at'], 11, 8)) ?></td>
+                                        <td class="fw-semibold"><?= e($reg["name"]) ?> <span class="badge bg-light text-dark border"><?= e($reg["enrollment_no"] ?: "—") ?></span></td>
+                                        <td class="small"><?= e($reg["title"]) ?></td>
+                                        <td><span class="badge <?= ["registered" => "bg-success-subtle text-success", "attended" => "bg-primary-subtle text-primary", "cancelled" => "bg-secondary-subtle text-secondary"][$reg["status"]] ?? "bg-light text-dark" ?>"><?= e(ucfirst($reg["status"])) ?></span></td>
+                                        <td class="small text-muted"><?= e($reg["registered_at"]) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-activity text-primary me-2"></i>Recent system activity</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="recent-activity">
+                            <thead><tr><th scope="col">User</th><th scope="col">Action</th><th scope="col">Status</th><th scope="col">Time</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($recent_activity as $a): ?>
+                                    <tr>
+                                        <td class="fw-semibold"><?= e($a["username"]) ?></td>
+                                        <td><code><?= e($a["action"]) ?></code></td>
+                                        <td><span class="badge bg-<?= $a["status"] === "SUCCESS" ? "success" : "danger" ?>-subtle text-<?= $a["status"] === "SUCCESS" ? "success" : "danger" ?>"><?= e($a["status"]) ?></span></td>
+                                        <td class="small text-muted"><?= e($a["created_at"]) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -575,16 +557,25 @@ if ($a_res) {
                     </div>
                 </div>
                 <div class="col-lg-5">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Platform Specifications</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-person-plus text-primary me-2"></i>Newest accounts</h5>
+                    <ul class="list-group mb-4" id="newest-accounts">
+                        <?php foreach ($newest_accounts as $acc): ?>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-person-circle text-secondary me-1"></i><?= e($acc["username"]) ?>
+                                    <span class="badge badge-role-<?= e($acc["role"]) ?> ms-1"><?= e(ucfirst($acc["role"])) ?></span>
+                                    <?= $acc["status"] === "disabled" ? '<span class="badge bg-danger-subtle text-danger ms-1">Disabled</span>' : "" ?></span>
+                                <span class="small text-muted"><?= e($acc["created_at"]) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Portal</h5>
                     <div class="card border bg-light">
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0 small">
-                                <li class="mb-2"><strong>Architecture:</strong> Monolithic PHP & MySQL (PDO/MySQLi Dual Driver)</li>
-                                <li class="mb-2"><strong>Authentication:</strong> Bcrypt (Cost 10) + Session Fingerprinting</li>
-                                <li class="mb-2"><strong>RBAC Enforcement:</strong> 403 Barrier with Audit Trail</li>
-                                <li class="mb-2"><strong>Export Formats:</strong> CSV Stream Generator (`fputcsv`)</li>
-                                <li class="mb-2"><strong>Database:</strong> <code>studenthub_db</code> (UTF8mb4)</li>
-                                <li><strong>Environment:</strong> Local / Cloud Ready (Docker/Render/Heroku/cPanel)</li>
+                        <div class="card-body small">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2"><strong>Database:</strong> <code>studenthub_db</code> (migrations <?= e(implode(", ", array_column($conn->query("SELECT version FROM schema_migrations ORDER BY version")->fetch_all(MYSQLI_NUM), 0))) ?>)</li>
+                                <li class="mb-2"><strong>Linked student records:</strong> <?= (int) $stats["students"]["linked"] ?> of <?= (int) $stats["students"]["total"] ?></li>
+                                <li class="mb-2"><strong>Access control:</strong> roles admin / editor / student; every page and API action checks the permission on the server (HTTP 403 + audit entry)</li>
+                                <li><strong>Security:</strong> bcrypt passwords, CSRF tokens on every POST, session timeout, audit log</li>
                             </ul>
                         </div>
                     </div>
@@ -1123,53 +1114,46 @@ if ($a_res) {
             <?php endif; ?>
         </div>
 
-        <!-- 4. USERS TAB (Practicals 9 & 10) -->
+        <!-- 4. USERS TAB (Practicals 9, 10 and 14: roles, account status) -->
         <div class="tab-pane fade <?= ($current_tab === 'users') ? 'show active' : '' ?>" id="users" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">User Accounts & Role Management</h5>
-                    <p class="text-muted small mb-0">RBAC accounts with encrypted Bcrypt credentials and authentication tracking.</p>
+                    <h5 class="fw-bold mb-1">User Accounts &amp; Role Management</h5>
+                    <p class="text-muted small mb-0">Accounts with bcrypt passwords. A disabled account cannot sign in and its open sessions end at the next request; your own account and the last active administrator are protected.</p>
                 </div>
             </div>
-
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
+                <table class="table table-hover table-bordered align-middle" id="user-table">
+                    <thead>
                         <tr>
-                            <th>#ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Assigned Role</th>
-                            <th>Last Login</th>
-                            <th>Registered On</th>
-                            <th class="text-center">Action</th>
+                            <th scope="col">#ID</th><th scope="col">Username</th><th scope="col">Email</th><th scope="col">Role</th>
+                            <th scope="col">Status</th><th scope="col">Last login</th><th scope="col">Registered</th><th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($users_list as $u): ?>
-                            <tr>
-                                <td><span class="text-muted fw-bold">#<?= $u['id'] ?></span></td>
-                                <td class="fw-semibold">
-                                    <i class="bi bi-person-circle me-1 text-secondary"></i>
-                                    <?= htmlspecialchars($u['username']) ?>
-                                </td>
-                                <td class="small"><?= htmlspecialchars($u['email']) ?></td>
+                        <?php foreach ($users_list as $u): $is_me = (int) $u["id"] === $current_user["id"]; ?>
+                            <tr<?= $u["status"] === "disabled" ? ' class="student-inactive"' : "" ?>>
+                                <td><span class="text-muted fw-bold">#<?= (int) $u["id"] ?></span></td>
+                                <td class="fw-semibold"><i class="bi bi-person-circle me-1 text-secondary"></i><?= e($u["username"]) ?></td>
+                                <td class="small"><?= e($u["email"]) ?></td>
                                 <td>
-                                    <?php if ($u['role'] === 'admin'): ?>
+                                    <?php if ($u["role"] === "admin"): ?>
                                         <span class="badge badge-role-admin px-2 py-1"><i class="bi bi-shield-fill me-1"></i>Admin</span>
-                                    <?php elseif ($u['role'] === 'editor'): ?>
+                                    <?php elseif ($u["role"] === "editor"): ?>
                                         <span class="badge badge-role-editor px-2 py-1"><i class="bi bi-pen-fill me-1"></i>Editor</span>
                                     <?php else: ?>
                                         <span class="badge badge-role-student px-2 py-1"><i class="bi bi-person-fill me-1"></i>Student</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="small text-muted"><?= htmlspecialchars($u['last_login'] ?? 'Never') ?></td>
-                                <td class="small text-muted"><?= htmlspecialchars($u['created_at']) ?></td>
-                                <td class="text-center">
-                                    <?php if ($u['id'] != $_SESSION["user_id"]): ?>
-                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline" onsubmit="<?= confirm_js('Delete user ' . $u['username'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?= (int) $u['id'] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-trash"></i> Delete</button></form>
+                                <td><span class="badge <?= $u["status"] === "active" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger" ?>"><?= $u["status"] === "active" ? "Active" : "Disabled" ?></span></td>
+                                <td class="small text-muted"><?= e($u["last_login"] ?? "Never") ?></td>
+                                <td class="small text-muted"><?= e($u["created_at"]) ?></td>
+                                <td class="text-center text-nowrap">
+                                    <?php if ($is_me): ?>
+                                        <span class="badge bg-secondary-subtle text-secondary">Current session</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary-subtle text-secondary">Current Session</span>
+                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $u["status"] === "active" ? "disable_user" : "enable_user" ?>"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-<?= $u["status"] === "active" ? "warning" : "success" ?> btn-sm py-0 px-2" aria-label="<?= $u["status"] === "active" ? "Disable" : "Enable" ?> <?= e($u["username"]) ?>"><i class="bi bi-<?= $u["status"] === "active" ? "person-lock" : "person-check" ?>"></i> <?= $u["status"] === "active" ? "Disable" : "Enable" ?></button></form>
+                                        <form method="post" action="admin_dashboard.php?tab=users" class="d-inline" onsubmit="<?= confirm_js('Delete user ' . $u['username'] . '?') ?>"><?= csrf_field() ?><input type="hidden" name="action" value="delete_user"><input type="hidden" name="id" value="<?= (int) $u["id"] ?>"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" aria-label="Delete <?= e($u["username"]) ?>"><i class="bi bi-trash"></i> Delete</button></form>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -1179,52 +1163,72 @@ if ($a_res) {
             </div>
         </div>
 
-        <!-- 5. AUDIT LOGS TAB (Practical 14) -->
+        <!-- 5. AUDIT LOGS TAB (Practical 14: filtered audit trail) -->
         <div class="tab-pane fade <?= ($current_tab === 'audits') ? 'show active' : '' ?>" id="audits" role="tabpanel">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-1">Live Security & Operational Audit Trail</h5>
-                    <p class="text-muted small mb-0">Tamper-evident system logs recording logins, CRUD events, exports, and 403 blocks.</p>
+                    <h5 class="fw-bold mb-1">Security &amp; Operational Audit Trail</h5>
+                    <p class="text-muted small mb-0">Logins, denied access, CSRF rejections, record and event changes, exports, uploads and account changes – the newest 100 matching entries.</p>
                 </div>
             </div>
-
+            <form method="get" action="admin_dashboard.php" class="row g-2 mb-3" role="search" aria-label="Filter the audit log">
+                <input type="hidden" name="tab" value="audits">
+                <div class="col-md-4">
+                    <label for="audit-action" class="visually-hidden">Action</label>
+                    <select id="audit-action" name="audit_action" class="form-select form-select-sm">
+                        <option value="">All actions</option>
+                        <?php foreach ($audit_action_list as $act): ?>
+                            <option value="<?= e($act) ?>"<?= $audit_filters["action"] === $act ? " selected" : "" ?>><?= e($act) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="audit-status" class="visually-hidden">Status</label>
+                    <select id="audit-status" name="audit_status" class="form-select form-select-sm">
+                        <option value="">All statuses</option>
+                        <?php foreach (AUDIT_STATUSES as $st_value): ?>
+                            <option value="<?= $st_value ?>"<?= $audit_filters["status"] === $st_value ? " selected" : "" ?>><?= $st_value ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="audit-user" class="visually-hidden">User</label>
+                    <input type="search" id="audit-user" name="audit_user" maxlength="50" class="form-control form-control-sm" placeholder="Username contains…" value="<?= e($audit_filters["user"]) ?>">
+                </div>
+                <div class="col-md-2 d-grid"><button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-funnel"></i> Filter</button></div>
+            </form>
             <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="">
-                        <tr>
-                            <th>#ID</th>
-                            <th>Timestamp</th>
-                            <th>Username</th>
-                            <th>Action Type</th>
-                            <th>Details</th>
-                            <th>Client IP</th>
-                            <th>Status</th>
-                        </tr>
+                <table class="table table-hover table-bordered align-middle" id="audit-table">
+                    <thead>
+                        <tr><th scope="col">#ID</th><th scope="col">Timestamp</th><th scope="col">Username</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Client IP</th><th scope="col">Status</th></tr>
                     </thead>
                     <tbody>
+                        <?php if (!$audit_list): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-3">No audit entries match these filters.</td></tr>
+                        <?php endif; ?>
                         <?php foreach ($audit_list as $log): ?>
                             <tr>
-                                <td><span class="text-muted fw-bold">#<?= $log['id'] ?></span></td>
-                                <td class="small text-muted"><?= htmlspecialchars($log['created_at']) ?></td>
-                                <td class="fw-semibold"><?= htmlspecialchars($log['username']) ?></td>
+                                <td><span class="text-muted fw-bold">#<?= (int) $log["id"] ?></span></td>
+                                <td class="small text-muted"><?= e($log["created_at"]) ?></td>
+                                <td class="fw-semibold"><?= e($log["username"]) ?></td>
                                 <td>
                                     <?php
-                                    $act = $log['action'];
+                                    $act = $log["action"];
                                     $badge_class = "bg-primary-subtle text-primary";
-                                    if (strpos($act, "LOGIN") !== false) $badge_class = "bg-info-subtle text-info";
-                                    if (strpos($act, "DELETE") !== false) $badge_class = "bg-danger-subtle text-danger";
-                                    if (strpos($act, "CREATE") !== false) $badge_class = "bg-success-subtle text-success";
-                                    if (strpos($act, "DENIED") !== false) $badge_class = "bg-danger text-white";
+                                    if (str_contains($act, "LOGIN")) $badge_class = "bg-info-subtle text-info";
+                                    if (str_contains($act, "DELETE") || str_contains($act, "DISABLED")) $badge_class = "bg-danger-subtle text-danger";
+                                    if (str_contains($act, "CREATE") || str_contains($act, "ENABLED")) $badge_class = "bg-success-subtle text-success";
+                                    if (str_contains($act, "DENIED") || str_contains($act, "REJECTED") || str_contains($act, "REVOKED")) $badge_class = "bg-danger text-white";
                                     ?>
-                                    <span class="badge <?= $badge_class ?>"><code><?= htmlspecialchars($act) ?></code></span>
+                                    <span class="badge <?= $badge_class ?>"><code><?= e($act) ?></code></span>
                                 </td>
-                                <td class="small"><?= htmlspecialchars($log['details']) ?></td>
-                                <td class="small text-muted"><code><?= htmlspecialchars($log['ip_address']) ?></code></td>
+                                <td class="small"><?= e($log["details"]) ?></td>
+                                <td class="small text-muted"><code><?= e($log["ip_address"]) ?></code></td>
                                 <td>
-                                    <?php if ($log['status'] === 'SUCCESS'): ?>
+                                    <?php if ($log["status"] === "SUCCESS"): ?>
                                         <span class="badge bg-success-subtle text-success"><i class="bi bi-check me-1"></i>SUCCESS</span>
                                     <?php else: ?>
-                                        <span class="badge bg-danger-subtle text-danger"><i class="bi bi-x me-1"></i><?= htmlspecialchars($log['status']) ?></span>
+                                        <span class="badge bg-danger-subtle text-danger"><i class="bi bi-x me-1"></i><?= e($log["status"]) ?></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

@@ -4,7 +4,7 @@ StudentHub migration 003 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
 PASS  live structure is identical to the baseline upgraded with 003 in a disposable copy
 PASS  live database records migration 003
 PASS  every original live event value is unchanged
-PASS  live users (with password hashes), students, registrations and menu items are unchanged
+PASS  live users (with password hashes), students, registrations and menu items equal the migrated baseline
 INFO  live event categories: Conference, Cultural, Hackathon, Seminar, Sports, Technical, Workshop
 PASS  all disposable databases removed
 

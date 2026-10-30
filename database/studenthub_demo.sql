@@ -1,6 +1,6 @@
 -- StudentHub demo database (safe to publish)
 -- Schema of the working studenthub_db (including migrations 001 - Practical 8 foundation -, 002 - unique enrollment
--- numbers - and 003 - Practical 12 event management) plus fictional demo rows.
+-- numbers -, 003 - Practical 12 event management - and 004 - Practical 14 admin dashboard) plus fictional demo rows.
 -- Contains NO user accounts, password hashes, audit logs or real student records. All student rows except the owner
 -- are fictional (example.com).
 -- Safe to re-run: tables use IF NOT EXISTS and rows use INSERT IGNORE (nothing is dropped).
@@ -11,6 +11,7 @@
 --                    mysql -u root studenthub_db < database/migrations/001_practical8_foundation.sql
 --                    mysql -u root studenthub_db < database/migrations/002_unique_enrollment_no.sql
 --                    mysql -u root studenthub_db < database/migrations/003_event_management.sql
+--                    mysql -u root studenthub_db < database/migrations/004_admin_dashboard.sql
 --                    (a database made by an earlier version of this file: apply only the migrations it is missing)
 -- Accounts:          php tools/create_demo_user.php --db=studenthub_db --username=<name> --email=<email> --role=admin|student
 -- Details:           database/README.md
@@ -26,7 +27,7 @@ BEGIN NOT ATOMIC
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created before migration 001. Apply database/migrations/001_practical8_foundation.sql instead.';
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schema_migrations') THEN
-        IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '003') THEN
+        IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '004') THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'This database was created by an earlier version of this file. Apply the missing migrations in database/migrations/ instead.';
         END IF;
     END IF;
@@ -39,13 +40,15 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` varchar(20) NOT NULL DEFAULT 'student',
+  `status` enum('active','disabled') NOT NULL DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `last_login` datetime DEFAULT NULL,
   `remember_token_hash` varchar(255) DEFAULT NULL,
   `remember_token_expiry` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  CONSTRAINT `chk_users_role` CHECK (`role` in ('admin','editor','student'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- students.user_id: optional link to the login account (one account per student record)
@@ -127,7 +130,7 @@ CREATE TABLE IF NOT EXISTS `menu_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) NOT NULL,
   `link` varchar(150) NOT NULL,
-  `min_role` enum('user','editor','admin') DEFAULT 'user',
+  `min_role` enum('student','editor','admin') NOT NULL DEFAULT 'student',
   `icon` varchar(50) DEFAULT 'bi-link',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -173,18 +176,19 @@ INSERT IGNORE INTO `events` (`id`, `title`, `event_date`, `location`, `descripti
 
 -- Navigation links point at pages that exist (the unbuilt faculty page is omitted)
 INSERT IGNORE INTO `menu_items` (`id`, `title`, `link`, `min_role`, `icon`) VALUES
-(1, 'Student Dashboard',         'dashboard.php',                   'user',  'bi-speedometer2'),
-(2, 'My Profile',                'profile.php',                     'user',  'bi-person-badge'),
-(3, 'Campus Events',             'notifications.php',               'user',  'bi-calendar-event'),
+(1, 'Student Dashboard',         'dashboard.php',                   'student', 'bi-speedometer2'),
+(2, 'My Profile',                'profile.php',                     'student', 'bi-person-badge'),
+(3, 'Campus Events',             'notifications.php',               'student', 'bi-calendar-event'),
 (5, 'Attendance',                'attendance.php',                  'editor','bi-check2-square'),
 (6, 'Admin Management Console',  'admin_dashboard.php',             'admin', 'bi-shield-lock'),
 (7, 'Student Management (CRUD)', 'admin_dashboard.php?tab=students','admin', 'bi-people'),
 (8, 'Campus Event Manager',      'admin_dashboard.php?tab=events',  'admin', 'bi-calendar-plus'),
-(9, 'Asynchronous SPA Manager',  '../Practical-13/index.html',      'admin', 'bi-lightning-charge'),
+(9, 'Event Finder (Fetch API)',  'events_live.php',                 'student', 'bi-lightning-charge'),
 (10,'Security Audit Logs',       'admin_dashboard.php?tab=audits',  'admin', 'bi-journal-text');
 
--- This structure already includes migrations 001, 002 and 003
+-- This structure already includes migrations 001 to 004
 INSERT IGNORE INTO `schema_migrations` (`version`, `description`) VALUES
 ('001', 'Practical 8 database foundation: students.user_id, registrations, event time/capacity, semester check, audit_logs FK'),
 ('002', 'Practical 11 student management: UNIQUE students.enrollment_no'),
-('003', 'Practical 12 event management: event_categories + FK, events.status, events.updated_at, UNIQUE events.poster');
+('003', 'Practical 12 event management: event_categories + FK, events.status, events.updated_at, UNIQUE events.poster'),
+('004', 'Practical 14 admin dashboard: menu roles student/editor/admin + integrated links, users.status, role check');

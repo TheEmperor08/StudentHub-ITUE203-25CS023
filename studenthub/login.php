@@ -28,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } else {
         // An e-mail address contains "@", a username never does
         $column = str_contains($entered, "@") ? "email" : "username";
-        $stmt = $conn->prepare("SELECT u.id, u.username, u.email, u.password, u.role, s.status AS student_status
+        $stmt = $conn->prepare("SELECT u.id, u.username, u.email, u.password, u.role, u.status AS account_status, s.status AS student_status
                                 FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE u.$column = ? LIMIT 1");
         $stmt->bind_param("s", $entered);
         $stmt->execute();
@@ -38,11 +38,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // An unknown account is checked against a dummy hash, so both failures take about the same time
         $hash = $account["password"] ?? '$2y$10$cL5pLAsT9eF311SYAHI/9OCtAW62Xl1zkDZ3VA2wDn4DbvPI3.YlC';
         $verified = password_verify($password, $hash);
-        // Correct password, but the linked student record is deactivated: no session is started (generic message; the
-        // status is only revealed to someone who knows the password)
-        $denied = $account !== null && $verified && account_is_deactivated($account["role"], $account["student_status"]);
+        // Correct password, but the account is disabled or its linked student record is deactivated: no session is started
+        // (generic message; the status is only revealed to someone who knows the password)
+        $block  = $account !== null && $verified ? account_block_reason($account) : null;
+        $denied = $block !== null;
         if ($denied) {
-            log_audit($conn, (int) $account["id"], $account["username"], "LOGIN_DENIED", "Sign-in refused: the linked student record is inactive.", "SECURITY_BLOCK");
+            log_audit($conn, (int) $account["id"], $account["username"], "LOGIN_DENIED", "Sign-in refused: $block.", "SECURITY_BLOCK");
         } elseif ($account !== null && $verified && in_array($account["role"], STUDENTHUB_ROLES, true)) {
             login_user($account);
             $up = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");

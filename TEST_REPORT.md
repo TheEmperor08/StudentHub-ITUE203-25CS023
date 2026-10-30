@@ -159,3 +159,22 @@ Covered by `test_api.py`: 401 JSON (never a redirect) without a session and for 
 The Edge test delays the API answers in its own network layer to make the loading state visible for screenshot 01; the answers themselves are the real ones. It also counts page navigations: create, update and delete happened without a page reload. A bug found by the browser test was fixed: the page's `display: flex` rules overrode the `hidden` attribute, so the loading indicator stayed visible after loading.
 
 Limitations: posters are uploaded only in the Admin Console (the API handles JSON, not files); the Event Finder lists at most 100 events per request.
+
+---
+
+## 11. Practical 14 integrated into `studenthub/` – admin dashboard, role-based navigation, account status (31 October 2026)
+Write tests ran against disposable databases. The live database then received migration 004 after a fresh verified backup; its accounts (incl. password hashes), students, events, registrations and categories were verified unchanged, every account is active and the menu equals the migrated baseline.
+
+| Suite | Result | Output |
+|---|---|---|
+| `tests/test_dashboard.py` – HTTP tests of the overview, navigation, 403 page, account status and audit filters | **36 / 36 passed** | `tests/test_dashboard_output.txt` |
+| `tests/browser_dashboard.py` – Microsoft Edge + screenshots | **15 / 15 passed** | `tests/browser_dashboard_output.txt`, `evidence/practical-14-integration/` |
+| `database/tests/test_004_admin_dashboard.py` – migration 004 (fixture / real dump) / `--verify-live` | **18 / 18**, **18 / 18**, **5 / 5 passed** | `database/tests/test_004_output.txt`, `test_004_verify_live_output.txt` |
+| Live checks of the earlier migrations after 004: `test_001` 24 / 24, `test_002` 4 / 4, `test_003` 5 / 5 (they now compare the live database with the baseline upgraded by the same migrations, because 004 corrects menu data on purpose) | all passed | `database/tests/*_verify_live_output.txt` |
+| Regression: `test_api` 72 / 72, `test_events` 94 / 94, `test_students` 170 / 170, `test_auth` 132 / 132, `test_001` 88 / 88, `test_002` 22 / 22, `test_003` 27 / 27; Edge `browser_api` 16 / 16, `browser_events` 16 / 16, `browser_students` 16 / 16, `browser_inactive_login` 13 / 13, `browser_auth` 14 / 14 | all passed | outputs in `tests/` and `database/tests/` |
+
+Covered by `test_dashboard.py`: the five counters and their breakdowns equal the database; latest event registrations (student + event, newest first); newest accounts; recent activity; sidebar navigation per role (student and editor: no admin links; admin: Admin Console shortcuts from `menu_items`; never `faculty.php` or `../` links); HTML in a menu title or icon is escaped; the console's navigation box lists only existing pages; every console tab gives students and editors the same HTTP 403 page and an `ACCESS_DENIED` entry, and their POST actions are refused; disable/enable with CSRF (GET and token-less requests change nothing), `USER_DISABLED`/`USER_ENABLED` entries, the disabled editor's open session ends (`SESSION_REVOKED: the account is disabled`), sign-in refused with the generic message (`LOGIN_DENIED`), a wrong password still gets the normal message, the own account cannot be disabled, a disabled student account is refused too, re-enabled accounts sign in again; unknown account ids; deleting another account is audit-logged with its name; audit filters by action, status, user and combined, unknown values ignored, SQL in the user filter treated as text; no PHP warnings; live database untouched.
+
+The sidebar printed its link values without escaping; this was harmless while they were fixed in the code, but they now come from `menu_items`, so they are escaped.
+
+Limitations: there is no form to edit `menu_items` (rows are changed in the database or by migrations); the "last active administrator" protection is a defence in depth – it cannot be reached through the interface because an administrator cannot disable or delete their own account.

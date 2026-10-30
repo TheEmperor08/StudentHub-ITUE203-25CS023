@@ -14,6 +14,8 @@ into this database step by step; the practical folders keep their own historical
 | `tests/test_002_unique_enrollment_no.py` | Tests of migration 002 (disposable databases only) + read-only live check |
 | `migrations/003_event_management.sql` / `.down.sql` | Practical 12: `event_categories` + FK, `events.status`, `events.updated_at`, UNIQUE `events.poster` (and rollback) |
 | `tests/test_003_event_management.py` | Tests of migration 003 (disposable databases only) + read-only live check |
+| `migrations/004_admin_dashboard.sql` / `.down.sql` | Practical 14: menu roles `student`/`editor`/`admin` + integrated links, `users.status`, `chk_users_role` (and rollback) |
+| `tests/test_004_admin_dashboard.py` | Tests of migration 004 (disposable databases only) + read-only live check |
 | `tests/fixtures/studenthub_v1_fixture.sql` | The pre-migration structure with fictional rows, used by the tests |
 
 ## Tables and relationships (after migrations 001 and 002)
@@ -147,6 +149,18 @@ value: the files do not exist, so the portal shows a placeholder and never opens
 (`poster_path()` accepts only `<32 hex>.<jpg|png|webp>` inside it); uploading a new poster replaces the reference. Events with
 registrations cannot be deleted by the portal, so `fk_registrations_event ... ON DELETE CASCADE` never removes registration history
 through the interface. Applied to the live database on 31 Oct 2026 after a verified backup.
+
+## Migration 004 – admin dashboard (Practical 14)
+
+1. **Preconditions:** migration 003 is recorded; every account has the role `admin`, `editor` or `student`.
+2. `menu_items.min_role` becomes `ENUM('student','editor','admin') NOT NULL DEFAULT 'student'` – the old value `user` (not a portal role)
+   becomes `student`. Links to old standalone pages or anchors that do not exist are pointed at the integrated pages
+   (`dashboard.php`, `profile.php`, `notifications.php`, `attendance.php`, `events_live.php` instead of `../Practical-13/index.html`).
+   The row linking to the non-existent `faculty.php` is kept; the portal hides links to missing pages.
+3. `users.status ENUM('active','disabled') NOT NULL DEFAULT 'active'` (every existing account stays active) and
+   `chk_users_role CHECK (role IN ('admin','editor','student'))`.
+4. Verification, then the row `004`. Idempotent. The rollback removes `users.status` and the check and maps `student` back to `user`;
+   the corrected links stay (they point at existing pages). Applied to the live database on 31 Oct 2026 after a verified backup.
 
 ## Rollback
 

@@ -1,0 +1,52 @@
+StudentHub admin dashboard tests - Practical 14 (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+INFO  source: database/studenthub_demo.sql
+
+== Live statistics and latest registrations
+PASS  overview (200) shows five live counters matching the database (students, events, registrations, accounts, audit log)
+PASS  the accounts counter splits by role and counts disabled accounts
+PASS  latest event registrations: the newest 3 (student + event), newest first
+PASS  newest accounts: the five latest accounts with role badges
+PASS  recent activity table shows the newest audit entries (up to 6)
+
+== Role-based navigation (menu_items, migration 004)
+PASS  student: sidebar has no admin links (no Shortcuts to the console)
+PASS  editor: no admin links either (editors get no admin rights)
+PASS  admin: Shortcuts to the Admin Console and its tabs, taken from menu_items
+PASS  no link to a missing page (faculty.php) or outside the portal (../Practical-13) for any role
+PASS  menu titles and icons from the database are HTML-escaped in the sidebar
+PASS  the console's navigation box lists exactly the admin's menu rows (existing pages only)
+
+== Consistent access-denied page
+PASS  student: every Admin Console tab -> the same HTTP 403 'Access Denied' page, each attempt audit-logged
+PASS  student: disabling an account via POST -> 403, nothing changed
+PASS  editor: every Admin Console tab -> the same HTTP 403 'Access Denied' page, each attempt audit-logged
+PASS  editor: disabling an account via POST -> 403, nothing changed
+
+== Account status (disable / enable)
+PASS  the editor is signed in
+PASS  users tab lists status and Disable/Enable/Delete POST forms with CSRF tokens (none for the own account)
+PASS  GET with action=disable_user and a POST without token change nothing (403 for the POST)
+PASS  disable -> 303, status 'disabled', USER_DISABLED audit entry, message
+PASS  the disabled editor's open session ends at the next request (login page, status=access_disabled, SESSION_REVOKED)
+PASS  sign-in of the disabled account with the correct password is refused (403, generic message, LOGIN_DENIED)
+PASS  a wrong password for the disabled account gets the normal message (status not revealed)
+PASS  disabling it again -> 'already disabled'
+PASS  an administrator cannot disable the own account
+PASS  a disabled student account cannot sign in either (also with a linked active student record)
+PASS  enable -> status 'active', USER_ENABLED entries, the editor signs in again
+PASS  an unknown account id -> 'not found'
+PASS  deleting another account works and is audit-logged with the username
+
+== Audit log filters
+PASS  filter action USER_DISABLED -> exactly the matching entries (newest first)
+PASS  filter status SECURITY_BLOCK -> exactly the matching entries (newest first)
+PASS  filter user contains 'p14_ed' -> exactly the matching entries (newest first)
+PASS  filter action + status -> exactly the matching entries (newest first)
+PASS  unknown action/status values are ignored; SQL in the user filter is text
+PASS  no PHP warnings, notices or fatal errors in the server log
+
+== Clean-up
+PASS  disposable database removed
+PASS  the live studenthub_db was not touched
+
+Result: 36 passed, 0 failed, 36 checks

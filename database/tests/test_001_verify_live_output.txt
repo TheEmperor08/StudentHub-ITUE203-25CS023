@@ -1,0 +1,30 @@
+StudentHub migration 001 tests (PHP C:\xampp\php\php.exe, MySQL C:\xampp\mysql\bin\mysql.exe)
+
+== READ-ONLY verification of the live database studenthub_db against the baseline dump
+PASS  live: students.user_id int(11) NULL, placed after id
+PASS  live: UNIQUE uq_students_user_id (one account per student record)
+PASS  live: fk_students_user -> users.id ON DELETE SET NULL, ON UPDATE CASCADE
+PASS  live: CHECK chk_students_semester (NULL or 1-8)
+PASS  live: students.enrollment_no unchanged (varchar(20) NULL, no index added by 001)
+PASS  live: students.semester keeps int(11) NULL DEFAULT 3
+PASS  live: events.event_time TIME NULL after event_date
+PASS  live: events.capacity SMALLINT UNSIGNED NULL
+PASS  live: CHECK chk_events_capacity (NULL or > 0)
+PASS  live: events.location unchanged (varchar(150) NOT NULL)
+PASS  live: index idx_events_date (event_date, event_time)
+PASS  live: registrations columns and signed INT(11) keys
+PASS  live: registrations PK, UNIQUE (student_id, event_id), index on event_id
+PASS  live: registrations FKs to students.id and events.id, ON DELETE/UPDATE CASCADE
+PASS  live: fk_audit_logs_user -> users.id ON DELETE SET NULL (audit_logs.user_id stays nullable)
+PASS  live: every foreign-key column has exactly the type of the key it references
+PASS  live: all original tables still exist (users, students, events, menu_items, audit_logs)
+PASS  live: all tables InnoDB / utf8mb4_unicode_ci
+PASS  live: schema_migrations records version 001 once
+PASS  live structure is identical to the baseline migrated in the test copy
+PASS  every original row and value of the live database equals the migrated baseline (incl. password hashes)
+PASS  live links equal the verified e-mail matches (5)
+PASS  live registrations table is empty, event capacity/time NULL
+INFO  live rows: users 8, students 9, events 5, menu_items 10, audit_logs 65
+PASS  all disposable databases removed
+
+Result: 24 passed, 0 failed, 24 checks

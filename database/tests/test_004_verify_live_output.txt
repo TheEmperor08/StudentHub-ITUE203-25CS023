@@ -1,0 +1,10 @@
+StudentHub migration 004 tests (MySQL C:\xampp\mysql\bin\mysql.exe)
+
+== READ-ONLY verification of the live database studenthub_db against the dump taken before migration 004
+PASS  live structure is identical to the baseline upgraded with 004
+PASS  live menu equals the migrated baseline menu
+PASS  live accounts (incl. password hashes) unchanged and active; students, registrations, categories unchanged
+PASS  live database records migration 004
+PASS  all disposable databases removed
+
+Result: 5 passed, 0 failed, 5 checks

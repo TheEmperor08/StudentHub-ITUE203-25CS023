@@ -1,0 +1,19 @@
+PASS  three registrations made by two students on the Campus Events page
+PASS  dashboard: live counters equal the database (students, events, active registrations, accounts, audit entries)
+PASS  latest registrations show the students and events just registered
+PASS  admin sidebar: Shortcuts to the Admin Console tabs (from menu_items)
+PASS  student sidebar: no admin links
+PASS  editor sidebar: no admin links either
+PASS  editor opening the Admin Console -> HTTP 403 'Access Denied' (same page as for students)
+PASS  admin disables the editor account -> message, status Disabled
+PASS  the editor's open session ends at the next page (sign-in page with the generic message)
+PASS  signing in again with the correct password is refused
+PASS  after Enable the editor signs in again
+PASS  audit log filtered to SECURITY_BLOCK shows the denied access, revoked session and refused sign-in
+PASS  filter by action USER_DISABLED -> the account change with the admin's name
+PASS  no JavaScript errors (only the intended 403 responses)
+
+INFO  known, pre-existing: the portal has no favicon - 1 automatic /favicon.ico request(s) got 404
+PASS  no PHP warnings or errors in the server log
+screenshots: evidence/practical-14-integration/ (10 PNG files)
+browser checks: 15 passed, 0 failed

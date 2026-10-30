@@ -181,7 +181,9 @@ def verify_live(baseline):
     check("live structure is identical to the baseline upgraded with 003 in a disposable copy", not d, "; ".join(d[:4]))
     check("live database records migration 003", "003" in versions(LIVE_DB))
     check("every original live event value is unchanged", event_columns(LIVE_DB) == events_before)
-    check("live users (with password hashes), students, registrations and menu items are unchanged", data_fingerprint(LIVE_DB, others) == data_before)
+    expected = data_fingerprint(TEST_DB, others)      # the baseline after 003 and the later migrations the live database has
+    check("live users (with password hashes), students, registrations and menu items equal the migrated baseline",
+          data_fingerprint(LIVE_DB, others) == expected and data_fingerprint(TEST_DB, ("students", "registrations")) == {k: v for k, v in data_before.items() if k in ("students", "registrations")})
     info("live event categories: " + ", ".join(r[0] for r in mysql("SELECT name FROM event_categories ORDER BY name", LIVE_DB)))
     T.drop_disposable(TEST_DB)
 
