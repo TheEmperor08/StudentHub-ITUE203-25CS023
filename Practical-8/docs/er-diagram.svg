@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="440" viewBox="0 0 1260 440" font-family="Segoe UI, Arial, sans-serif">
+<rect width="1260" height="440" fill="#ffffff"/>
+<text x="30" y="38" font-size="22" font-weight="700" fill="#0b1437">ER diagram – studenthub_prac8 (Third Normal Form)</text>
+<text x="30" y="64" font-size="14" fill="#475569">Many-to-many relationship students ⟷ events resolved by the registrations table (crow's-foot notation; AI = AUTO_INCREMENT)</text>
+<rect x="30" y="92" width="330" height="246" rx="10" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<path d="M30 134 V102 a10 10 0 0 1 10 -10 H350 a10 10 0 0 1 10 10 V134 Z" fill="#0b1437"/>
+<text x="195.0" y="120" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">students</text>
+<rect x="32" y="134.0" width="326" height="28" fill="#fef3c7"/>
+<text x="42" y="153.0" font-size="12" font-weight="700" fill="#92400e">PK</text>
+<text x="74" y="153.0" font-size="14" font-weight="700" fill="#0f172a" font-family="Consolas, monospace">student_id</text>
+<text x="350" y="153.0" font-size="11.5" fill="#475569" text-anchor="end">INT UNSIGNED, AI</text>
+<line x1="32" y1="162.0" x2="358" y2="162.0" stroke="#e2e8f0"/>
+<text x="42" y="181.0" font-size="12" font-weight="700" fill="#475569">UK</text>
+<text x="74" y="181.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">student_code</text>
+<text x="350" y="181.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(12)</text>
+<line x1="32" y1="190.0" x2="358" y2="190.0" stroke="#e2e8f0"/>
+<text x="42" y="209.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="74" y="209.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">full_name</text>
+<text x="350" y="209.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(100)</text>
+<line x1="32" y1="218.0" x2="358" y2="218.0" stroke="#e2e8f0"/>
+<text x="42" y="237.0" font-size="12" font-weight="700" fill="#475569">UK</text>
+<text x="74" y="237.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">email</text>
+<text x="350" y="237.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(120), CHECK</text>
+<line x1="32" y1="246.0" x2="358" y2="246.0" stroke="#e2e8f0"/>
+<text x="42" y="265.0" font-size="12" font-weight="700" fill="#475569">IX</text>
+<text x="74" y="265.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">branch</text>
+<text x="350" y="265.0" font-size="11.5" fill="#475569" text-anchor="end">ENUM(&#x27;CSE&#x27;,&#x27;CE&#x27;,&#x27;IT&#x27;)</text>
+<line x1="32" y1="274.0" x2="358" y2="274.0" stroke="#e2e8f0"/>
+<text x="42" y="293.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="74" y="293.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">semester</text>
+<text x="350" y="293.0" font-size="11.5" fill="#475569" text-anchor="end">TINYINT, CHECK 1–8</text>
+<line x1="32" y1="302.0" x2="358" y2="302.0" stroke="#e2e8f0"/>
+<text x="42" y="321.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="74" y="321.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">created_at</text>
+<text x="350" y="321.0" font-size="11.5" fill="#475569" text-anchor="end">TIMESTAMP</text>
+<text x="195.0" y="360" font-size="12" fill="#475569" text-anchor="middle">UNIQUE (student_code), UNIQUE (email)</text>
+<rect x="465" y="92" width="330" height="190" rx="10" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<path d="M465 134 V102 a10 10 0 0 1 10 -10 H785 a10 10 0 0 1 10 10 V134 Z" fill="#0b1437"/>
+<text x="630.0" y="120" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">registrations</text>
+<rect x="467" y="134.0" width="326" height="28" fill="#fef3c7"/>
+<text x="477" y="153.0" font-size="12" font-weight="700" fill="#92400e">PK</text>
+<text x="509" y="153.0" font-size="14" font-weight="700" fill="#0f172a" font-family="Consolas, monospace">registration_id</text>
+<text x="785" y="153.0" font-size="11.5" fill="#475569" text-anchor="end">INT UNSIGNED, AI</text>
+<rect x="467" y="162.0" width="326" height="28" fill="#dbeafe"/>
+<line x1="467" y1="162.0" x2="793" y2="162.0" stroke="#e2e8f0"/>
+<text x="477" y="181.0" font-size="12" font-weight="700" fill="#1d4ed8">FK</text>
+<text x="509" y="181.0" font-size="14" font-weight="700" fill="#0f172a" font-family="Consolas, monospace">student_id</text>
+<text x="785" y="181.0" font-size="11.5" fill="#475569" text-anchor="end">INT UNSIGNED</text>
+<rect x="467" y="190.0" width="326" height="28" fill="#dbeafe"/>
+<line x1="467" y1="190.0" x2="793" y2="190.0" stroke="#e2e8f0"/>
+<text x="477" y="209.0" font-size="12" font-weight="700" fill="#1d4ed8">FK</text>
+<text x="509" y="209.0" font-size="14" font-weight="700" fill="#0f172a" font-family="Consolas, monospace">event_id</text>
+<text x="785" y="209.0" font-size="11.5" fill="#475569" text-anchor="end">INT UNSIGNED</text>
+<line x1="467" y1="218.0" x2="793" y2="218.0" stroke="#e2e8f0"/>
+<text x="477" y="237.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="509" y="237.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">registered_at</text>
+<text x="785" y="237.0" font-size="11.5" fill="#475569" text-anchor="end">DATETIME</text>
+<line x1="467" y1="246.0" x2="793" y2="246.0" stroke="#e2e8f0"/>
+<text x="477" y="265.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="509" y="265.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">status</text>
+<text x="785" y="265.0" font-size="11.5" fill="#475569" text-anchor="end">ENUM(registered, attended, cancelled)</text>
+<text x="630.0" y="304" font-size="12" fill="#475569" text-anchor="middle">UNIQUE (student_id, event_id): one registration per student per event</text>
+<rect x="900" y="92" width="330" height="246" rx="10" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<path d="M900 134 V102 a10 10 0 0 1 10 -10 H1220 a10 10 0 0 1 10 10 V134 Z" fill="#0b1437"/>
+<text x="1065.0" y="120" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">events</text>
+<rect x="902" y="134.0" width="326" height="28" fill="#fef3c7"/>
+<text x="912" y="153.0" font-size="12" font-weight="700" fill="#92400e">PK</text>
+<text x="944" y="153.0" font-size="14" font-weight="700" fill="#0f172a" font-family="Consolas, monospace">event_id</text>
+<text x="1220" y="153.0" font-size="11.5" fill="#475569" text-anchor="end">INT UNSIGNED, AI</text>
+<line x1="902" y1="162.0" x2="1228" y2="162.0" stroke="#e2e8f0"/>
+<text x="912" y="181.0" font-size="12" font-weight="700" fill="#475569">UK</text>
+<text x="944" y="181.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">title</text>
+<text x="1220" y="181.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(120)</text>
+<line x1="902" y1="190.0" x2="1228" y2="190.0" stroke="#e2e8f0"/>
+<text x="912" y="209.0" font-size="12" font-weight="700" fill="#475569">IX</text>
+<text x="944" y="209.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">event_date</text>
+<text x="1220" y="209.0" font-size="11.5" fill="#475569" text-anchor="end">DATE</text>
+<line x1="902" y1="218.0" x2="1228" y2="218.0" stroke="#e2e8f0"/>
+<text x="912" y="237.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="944" y="237.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">venue</text>
+<text x="1220" y="237.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(100)</text>
+<line x1="902" y1="246.0" x2="1228" y2="246.0" stroke="#e2e8f0"/>
+<text x="912" y="265.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="944" y="265.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">category</text>
+<text x="1220" y="265.0" font-size="11.5" fill="#475569" text-anchor="end">VARCHAR(30)</text>
+<line x1="902" y1="274.0" x2="1228" y2="274.0" stroke="#e2e8f0"/>
+<text x="912" y="293.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="944" y="293.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">capacity</text>
+<text x="1220" y="293.0" font-size="11.5" fill="#475569" text-anchor="end">SMALLINT, CHECK &gt; 0</text>
+<line x1="902" y1="302.0" x2="1228" y2="302.0" stroke="#e2e8f0"/>
+<text x="912" y="321.0" font-size="12" font-weight="700" fill="#475569"></text>
+<text x="944" y="321.0" font-size="14" font-weight="400" fill="#0f172a" font-family="Consolas, monospace">created_at</text>
+<text x="1220" y="321.0" font-size="11.5" fill="#475569" text-anchor="end">TIMESTAMP</text>
+<text x="1065.0" y="360" font-size="12" fill="#475569" text-anchor="middle">UNIQUE (title, event_date)</text>
+<path d="M360 148.0 H412.5 V176.0 H465" fill="none" stroke="#0b1437" stroke-width="2"/>
+<line x1="370" y1="139.0" x2="370" y2="157.0" stroke="#0b1437" stroke-width="2"/><line x1="377" y1="139.0" x2="377" y2="157.0" stroke="#0b1437" stroke-width="2"/><line x1="465" y1="166.0" x2="451" y2="176.0" stroke="#0b1437" stroke-width="2"/><line x1="465" y1="186.0" x2="451" y2="176.0" stroke="#0b1437" stroke-width="2"/><line x1="465" y1="176.0" x2="451" y2="176.0" stroke="#0b1437" stroke-width="2"/><circle cx="443" cy="176.0" r="6" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<text x="368" y="134.0" font-size="13" font-weight="700" fill="#0b1437">1</text>
+<text x="421" y="162.0" font-size="13" font-weight="700" fill="#0b1437">0..*</text>
+<text x="412.5" y="192.0" font-size="12.5" fill="#0b1437" text-anchor="middle" font-style="italic">makes</text>
+<path d="M900 148.0 H847.5 V204.0 H795" fill="none" stroke="#0b1437" stroke-width="2"/>
+<line x1="890" y1="139.0" x2="890" y2="157.0" stroke="#0b1437" stroke-width="2"/><line x1="883" y1="139.0" x2="883" y2="157.0" stroke="#0b1437" stroke-width="2"/><line x1="795" y1="194.0" x2="809" y2="204.0" stroke="#0b1437" stroke-width="2"/><line x1="795" y1="214.0" x2="809" y2="204.0" stroke="#0b1437" stroke-width="2"/><line x1="795" y1="204.0" x2="809" y2="204.0" stroke="#0b1437" stroke-width="2"/><circle cx="817" cy="204.0" r="6" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<text x="884" y="134.0" font-size="13" font-weight="700" fill="#0b1437">1</text>
+<text x="809" y="190.0" font-size="13" font-weight="700" fill="#0b1437">0..*</text>
+<text x="847.5" y="216.0" font-size="12.5" fill="#0b1437" text-anchor="middle" font-style="italic">has</text>
+<line x1="30" y1="384" x2="1230" y2="384" stroke="#e2e8f0"/>
+<rect x="30" y="394" width="30" height="20" fill="#fef3c7" stroke="#cbd5e1"/>
+<text x="45" y="409" font-size="11" font-weight="700" fill="#92400e" text-anchor="middle">PK</text>
+<text x="68" y="409" font-size="12.5" fill="#334155">primary key</text>
+<rect x="152.6" y="394" width="30" height="20" fill="#dbeafe" stroke="#cbd5e1"/>
+<text x="167.6" y="409" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<text x="190.6" y="409" font-size="12.5" fill="#334155">foreign key (ON DELETE / ON UPDATE CASCADE)</text>
+<rect x="486.4" y="394" width="30" height="20" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="501.4" y="409" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">UK</text>
+<text x="524.4" y="409" font-size="12.5" fill="#334155">unique key</text>
+<rect x="602.4" y="394" width="30" height="20" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="617.4" y="409" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">IX</text>
+<text x="640.4" y="409" font-size="12.5" fill="#334155">index</text>
+<line x1="695.4" y1="395" x2="695.4" y2="413" stroke="#0b1437" stroke-width="2"/><line x1="702.4" y1="395" x2="702.4" y2="413" stroke="#0b1437" stroke-width="2"/>
+<line x1="685.4" y1="404" x2="715.4" y2="404" stroke="#0b1437" stroke-width="2"/>
+<text x="723.4" y="409" font-size="12.5" fill="#334155">exactly one</text>
+<line x1="815.4" y1="404" x2="845.4" y2="404" stroke="#0b1437" stroke-width="2"/>
+<line x1="845.4" y1="394" x2="831.4" y2="404" stroke="#0b1437" stroke-width="2"/><line x1="845.4" y1="414" x2="831.4" y2="404" stroke="#0b1437" stroke-width="2"/><line x1="845.4" y1="404" x2="831.4" y2="404" stroke="#0b1437" stroke-width="2"/><circle cx="823.4" cy="404" r="6" fill="#ffffff" stroke="#0b1437" stroke-width="2"/>
+<text x="855.4" y="409" font-size="12.5" fill="#334155">zero or many</text>
+</svg>

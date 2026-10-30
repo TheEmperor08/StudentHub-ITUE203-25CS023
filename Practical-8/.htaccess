@@ -1,0 +1,5 @@
+# Apache (XAMPP): keep configuration files, tests and helper scripts out of the browser
+<FilesMatch "^(config\.local\.php|config\.example\.php|router\.php|start-server\.bat)$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 403 (?i)/tests(/|$)
