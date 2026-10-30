@@ -70,14 +70,17 @@ def p6_tests():
     for name in ("students", "events", "faqs"):
         st, hd, body = P.Browser(PORT).request(f"data/{name}.json")
         try:
-            rows = json.loads(body)
+            data = json.loads(body)
         except ValueError:
-            rows = None
-        ok = ok and st == 200 and isinstance(rows, list) and len(rows) >= 10
-    check("data/students.json, events.json and faqs.json are served and contain JSON arrays (15 records each)", ok)
+            data = {}
+        rows = data.get("records") if isinstance(data, dict) else None
+        ok = ok and st == 200 and data.get("sampleData") is True and "SAMPLE DATA" in data.get("description", "") and isinstance(rows, list) and len(rows) == 15
+    check("data/students.json, events.json and faqs.json are Practical 6's sample datasets (sampleData, description, 15 records each)", ok)
+    ids = [r["id"] for r in json.loads((P.APP / "data" / "students.json").read_text(encoding="utf-8"))["records"]]
+    check("the student dataset uses invented DEMO-001 … DEMO-015 ids (no real enrollment numbers)", ids == [f"DEMO-{i:03d}" for i in range(1, 16)])
     js = (P.APP / "assets" / "js" / "data.js").read_text(encoding="utf-8")
     check("data.js fetches the JSON, handles errors, escapes every value and paginates (5 per page)",
-          "fetch(`data/${type}.json`)" in js and "response.ok" in js and "catch (error)" in js and "esc(item[key])" in js and "itemsPerPage = 5" in js
+          "fetch(`data/${type}.json`)" in js and "data.records" in js and "response.ok" in js and "catch (error)" in js and "esc(item[key])" in js and "itemsPerPage = 5" in js
           and "setTimeout(resolve, 800)" not in js)
 
 

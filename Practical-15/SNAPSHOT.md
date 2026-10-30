@@ -2,7 +2,7 @@
 
 `Practical-15/` is an exact copy of the canonical application `studenthub/` (all files tracked by Git), made with
 `python tools/sync_practical15.py` and verified with `python tools/sync_practical15.py --check` and `tests/test_snapshot.py`.
-Base commit when the copy was made: `938e74f3d337c29af5f6bebf875b4cc716b8853b` (the copied files may include changes committed together with this manifest).
+Base commit when the copy was made: `31ba32dd7529ceed9907dbdf0c65bfb83c391123` (the copied files may include changes committed together with this manifest).
 
 56 files, SHA-256:
 
@@ -17,7 +17,7 @@ e5ae52c09c0aae395a9e25379951b57f9f809f5c0d1cf295f9ad4e983fa1076e  assets/css/boo
 bcf3e995edc1a58f3de46d8fc81853e2be4482b9a8640be1141cf733634d3658  assets/css/home.css
 6e0a36ce12f9dd43207701e09b6b3f472c66604eba92e0eb4b46fddd64e639ed  assets/css/tokens.css
 607b40d98a1b7f0fe7bcf8b81bf416c94c5171250c7bd971a7159fbadddaa778  assets/js/auth.js
-bb9f2cb01100e00d0699a3f6a33a0a0aeb263bb12b79bf89d4458db3c81d0390  assets/js/data.js
+b8e1346f07a66ed223db0be20c72c65cdabcdbee9370eb7743b88ff24caa563c  assets/js/data.js
 2d73cda65e78c0d969ae75028de8b83476fc43826ecbf73b6509f02c72a9e841  assets/js/events-live.js
 8adfcb11cc0911b9fc049eaff4d6e6a25b65c2310167b8391c51abe42a078039  assets/js/nav.js
 00010ab61743879af932eb1b44443087644a5a952a10ec93e31ed42eddcdae42  assets/js/register-validation.js
@@ -30,10 +30,10 @@ df475030f93408e6b1d36de4d9e584425dcc8a779bf60b430a0958d55eb259c7  attendance.php
 97dfa6154c8878dfefacad18399237e0a6ae0b29a2624b2b404e0bcf3bd808ae  contact.php
 640abd8fe1673414adea146a2517c980d543b724a29ce1e8db94ba48a4a5e3ec  courses.php
 fe8e79277d75e8677f612469ec56037de48648464326ec7e772ee9ad59bcda77  dashboard.php
-459079fd05a429190dd80cf42a1fde2914a66f4bcd60128610cc9a8cec32f860  data/events.json
-8fba1e2ac0bf8c5e8a9fdf528cd1ca5db4df71b877801bd31c675c26204ef96b  data/faqs.json
-f5d6c9d48ccc30cbc26530a31ba255a1c288fcf73af2f3ceba2ccd8dc0d5aee4  data/students.json
-f162a546c7fab474adc59aeb0317528a1078c7122e24bba5c5ab0d5f49350ba2  data_explorer.php
+0bed31ae68c59919c063e6c3935bb6a740d274bc13110fc3d9d208d268782d1a  data/events.json
+4b16cc8e60572976769fda514fdf52207552ed7cacc1339ce9d9a087fb71614b  data/faqs.json
+d107bf734581045680da7e03ed03df6eb763ffb6d0b56206769d71cf23b7b6c7  data/students.json
+8ab32f291a0c880fc3c848ee4fd6fe8840b2a0675a502a61c44d322e0cbf4cc0  data_explorer.php
 4a2e2bd43933871e34ee66c591f59c030d18302b84abd8e3c595ad8da2abb5b5  db.php
 0d016538139267b5f728c31e4ebd80bc89c1655abdc4e81f51882a51b3934b47  directory.php
 1d6b16d1ed8dbe69845a0cf10d681f164f89fda6bee7208f8742c4f8cac679d5  events.php

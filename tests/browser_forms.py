@@ -4,10 +4,10 @@
 P5: real-time validation and the password strength meter on the portal's registration page; P6: the Campus Data Explorer
 (JSON files + Fetch: loading state, search, filter, sorting, pagination); P7: the Help & Contact form (server validation,
 stored inquiry with a reference number) and the Inquiries tab of the Admin Console. To make the P6 loading state visible
-the test delays the JSON responses in its own network layer (the responses are the real files). Disposable database.
+the test holds the request for the JSON file in its own network layer until the screenshot is taken (the response is the real file). Disposable database.
     python tests\\browser_forms.py [screenshot folder]      (default: evidence/practical-05-07-integration)
 """
-import pathlib, re, secrets, sys, tempfile, time
+import json, pathlib, re, secrets, sys, tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import test_students as P
@@ -84,23 +84,30 @@ def main():
             # ---------------- Practical 6
             sign_in(riya, "riya_shah", pw["riya_shah"])
 
-            def slow(route):
-                time.sleep(1.2)
-                route.continue_()
-            riya.route("**/data/students.json", slow)
+            # the request for students.json is held (not answered) until the loading screenshot is taken, then released
+            held = []
+            riya.route("**/data/students.json", lambda route: held.append(route))
             riya.goto(BASE + "data_explorer.php", wait_until="domcontentloaded")
             riya.wait_for_selector("#status-container .loading")
-            check("Data Explorer: loading state while students.json is fetched", "Fetching Data from JSON" in riya.inner_text("#status-container"))
+            check("Data Explorer: loading state while students.json is fetched (no table yet)",
+                  "Fetching Data from JSON" in riya.inner_text("#status-container") and riya.locator("#data-table-container table").count() == 0)
             shot(riya, "04-data-explorer-loading.png")
+            for route in held:
+                route.continue_()
             riya.wait_for_selector("#data-table-container table")
             riya.unroute("**/data/students.json")
+            check("the dataset's own 'SAMPLE DATA' description is shown above the table", "SAMPLE DATA" in riya.inner_text("#dataset-note"))
             check("students rendered from JSON: 5 rows per page with pagination", riya.locator("#data-table-container tbody tr").count() == 5
                   and riya.locator("#pagination-container .page-btn").count() == 3)
             shot(riya, "05-data-explorer-students.png")
-            riya.fill("#searchInput", "pa")
+            records = json.loads((P.APP / "data" / "students.json").read_text(encoding="utf-8"))["records"]
+            term = next(r for r in records if r["branch"] == "CSE")["name"].split()[0][:3].lower()
+            want = [r for r in records if r["branch"] == "CSE" and any(term in str(v).lower() for v in r.values())]
+            riya.fill("#searchInput", term)
             riya.select_option("#filterSelect", "CSE")
             rows = riya.locator("#data-table-container tbody tr").all_inner_texts()
-            check("search 'pa' + branch filter CSE -> only matching CSE students", rows and all("CSE" in r and "pa" in r.lower() for r in rows))
+            check(f"search '{term}' + branch filter CSE -> exactly the {len(want)} matching CSE student(s)",
+                  len(rows) == min(5, len(want)) and all("CSE" in r and term in r.lower() for r in rows))
             shot(riya, "06-data-explorer-search-filter.png")
             riya.click(".tab-btn[data-type='events']")
             riya.wait_for_selector("#data-table-container th:has-text('TITLE')")

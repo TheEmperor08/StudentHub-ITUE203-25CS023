@@ -45,7 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Failed to fetch data');
             
             const data = await response.json();
-            currentData = data;
+            // Practical 6 format: {dataset, sampleData, description, records: [...]} (a plain array is accepted too)
+            currentData = Array.isArray(data) ? data : (data.records || []);
+            showNote(Array.isArray(data) ? '' : (data.description || ''));
             
             populateFilterOptions(type);
             applyFilters();
@@ -61,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         currentData.forEach(item => {
             if (type === 'students') options.add(item.branch);
-            if (type === 'events') options.add(item.category);
+            if (type === 'events' || type === 'faqs') options.add(item.category);
         });
 
         options.forEach(opt => {
@@ -87,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let matchesFilter = true;
             if (filterVal !== 'all') {
                 if (currentType === 'students') matchesFilter = item.branch === filterVal;
-                if (currentType === 'events') matchesFilter = item.category === filterVal;
+                if (currentType === 'events' || currentType === 'faqs') matchesFilter = item.category === filterVal;
             }
 
             return matchesSearch && matchesFilter;
@@ -96,8 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sorting logic
         if (sortVal !== 'default') {
             filteredData.sort((a, b) => {
-                let valA = a.name || a.title || a.q;
-                let valB = b.name || b.title || b.q;
+                let valA = a.name || a.title || a.question || a.q;
+                let valB = b.name || b.title || b.question || b.q;
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
                 
@@ -182,6 +184,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTable();
             });
         });
+    }
+
+    // The dataset's own description (e.g. "SAMPLE DATA - fictional students ..."), inserted as text
+    function showNote(text) {
+        let note = document.getElementById('dataset-note');
+        if (!note) {
+            note = document.createElement('p');
+            note.id = 'dataset-note';
+            note.className = 'section-note';
+            tableContainer.before(note);
+        }
+        note.textContent = text;
+        note.hidden = !text;
     }
 
     // UI States

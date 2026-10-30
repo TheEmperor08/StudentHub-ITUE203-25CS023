@@ -196,8 +196,8 @@ Audit of Practicals 1–7 against the integrated portal:
 
 | Suite | Result | Output |
 |---|---|---|
-| `tests/test_forms.py` – HTTP tests of Practicals 5, 6 and 7 in the portal | **40 / 40 passed** | `tests/test_forms_output.txt` |
-| `tests/browser_forms.py` – Microsoft Edge + screenshots | **14 / 14 passed** | `tests/browser_forms_output.txt`, `evidence/practical-05-07-integration/` |
+| `tests/test_forms.py` – HTTP tests of Practicals 5, 6 and 7 in the portal | **41 / 41 passed** | `tests/test_forms_output.txt` |
+| `tests/browser_forms.py` – Microsoft Edge + screenshots | **15 / 15 passed** | `tests/browser_forms_output.txt`, `evidence/practical-05-07-integration/` |
 | `database/tests/test_005_inquiries.py` – migration 005 (fixture / real dump) / `--verify-live` | **14 / 14**, **14 / 14**, **4 / 4 passed** | `database/tests/test_005_output.txt`, `test_005_verify_live_output.txt` |
 | Live checks of migrations 001–004 after 005 | 24 / 24, 4 / 4, 5 / 5, 5 / 5 | `database/tests/*_verify_live_output.txt` |
 | Regression: `test_dashboard` 36 / 36, `test_api` 72 / 72, `test_events` 94 / 94, `test_students` 170 / 170, `test_auth` 132 / 132, `test_001` 88 / 88, `test_002` 22 / 22, `test_003` 27 / 27, `test_004` 18 / 18; Edge `browser_auth` 14 / 14 (its weak-password check now expects the browser to stop the form – the server refusal is tested over HTTP), `browser_students` 16 / 16, `browser_inactive_login` 13 / 13, `browser_events` 16 / 16, `browser_api` 16 / 16, `browser_dashboard` 15 / 15 | all passed | outputs in `tests/` and `database/tests/` |
@@ -220,10 +220,12 @@ Covered: the registration page loads the validation script with rules matching t
 | Practical 12 – events, posters, registration | 94 | 0 |
 | Practical 13 – JSON API, Event Finder | 72 | 0 |
 | Practical 14 – admin dashboard | 36 | 0 |
-| Practicals 5–7 – validation, Data Explorer, inquiries | 40 | 0 |
+| Practicals 5–7 – validation, Data Explorer, inquiries | 41 | 0 |
 | Practical 15 – snapshot (incl. 132 + 72 checks against the snapshot) | 5 | 0 |
-| Microsoft Edge: auth 14, students 16, inactive login 13, events 16, Event Finder 16, dashboard 15, Practicals 5–7 14, end-to-end 17 | 121 | 0 |
-| **Total** | **839** | **0** |
+| Microsoft Edge: auth 14, students 16, inactive login 13, events 16, Event Finder 16, dashboard 15, Practicals 5–7 15, end-to-end 17 | 122 | 0 |
+| **Total** | **841** | **0** |
+
+After the report review the Data Explorer was switched to Practical 6's own anonymised sample datasets (`DEMO-001` … `DEMO-015`, each file with a `sampleData` flag and a description, now shown above the table) instead of the portal's earlier JSON files, and the loading-state screenshot was retaken: the earlier one had been saved after the data had loaded. The test now holds the JSON request until the screenshot is taken. The complete run above is the run after these changes.
 
 The first complete run showed one failure in the Event Finder browser test: the check for "Event full" ran before the list refresh that follows the API's 409 answer had finished (a timing race in the test; it had passed in every earlier run). The test now waits for the refreshed card; the second complete run above passed completely. `run_all.py` was also corrected to read each suite's own last summary line.
 

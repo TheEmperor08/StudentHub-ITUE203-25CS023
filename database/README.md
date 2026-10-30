@@ -133,8 +133,8 @@ transaction it locks the event row (`SELECT … FOR UPDATE`), counts the registr
 inserts the registration (or reactivates a cancelled one) only if a seat is free. Concurrent requests for the same event
 therefore wait for each other. It throws `EventRegistrationException` with the reason `event_not_found`,
 `student_not_found`, `student_inactive`, `duplicate` or `event_full`. `capacity` NULL means no limit. A plain
-`INSERT INTO registrations` bypasses the capacity rule, so the portal must always use this function. No page uses it
-yet – the registration interface follows with the event module.
+`INSERT INTO registrations` bypasses the capacity rule, so the portal must always use this function. It is used by the Campus Events page
+(`notifications.php`) and the events API (`api/events.php`, Practicals 12 and 13).
 
 ## Migration 003 – event management (Practical 12)
 

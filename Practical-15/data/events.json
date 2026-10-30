@@ -1,17 +1,22 @@
-[
-  {"id":1, "title":"Odoo Hackathon", "date":"2026-08-22", "location":"LDCE", "category":"Hackathon"},
-  {"id":2, "title":"Independence Day", "date":"2026-08-15", "location":"Campus Grounds", "category":"Cultural"},
-  {"id":3, "title":"TechFest Spoural", "date":"2026-09-10", "location":"CSPIT A7", "category":"TechFest"},
-  {"id":4, "title":"AI Seminar", "date":"2026-09-15", "location":"Auditorium", "category":"Seminar"},
-  {"id":5, "title":"Garba Night", "date":"2026-10-05", "location":"University Ground", "category":"Cultural"},
-  {"id":6, "title":"Web Dev Bootcamp", "date":"2026-08-30", "location":"Lab 631", "category":"Workshop"},
-  {"id":7, "title":"Codevita Prelims", "date":"2026-09-20", "location":"Online", "category":"Hackathon"},
-  {"id":8, "title":"Blood Donation", "date":"2026-10-12", "location":"Nursing block", "category":"Social"},
-  {"id":9, "title":"Cloud Computing AWS", "date":"2026-09-02", "location":"Lab 632", "category":"Seminar"},
-  {"id":10, "title":"Robotics Expo", "date":"2026-09-25", "location":"Main Foyer", "category":"TechFest"},
-  {"id":11, "title":"Sports Week", "date":"2026-11-01", "location":"Sports Complex", "category":"Sports"},
-  {"id":12, "title":"Alumni Meet", "date":"2026-12-15", "location":"Auditorium", "category":"Social"},
-  {"id":13, "title":"Python Workshop", "date":"2026-08-28", "location":"Lab 633", "category":"Workshop"},
-  {"id":14, "title":"Cyber Security Talk", "date":"2026-09-18", "location":"Room 506", "category":"Seminar"},
-  {"id":15, "title":"Hacktoberfest Open Source", "date":"2026-10-01", "location":"Online", "category":"Hackathon"}
-]
+{
+  "dataset": "events",
+  "sampleData": true,
+  "description": "SAMPLE DATA - example campus events created for ITUE203 Practical 6. Titles, dates and venues are for demonstration only and are not an official event calendar.",
+  "records": [
+    {"id": 1, "title": "Inter-college Hackathon", "date": "2026-08-22", "venue": "Engineering Block Lab 1", "category": "Hackathon"},
+    {"id": 2, "title": "Independence Day Celebration", "date": "2026-08-15", "venue": "Campus Grounds", "category": "Cultural"},
+    {"id": 3, "title": "Technical Fest Opening", "date": "2026-09-10", "venue": "Main Auditorium", "category": "TechFest"},
+    {"id": 4, "title": "AI and Machine Learning Seminar", "date": "2026-09-15", "venue": "Seminar Hall", "category": "Seminar"},
+    {"id": 5, "title": "Navratri Garba Night", "date": "2026-10-05", "venue": "University Ground", "category": "Cultural"},
+    {"id": 6, "title": "Web Development Bootcamp", "date": "2026-08-30", "venue": "Computer Lab 3", "category": "Workshop"},
+    {"id": 7, "title": "Coding Contest Prelims", "date": "2026-09-20", "venue": "Online", "category": "Hackathon"},
+    {"id": 8, "title": "Blood Donation Camp", "date": "2026-10-12", "venue": "Health Centre", "category": "Social"},
+    {"id": 9, "title": "Cloud Computing Basics", "date": "2026-09-02", "venue": "Computer Lab 4", "category": "Seminar"},
+    {"id": 10, "title": "Robotics Expo", "date": "2026-09-25", "venue": "Main Foyer", "category": "TechFest"},
+    {"id": 11, "title": "Annual Sports Week", "date": "2026-11-01", "venue": "Sports Complex", "category": "Sports"},
+    {"id": 12, "title": "Alumni Meet", "date": "2026-12-15", "venue": "Main Auditorium", "category": "Social"},
+    {"id": 13, "title": "Python Workshop", "date": "2026-08-28", "venue": "Computer Lab 5", "category": "Workshop"},
+    {"id": 14, "title": "Cyber Security Awareness Talk", "date": "2026-09-18", "venue": "Seminar Hall", "category": "Seminar"},
+    {"id": 15, "title": "Open Source Contribution Month", "date": "2026-10-01", "venue": "Online", "category": "Hackathon"}
+  ]
+}

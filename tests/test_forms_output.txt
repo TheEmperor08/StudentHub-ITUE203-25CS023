@@ -11,7 +11,8 @@ PASS  bypassing the browser checks does not help: the server refuses the weak pa
 PASS  data_explorer.php (signed in) has the tabs, search, filter, sort, status, table and pagination containers and loads data.js
 PASS  not signed in: redirected to the login page
 PASS  the sidebar links to the Data Explorer
-PASS  data/students.json, events.json and faqs.json are served and contain JSON arrays (15 records each)
+PASS  data/students.json, events.json and faqs.json are Practical 6's sample datasets (sampleData, description, 15 records each)
+PASS  the student dataset uses invented DEMO-001 … DEMO-015 ids (no real enrollment numbers)
 PASS  data.js fetches the JSON, handles errors, escapes every value and paginates (5 per page)
 
 == Practical 7: stored contact inquiries
@@ -51,4 +52,4 @@ PASS  no PHP warnings, notices or fatal errors in the server log
 PASS  disposable database removed
 PASS  the live studenthub_db was not touched
 
-Result: 40 passed, 0 failed, 40 checks
+Result: 41 passed, 0 failed, 41 checks

@@ -1,17 +1,22 @@
-[
-  {"id":1, "name":"Nisha Verma", "enrollment":"25CS150", "branch":"CSE", "sem":3, "cpi":8.05},
-  {"id":2, "name":"Aarav Patel", "enrollment":"25CS001", "branch":"CSE", "sem":3, "cpi":7.8},
-  {"id":3, "name":"Diya Shah", "enrollment":"25CE045", "branch":"CE", "sem":5, "cpi":9.1},
-  {"id":4, "name":"Meet Desai", "enrollment":"25IT012", "branch":"IT", "sem":3, "cpi":6.9},
-  {"id":5, "name":"Kavya Mehta", "enrollment":"25CS089", "branch":"CSE", "sem":7, "cpi":8.5},
-  {"id":6, "name":"Rohan Joshi", "enrollment":"25CE023", "branch":"CE", "sem":1, "cpi":8.2},
-  {"id":7, "name":"Sneha Parikh", "enrollment":"25IT056", "branch":"IT", "sem":5, "cpi":7.5},
-  {"id":8, "name":"Aryan Chauhan", "enrollment":"25CS102", "branch":"CSE", "sem":3, "cpi":8.9},
-  {"id":9, "name":"Riya Gandhi", "enrollment":"25CE111", "branch":"CE", "sem":7, "cpi":9.4},
-  {"id":10, "name":"Darshan Raval", "enrollment":"25IT078", "branch":"IT", "sem":3, "cpi":6.5},
-  {"id":11, "name":"Khushi Bhatt", "enrollment":"25CS034", "branch":"CSE", "sem":5, "cpi":8.1},
-  {"id":12, "name":"Yash Patel", "enrollment":"25CE067", "branch":"CE", "sem":1, "cpi":7.2},
-  {"id":13, "name":"Pooja Trivedi", "enrollment":"25IT090", "branch":"IT", "sem":7, "cpi":8.8},
-  {"id":14, "name":"Harsh Vaghela", "enrollment":"25CS123", "branch":"CSE", "sem":3, "cpi":9.0},
-  {"id":15, "name":"Anjali Modi", "enrollment":"25CE088", "branch":"CE", "sem":5, "cpi":8.4}
-]
+{
+  "dataset": "students",
+  "sampleData": true,
+  "description": "SAMPLE DATA - fictional students created for ITUE203 Practical 6. All names, IDs (DEMO-001 to DEMO-015) and CPI values are invented and do not belong to real people.",
+  "records": [
+    {"id": "DEMO-001", "name": "Lavanya Rao", "branch": "CE", "semester": 7, "cpi": 8.37},
+    {"id": "DEMO-002", "name": "Eshan Kapoor", "branch": "IT", "semester": 3, "cpi": 7.64},
+    {"id": "DEMO-003", "name": "Aarohi Menon", "branch": "CSE", "semester": 3, "cpi": 8.42},
+    {"id": "DEMO-004", "name": "Omkar Jadhav", "branch": "CE", "semester": 1, "cpi": 7.58},
+    {"id": "DEMO-005", "name": "Devika Iyer", "branch": "CSE", "semester": 7, "cpi": 9.21},
+    {"id": "DEMO-006", "name": "Karan Sethi", "branch": "IT", "semester": 1, "cpi": 6.71},
+    {"id": "DEMO-007", "name": "Farah Siddiqui", "branch": "CE", "semester": 5, "cpi": 8.73},
+    {"id": "DEMO-008", "name": "Manav Dutta", "branch": "CSE", "semester": 3, "cpi": 7.29},
+    {"id": "DEMO-009", "name": "Hema Reddy", "branch": "IT", "semester": 7, "cpi": 8.05},
+    {"id": "DEMO-010", "name": "Chirag Nair", "branch": "CE", "semester": 1, "cpi": 6.88},
+    {"id": "DEMO-011", "name": "Jiya Malhotra", "branch": "CSE", "semester": 5, "cpi": 9.48},
+    {"id": "DEMO-012", "name": "Bhavin Solanki", "branch": "IT", "semester": 5, "cpi": 7.15},
+    {"id": "DEMO-013", "name": "Ishaan Bose", "branch": "CE", "semester": 3, "cpi": 7.92},
+    {"id": "DEMO-014", "name": "Naina Kohli", "branch": "IT", "semester": 5, "cpi": 8.96},
+    {"id": "DEMO-015", "name": "Gaurav Pillai", "branch": "CSE", "semester": 1, "cpi": 6.35}
+  ]
+}

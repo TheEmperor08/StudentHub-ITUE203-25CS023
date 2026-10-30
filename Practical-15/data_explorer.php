@@ -14,7 +14,7 @@ $current_user = require_permission("portal.view");
     <title>Campus Data Explorer – StudentHub</title>
     <link rel="stylesheet" href="assets/css/global.css?v=11">
     <script src="assets/js/theme.js"></script>
-    <script src="assets/js/data.js?v=2" defer></script>
+    <script src="assets/js/data.js?v=3" defer></script>
 </head>
 <body>
 
