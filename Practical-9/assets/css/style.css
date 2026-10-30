@@ -1,0 +1,104 @@
+/* ===== StudentHub – Practical 9: registration page =====
+   System fonts; colours reused from Practicals 5–8 (checked for WCAG 2.1 AA contrast there). */
+
+:root {
+    --navy: #0b1437;
+    --on-navy-muted: #c7cbe0;
+    --bg: #f3f4f9;
+    --surface: #ffffff;
+    --surface-2: #f7f8fc;
+    --border: #cbd5e1;
+    --border-soft: #e2e8f0;
+    --text: #334155;
+    --text-dark: #0f172a;
+    --text-muted: #475569;
+    --link: #1d4ed8;
+    --accent: #4338ca;
+    --accent-dark: #3730a3;
+    --error: #b91c1c;
+    --error-soft: #fef2f2;
+    --success: #047857;
+    --success-soft: #ecfdf5;
+    --warning: #b45309;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; font-family: var(--font); line-height: 1.45; color: var(--text); background: var(--bg); }
+a { color: var(--link); }
+.container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+main.container { flex: 1 0 auto; padding-top: 24px; padding-bottom: 32px; }
+main.narrow { max-width: 620px; }
+
+.site-header { padding: 18px 0; background: var(--navy); color: #ffffff; }
+.brand { margin: 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--on-navy-muted); }
+.site-header h1 { margin: 2px 0; font-size: 1.6rem; }
+.subtitle { margin: 0; color: var(--on-navy-muted); }
+.site-footer { padding: 14px 0; background: var(--navy); color: var(--on-navy-muted); font-size: 0.88rem; }
+.site-footer p { margin: 0; }
+
+.card { padding: 22px 24px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface); box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06); }
+.card h2 { margin: 0 0 4px; font-size: 1.3rem; color: var(--text-dark); }
+.hint { margin: 0 0 16px; color: var(--text-muted); font-size: 0.92rem; }
+
+.alert { margin-bottom: 18px; padding: 12px 16px; border-left: 5px solid; border-radius: 10px; }
+.alert h2, .alert h3 { margin: 0 0 4px; font-size: 1.08rem; }
+.alert p { margin: 0; }
+.alert ul { margin: 8px 0 0; padding-left: 20px; }
+.alert-success { border-color: var(--success); background: var(--success-soft); color: var(--text-dark); }
+.alert-success h2 { color: var(--success); }
+.alert-error { border-color: var(--error); background: var(--error-soft); color: var(--error); }
+.alert-error a { color: var(--error); font-weight: 600; }
+.alert:focus { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-dark); }
+.field input[type="text"], .field input[type="email"], .field input[type="password"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font: inherit; color: var(--text-dark); background: var(--surface);
+}
+.field input:focus { outline: 3px solid rgba(67, 56, 202, 0.35); outline-offset: 1px; border-color: var(--accent); }
+.field.has-error input[type="text"], .field.has-error input[type="email"], .field.has-error input[type="password"] {
+    border-color: var(--error); background: var(--error-soft);
+}
+.field-hint { margin: 5px 0 0; color: var(--text-muted); font-size: 0.85rem; }
+.field-error { margin: 5px 0 0; color: var(--error); font-size: 0.88rem; font-weight: 600; }
+.field-error:empty { display: none; }
+
+.rules { padding-left: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rules li::before { content: "○ "; }
+.rules li.met { color: var(--success); }
+.rules li.met::before { content: "✓ "; }
+
+.strength { margin-top: 8px; }
+.strength-bar { height: 8px; border-radius: 4px; background: var(--border-soft); overflow: hidden; }
+.strength-bar span { display: block; height: 100%; width: 0; transition: width 0.2s; }
+.strength-bar .very-weak { background: var(--error); }
+.strength-bar .weak { background: #dc2626; }
+.strength-bar .fair { background: var(--warning); }
+.strength-bar .good { background: #15803d; }
+.strength-bar .strong { background: var(--success); }
+.strength-label { margin: 4px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--text-dark); }
+
+.checkbox-field { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: start; }
+.checkbox-field input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+.checkbox-field label { margin: 0; font-weight: 500; }
+.checkbox-field .field-error { grid-column: 2; }
+
+button, .button-link {
+    display: inline-block; width: 100%; padding: 12px 16px; border: 0; border-radius: 8px;
+    font: inherit; font-weight: 700; text-align: center; text-decoration: none;
+    color: #ffffff; background: var(--accent); cursor: pointer;
+}
+button:hover, .button-link:hover { background: var(--accent-dark); }
+button:focus-visible, .button-link:focus-visible { outline: 3px solid var(--text-dark); outline-offset: 2px; }
+
+.details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 18px; }
+.details dt { font-weight: 600; color: var(--text-dark); }
+.details dd { margin: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+    .card { padding: 18px 16px; }
+    .details { grid-template-columns: 1fr; gap: 2px; }
+    .details dd { margin-bottom: 8px; }
+}
