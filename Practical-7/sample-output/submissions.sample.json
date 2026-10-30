@@ -1,0 +1,42 @@
+[
+    {
+        "id": "SUB-0001",
+        "submitted_at": "2026-10-30T14:10:50+05:30",
+        "name": "Eshan Kapoor",
+        "email": "eshan.kapoor@example.com",
+        "category": "portal",
+        "message": "I cannot open the attendance page after logging in."
+    },
+    {
+        "id": "SUB-0002",
+        "submitted_at": "2026-10-30T14:10:50+05:30",
+        "name": "Farah Siddiqui",
+        "email": "farah.siddiqui@example.com",
+        "category": "results",
+        "message": "When will the Semester 2 results be available on the portal?"
+    },
+    {
+        "id": "SUB-0003",
+        "submitted_at": "2026-10-30T14:10:50+05:30",
+        "name": "Anne-Marie O'Neil",
+        "email": "anne.oneil@example.com",
+        "category": "other",
+        "message": "\u003Cscript\u003Ealert(\"XSS\")\u003C/script\u003E This text is shown safely & \"escaped\"."
+    },
+    {
+        "id": "SUB-0004",
+        "submitted_at": "2026-10-30T14:10:54+05:30",
+        "name": "Ishaan Bose",
+        "email": "ishaan.bose@example.com",
+        "category": "attendance",
+        "message": "My attendance for the WDF practical on Monday is not shown."
+    },
+    {
+        "id": "SUB-0005",
+        "submitted_at": "2026-10-30T14:10:54+05:30",
+        "name": "Aarohi Menon",
+        "email": "aarohi.menon@example.com",
+        "category": "timetable",
+        "message": "When will the Semester 3 practical timetable be published?"
+    }
+]

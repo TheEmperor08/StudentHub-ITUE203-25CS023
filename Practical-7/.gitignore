@@ -1,0 +1,3 @@
+# Practical 7: real form submissions may contain personal data - never commit them
+private/*.json
+private/*.csv

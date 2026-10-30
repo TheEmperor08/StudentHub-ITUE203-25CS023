@@ -1,0 +1,2 @@
+# Apache (XAMPP): the PHP include files are only used by index.php and records.php
+Require all denied
